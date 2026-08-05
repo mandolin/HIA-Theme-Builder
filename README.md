@@ -1,0 +1,52 @@
+# HIA-Theme-Builder
+
+HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具，以 TypeScript + 组件化的方式重构为一套可复用、可发布的主题管理体系，并抽离公共核心（`core`），在其基础上派生出网页版、Electron 版与 Tauri 版。
+
+| 入口 | 说明 |
+| --- | --- |
+| 网页版 (`HIA/web`) | 在线主题构建与预览，发布到 GitHub Pages。 |
+| Electron 版 (`HIA/electron`) | 桌面版，具备从指定网址获取颜色集等额外能力。 |
+| Tauri 版 (`HIA/tauri`) | 桌面版（更轻量），具备从指定网址获取颜色集等额外能力。 |
+| 公共核心 (`HIA/core`) | 供以上各端调用的公共主题模型、颜色算法、Token 导出与预览组件。 |
+
+## 仓库与边界
+
+本项目是一个 mono-repo，顶层文件夹 `HIA-Theme-Builder/` 自身是**公开主库**（映射到 `mandolin/HIA-Theme-Builder`）；`work-zone/` 是独立**私有工作区库**（映射到 `mandolin/HIA-Theme-Builder-WorkZone`），被主库根 `.gitignore` 排除。
+
+| 位置 | 职责 | 仓库 |
+| --- | --- | --- |
+| `HIA/core/` | 公共主题模型、配色算法、Token 导出、可复用预览组件。 | 主库（公开） |
+| `HIA/web/` | 网页版应用，部署 GitHub Pages。 | 主库（公开） |
+| `HIA/electron/` | Electron 桌面版，含网址取色等能力。 | 主库（公开） |
+| `HIA/tauri/` | Tauri 桌面版，含网址取色等能力。 | 主库（公开） |
+| `docs/` | 面向使用者和二次开发者的公开文档。 | 主库（公开） |
+| `dev/` | 已整理、可公开的开发材料入口（可为空）。 | 主库（公开） |
+| `work-zone/` | 私有规划、研究、审计、评审与 AI 协作证据。 | 私有库（不公开） |
+
+根目录刻意不建立跨 `HIA/*` 的共享依赖树或统一构建流水线；各端独立包管理、测试与发布。跨端联调使用 `HIA/core` 的本地包链接、示例或 fixtures。
+
+## 原始工具
+
+重构起点为内部文档库中的 `I:\HIA_SYS_DOC\工具\主题管理器\HIA_theme_manager.html`：一个以主/副色操作台、预设主题库、渐变设置、PC/小程序预览和 CSS/JSON Token 导出为核心的单文件工作台。本项目在保留其设计语言与能力边界的前提下，进行组件化拆分与多端派生。
+
+## 规划与里程碑
+
+公开侧仅保留定位与能力说明。规划、周期（`W-*`/`C-*`）、里程碑（`M-*`）、ADR、审计与 AI 协作记录统一位于私有 `work-zone/`；公开 `docs/` 不复制内部过程材料。
+
+## 开发环境
+
+- 推荐使用 Node.js 22 与 npm 10。
+- Shell 工作在 Windows 上统一使用 PowerShell 7（`C:\Program Files\PowerShell\7\pwsh.exe`）。
+- 各端在对应目录下独立安装与构建；具体内容见各端 README。
+
+## 中英双语代码文档
+
+自首份源码起，所有代码语义节点均执行 ROP（面向阅读的编程），具备紧邻的中英双语文档化注释；JS/TS 当前使用 `@lang zh-CN`、`@lang en` 与 inline `<lang>`。详见 `AGENTS.md` 与 `work-zone/docs/standards/bilingual-code-documentation-policy.md`。
+
+## 字体策略
+
+默认 UI、示例、测试与生成产物只使用来源与许可证明确的开源字体或 generic fallback；闭源或来源不明字体只作为兼容输入，不作默认值或打包资产。
+
+## 许可证
+
+本项目许可证尚未由维护者最终选定。在 `LICENSE` 被替换为已批准许可证前，不授予使用、修改或再分发的权限。

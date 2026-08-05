@@ -1,0 +1,17 @@
+{
+  "folders": [
+    { "path": "." },
+    { "path": "HIA/core" },
+    { "path": "HIA/web" },
+    { "path": "HIA/electron" },
+    { "path": "HIA/tauri" },
+    { "path": "work-zone" }
+  ],
+  "settings": {
+    "git.detectNestedGitRepos": true,
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": true
+    }
+  }
+}

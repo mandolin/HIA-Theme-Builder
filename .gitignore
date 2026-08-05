@@ -1,0 +1,31 @@
+# HIA-Theme-Builder 主库忽略规则
+# work-zone 是独立私有 Git 仓库，整体排除出公开主库
+/work-zone/
+
+# 依赖与构建产物
+node_modules/
+dist/
+out/
+build/
+coverage/
+*.tsbuildinfo
+
+# 本地生成与临时
+temp/
+tmp/
+output/
+*.log
+.DS_Store
+Thumbs.db
+
+# 编辑器 / 工具链缓存
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# 字体等二进制资产默认不入库（除非明确审核）
+*.woff
+*.woff2
+*.ttf
+*.otf
