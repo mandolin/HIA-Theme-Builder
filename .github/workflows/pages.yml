@@ -26,11 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # <lang zh-CN>先构建并发布 core 到本地 dist，供 web 以 file: 链接消费。</lang>
-      # <lang en>Build and emit core dist first; web consumes it via file: link.</lang>
+      # <lang zh-CN>使用 Node 22 LTS（避免 Node 20 弃用警告）。</lang>
+      # <lang en>Use Node 22 LTS (avoid Node 20 deprecation warning).</lang>
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22'
+      # <lang zh-CN>先构建 core 到本地 dist，供 web 以 file: 链接消费。</lang>
+      # <lang en>Build core to local dist first; web consumes it via file: link.</lang>
       - name: Build core
         working-directory: HIA/core
         run: |
