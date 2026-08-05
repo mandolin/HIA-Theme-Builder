@@ -1,8 +1,43 @@
-Copyright (c) 2026 HIA / mandolin
+# HIA-Theme-Builder 许可证说明（混合许可证）
 
-该许可证文件为占位符，项目许可证与版权所有者尚未由维护者最终选定。
-在维护者以已批准的许可证替换本文件之前，不授予任何使用、修改或再分发本项目材料的权限。
+本项目采用混合许可证策略。除非子目录内另含各自的 `LICENSE` 文件或对应 `package.json` 的 `license` 字段明确声明，否则本仓库内容按 **MIT License** 授权。
 
-This is a placeholder. The project license and copyright owner have not yet been
-selected by the maintainer. Until replaced with an approved license, no permission
-is granted to use, modify, or redistribute any project material.
+## 默认许可证：MIT
+
+版权所有 (c) 2026 HIA / mandolin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## 例外目录：HIA/electron/
+
+`HIA/electron/` 目录下的代码与资产采用 **Apache License 2.0**（详见 `HIA/electron/LICENSE` 与 `package.json` 的 `license` 字段）。
+
+采用 Apache-2.0 的原因：Electron 端具备“从指定网址获取颜色集”等额外能力，可能引入以 Apache-2.0 发布的依赖（如部分系统/网络/SDK 组件）。Apache-2.0 的显式专利授权条款对企业分发更友好，且要求保留 `NOTICE` 与版权声明。若后续该端仅使用 MIT/ISC 组件，可在对应 `G-electron` 规划中回退为 MIT 并移除本例外。
+
+## 各子体系许可证一览
+
+| 位置 | 许可证 |
+| --- | --- |
+| 根文档、HIA/core、HIA/web、HIA/tauri | MIT |
+| HIA/electron | Apache-2.0（例外，子包自决） |
+| work-zone/ | 私有仓库，不随公开主库授权分发 |
+
+## 再分发与第三方依赖
+
+所有第三方依赖、字体、图标与二进制资产在进入发布路径前须记录来源、版本与许可证，优先 MIT、Apache-2.0、BSD、ISC、OFL、CC0 等宽松许可。详见 `work-zone/dev/audits/`。

@@ -49,4 +49,10 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 
 ## 许可证
 
-本项目许可证尚未由维护者最终选定。在 `LICENSE` 被替换为已批准许可证前，不授予使用、修改或再分发的权限。
+本项目采用**混合许可证**策略：
+
+- 根文档及 `HIA/core`、`HIA/web`、`HIA/tauri` 默认按 **MIT License** 授权。
+- `HIA/electron/` 目录采用 **Apache License 2.0**（子包自决；因其“从指定网址获取颜色集”等额外能力可能引入 Apache-2.0 依赖，且专利授权对企业分发更友好）。具体见根 `LICENSE` 与 `dev/audits/license-audit-electron-2026-08-05.md`。
+- `work-zone/` 为独立私有仓库，不随公开主库授权分发。
+
+所有第三方依赖、字体、图标与二进制资产进入发布路径前须记录来源、版本与许可证，优先 MIT、Apache-2.0、BSD、ISC、OFL、CC0 等宽松许可。
