@@ -2,6 +2,15 @@
 
 本项目遵循阶段化发布。以下记录公开可验证的发布与里程碑节点。
 
+## [P5] 桌面端跑通与跨端一致性（2026-08-06）
+
+- 桌面端复用 web 共享渲染器（ADR-001）：`HIA/electron/scripts/copy-renderer.js` 与 `HIA/tauri/scripts/copy-front.js` 改为复制 `HIA/web/dist`（`index.html` + `assets`），使 Electron/Tauri 启动即为与 web 版相同的主题操作台 + PC/小程序预览 + 8 渐变角色 + Token 导出，呈现与操作三端一致。
+- 删除桌面端旧独立简化 UI（`electron/src/renderer/*`、`tauri/src/front/*`、`tauri/src/fetch-signals.ts`）；仅保留桌面端专属桥与 SSRF 参考（`electron/src/{main,preload,fetch-signals,ssrf}`、`tauri/src/ssrf.ts`）。
+- 三端取色桥按 `createAdaptivePlatform` 回退链自动接入：Electron `preload` 暴露 `window.hia.extractFromUrl`（旧协议）、Tauri `__TAURI_INVOKE__('extract_signals')`；WebView 端不直接发请求，SSRF 由 Electron 主进程 / Tauri Rust 后端双重校验。
+- 复制脚本增强：复制前清空目标目录，避免 web 改 hash 后旧 JS/CSS 产物残留堆积。
+- 跨端一致性核对：web/electron/tauri 三端 `dist` 渲染器 JS 哈希一致（`index-C9wRmIyv.js`）；取色面板按 `platform.explorer` 条件显隐（web 隐藏、桌面端显示）。
+- 三端冒烟复验：core 单测 7/7、web 构建 0 错误、electron `tsc` 0 + SSRF 8/8、tauri 前端 `tsc` 0 + SSRF 6/6。
+
 ## [P4] 工程化、合规与文档化收尾（2026-08-05）
 
 - CI 矩阵增强：`.github/workflows/pages.yml` 在部署前对 `core`/`web`/`electron`/`tauri` 四端做构建与测试校验（electron/tauri 以 `--ignore-scripts` 跳过重型二进制下载，仅编译 + SSRF 单测）。

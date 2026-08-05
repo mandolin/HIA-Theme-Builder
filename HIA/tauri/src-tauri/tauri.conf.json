@@ -2,8 +2,8 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build:front",
-    "devPath": "src-tauri/dist",
-    "distDir": "src-tauri/dist"
+    "devPath": "dist",
+    "distDir": "dist"
   },
   "package": {
     "productName": "HIA Theme Builder",

@@ -4,10 +4,12 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 
 | 入口 | 说明 |
 | --- | --- |
-| 网页版 (`HIA/web`) | 在线主题构建与预览，发布到 GitHub Pages。 |
-| Electron 版 (`HIA/electron`) | 桌面版，具备从指定网址获取颜色集等额外能力。 |
-| Tauri 版 (`HIA/tauri`) | 桌面版（更轻量），具备从指定网址获取颜色集等额外能力。 |
+| 网页版 (`HIA/web`) | 在线主题构建与预览，发布到 GitHub Pages；共享渲染器为三端 UI 单一事实来源。 |
+| Electron 版 (`HIA/electron`) | 桌面版，复用 web 共享渲染器，启动即为一致操作台/预览/渐变/导出，并具备从指定网址获取颜色集等额外能力。 |
+| Tauri 版 (`HIA/tauri`) | 桌面版（更轻量），复用 web 共享渲染器，启动即为一致操作台/预览/渐变/导出，并具备从指定网址获取颜色集等额外能力。 |
 | 公共核心 (`HIA/core`) | 供以上各端调用的公共主题模型、颜色算法、Token 导出与预览组件。 |
+
+> 跨端一致性：桌面端不重写 UI，直接复用 `HIA/web` 的 Vite 构建产物（`index.html` + `assets`），因此三端呈现与操作一致；桌面端专属能力（从网址取色）通过各自平台桥（`window.hia.extractFromUrl` / `__TAURI_INVOKE__('extract_signals')`）由 `createAdaptivePlatform` 的回退链自动接入。详见 `work-zone/docs/adr/ADR-001-shared-ui-reuse.md`。
 
 ## 仓库与边界
 
@@ -17,8 +19,8 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 | --- | --- | --- |
 | `HIA/core/` | 公共主题模型、配色算法、Token 导出、可复用预览组件。 | 主库（公开） |
 | `HIA/web/` | 网页版应用，部署 GitHub Pages。 | 主库（公开） |
-| `HIA/electron/` | Electron 桌面版，含网址取色等能力。 | 主库（公开） |
-| `HIA/tauri/` | Tauri 桌面版，含网址取色等能力。 | 主库（公开） |
+| `HIA/electron/` | Electron 桌面版，复用 web 共享渲染器，含网址取色等能力。 | 主库（公开） |
+| `HIA/tauri/` | Tauri 桌面版，复用 web 共享渲染器，含网址取色等能力。 | 主库（公开） |
 | `docs/` | 面向使用者和二次开发者的公开文档。 | 主库（公开） |
 | `dev/` | 已整理、可公开的开发材料入口（可为空）。 | 主库（公开） |
 | `work-zone/` | 私有规划、研究、审计、评审与 AI 协作证据。 | 私有库（不公开） |
