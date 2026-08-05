@@ -35,8 +35,8 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 
 ## 开发环境
 
-- 推荐使用 Node.js 22 与 npm 10。
-- Shell 工作在 Windows 上统一使用 PowerShell 7（`C:\Program Files\PowerShell\7\pwsh.exe`）。
+- 推荐使用 [mise](https://mise.jdx.dev/) 统一工具链：根目录 `.mise.toml` 已锁定 Node 22（LTS），本地与 CI 版本保持一致。克隆后执行 `mise install` 即自动安装匹配运行时。
+- Shell 工作在 Windows 上统一使用 PowerShell 7（`C:\Program Files\PowerShell\7\pwsh.exe`）；`mise run` 任务（如 `build-web`/`test-core`/`test-ssrf`）可一键执行常见流程。
 - 各端在对应目录下独立安装与构建；具体内容见各端 README。
 
 ## 中英双语代码文档

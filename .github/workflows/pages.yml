@@ -26,11 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # <lang zh-CN>使用 Node 22 LTS（避免 Node 20 弃用警告）。</lang>
-      # <lang en>Use Node 22 LTS (avoid Node 20 deprecation warning).</lang>
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+      # <lang zh-CN>用 mise 安装与本地一致的 Node 版本（读取 .mise.toml，当前为 Node 22 LTS）。</lang>
+      # <lang en>Use mise to install the same Node version as local (.mise.toml, currently Node 22 LTS).</lang>
+      - uses: jdx/mise-action@v2
       # <lang zh-CN>先构建 core 到本地 dist，供 web 以 file: 链接消费。</lang>
       # <lang en>Build core to local dist first; web consumes it via file: link.</lang>
       - name: Build core
@@ -46,7 +44,7 @@ jobs:
           npm install
           npm run build
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: HIA/web/dist
 

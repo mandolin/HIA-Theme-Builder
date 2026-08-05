@@ -1,0 +1,40 @@
+# @lang zh-CN mise 工具链配置：统一本地与 CI 的运行时版本，避免 Node 20 弃用等问题。
+# @lang en mise toolchain config: pins runtime versions for local and CI consistency.
+[tools]
+# @lang zh-CN Node 22 LTS，web/electron/tauri 三端共用，匹配 GitHub Pages CI。
+# @lang en Node 22 LTS shared by web/electron/tauri, matching GitHub Pages CI.
+node = "22"
+
+# @lang zh-CN 可选：本地可直接用 mise 启动依赖的 CLI（取消注释按需启用）。
+# @lang en Optional: CLI tools runnable via mise locally (uncomment as needed).
+# npm = "latest"
+
+# @lang zh-CN 任务快捷命令：mise run <name> 即可执行常用流程。
+# @lang en Task shortcuts: run via `mise run <name>`.
+[tasks.build-web]
+# @lang zh-CN 构建 web 控制台（先构建 core 供 file: 链接消费）。
+# @lang en Build web console (build core first for file: link).
+# <lang zh-CN>mise 在命令非零退出码时自动中断任务，无需手动 exit。</lang>
+# <lang en>mise stops the task on non-zero exit automatically; no manual exit needed.</lang>
+run = """
+cd HIA/core && npm install && npm run build
+cd ../web && npm install && npm run build
+"""
+# @lang zh-CN 仅在 core/web 变更时运行。
+# @lang en Run only when core/web change.
+sources = ["HIA/core/**", "HIA/web/**"]
+
+[tasks.test-core]
+# @lang zh-CN 运行 core 单元测试。
+# @lang en Run core unit tests.
+run = "cd HIA/core && npm install && npm test"
+sources = ["HIA/core/**"]
+
+[tasks.test-ssrf]
+# @lang zh-CN 运行 electron/tauri 的 SSRF 取色校验测试。
+# @lang en Run SSRF extraction validation tests for electron/tauri.
+run = """
+cd HIA/electron && npm install && npm test
+cd ../tauri && npm install && npm test
+"""
+sources = ["HIA/electron/**", "HIA/tauri/**"]
