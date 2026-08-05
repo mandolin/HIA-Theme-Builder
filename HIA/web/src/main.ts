@@ -20,17 +20,24 @@ import { renderTokenPanel } from './tokenpanel.js';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
 app.innerHTML = `
-  <!-- 顶部品牌栏 / Top brand bar -->
-  <header class="topbar">
-    <div class="brand-group">
-      <h1>HIA DESIGN SYSTEM · THEME MANAGEMENT STUDIO</h1>
-      <span class="sub">HIA 主题库管理页</span>
-    </div>
-    <div class="badges">
-      <span class="badge">默认: 钴蓝 #0047AB + 或选择 #00A8D3</span>
-      <span class="badge">主色候选: 44</span>
-      <span class="badge">内置主题预设: 6</span>
-      <span class="badge">保存符合定义主规则本地主题库</span>
+  <!-- 顶部 Hero 头部区域（严格复刻原 HTML 结构） / Top hero header (exact replica of original HTML) -->
+  <header class="hero-header">
+    <div class="hero-inner">
+      <!-- 左侧：标题 + 副标题 + 描述 + 标签 / Left: title + subtitle + description + tags -->
+      <div class="hero-left">
+        <h1 class="hero-title">HIA DESIGN SYSTEM · THEME MANAGEMENT STUDIO</h1>
+        <div class="hero-subtitle">HIA 主题库管理页</div>
+        <p class="hero-desc">
+          这是一个可打开式主题库、多业项目、多示例项目主题和皮肤管理的工具台。你可以从主配色库合法选择或生成主主题预设，导入主副色，并一键切换到
+          PC 端企业后台完整概览 与 小程序示例预览。支持任何格式模式、深色/浅色规范、主题级联管理、CSS/JSON Token 导出等。
+        </p>
+        <div class="hero-tags">
+          <span class="hero-tag">默认: 钴蓝 #0047AB + 或选择 #00A8D3</span>
+          <span class="hero-tag">主色候选: 44</span>
+          <span class="hero-tag">内置主题预设: 6</span>
+          <span class="hero-tag">保存符合定义主规则本地主题库</span>
+        </div>
+      </div>
     </div>
   </header>
 

@@ -70,7 +70,59 @@ body {
 }
 
 /* ─────────────────────────────────────────────
-   顶部标题栏 / Top header bar
+   Hero 头部区域（复刻原 HTML 顶部） / Hero header (exact replica of original HTML top)
+   ───────────────────────────────────────────── */
+.hero-header {
+  background: linear-gradient(135deg, #1a237e 0%, #283593 35%, #1565c0 70%, #1e88e5 100%);
+  color: #fff;
+  padding: 28px 32px 24px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.hero-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+/* 标题行：英文大标题 + 中文副标题并排 / Title row: EN title + CN subtitle side by side */
+.hero-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  margin-bottom: 2px;
+  color: #ffffff;
+}
+.hero-subtitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: rgba(255,255,255,0.88);
+}
+/* 描述段落 / Description paragraph */
+.hero-desc {
+  font-size: 13px;
+  line-height: 1.65;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 12px;
+  max-width: 900px;
+}
+/* 底部标签行 / Bottom tag row */
+.hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hero-tag {
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 3px 11px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.92);
+  backdrop-filter: blur(4px);
+}
+
+/* ─────────────────────────────────────────────
+   旧 topbar（保留兼容，不再使用） / Legacy topbar (kept for compat, no longer used)
    ───────────────────────────────────────────── */
 .topbar {
   display: flex;
@@ -110,7 +162,7 @@ body {
   display: grid;
   grid-template-columns: 360px 1fr;
   gap: 0;
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh - 130px);
 }
 .app-layout.split-view {
   grid-template-columns: 360px 1fr;
@@ -121,7 +173,7 @@ body {
   background: var(--bg-panel);
   border-right: 1px solid var(--border-light);
   overflow-y: auto;
-  max-height: calc(100vh - 60px);
+  max-height: calc(100vh - 130px);
   position: sticky;
   top: 0;
 }
@@ -130,7 +182,7 @@ body {
 .main-col {
   overflow-y: auto;
   padding: var(--sp-lg);
-  max-height: calc(100vh - 60px);
+  max-height: calc(100vh - 130px);
 }
 
 /* ─────────────────────────────────────────────
