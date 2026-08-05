@@ -1,6 +1,60 @@
-export type{ColorScale,RoleColor,GradientConfig,GradientSettings,Theme,ThemeInput,PrimaryCandidate,Preset,HarmonyDef,ThemeDraft,ThemeLibraryDocument,CssVariableMap,ShadeKey,ColorFamily,GradientBias}from'./types.js';export{SHADE_KEYS}from'./types.js';
-export{clamp,normalizeHex,validHex,hexToRgb,rgbToHex,rgbToOklab,oklabToRgb,hexToOklch,oklchToRgb,inGamut,gamutMapOklch,srgbToLinear,linearToSrgb}from'./color/convert.js';export{tonalScale}from'./color/scale.js';export{HARMONY_DEFS,harmonyCandidate,generateSecondarySet}from'./color/harmony.js';export type{SecondaryCandidate}from'./color/harmony.js';export{luminance,contrast,bestOnColor}from'./color/contrast.js';
-export{primaryCandidates}from'./data/primaryCandidates.js';export{builtinPresets}from'./data/presets.js';export{GRADIENT_DEFS,GRADIENT_DEFAULTS,cloneGradientSettings}from'./data/gradients.js';
-export{gradientStops,gradientCss,gradientDominantColor,createRuntimeCssVariables,exportGradientVariableLines}from'./gradient/render.js';export type{GradientRenderMode}from'./gradient/render.js';export{buildTheme}from'./theme.js';
+/**
+ * @lang zh-CN HIA 主题核心公共入口（barrel）。聚合导出类型、颜色算法、数据、渐变、主题构建与操作台 API。
+ *   各端（web/electron/tauri）统一从此处按需引入，避免直连内部子模块。
+ * @lang en HIA theme-core public entry (barrel). Re-exports types, color algorithms, data, gradients, theme building and studio API.
+ *   Every runtime (web/electron/tauri) imports from here to avoid reaching into internal submodules.
+ */
+
+// 类型与常量导出。
+// <lang zh-CN>类型用 export type 保留编译期隔离；SHADE_KEYS 为运行时常量。</lang>
+// <lang en>Types use `export type` for compile-time isolation; SHADE_KEYS is a runtime constant.</lang>
+export type{ColorScale,RoleColor,GradientConfig,GradientSettings,Theme,ThemeInput,PrimaryCandidate,Preset,HarmonyDef,ThemeDraft,ThemeLibraryDocument,CssVariableMap,ShadeKey,ColorFamily,GradientBias}from'./types.js';
+export{SHADE_KEYS}from'./types.js';
+
+// 颜色转换与数学工具（HEX/RGB/OKLab/OKLCH 互转、色域映射、线性化）。
+// <lang zh-CN>所有色彩计算的底层原语，均为纯函数。</lang>
+// <lang en>Low-level color primitives (HEX/RGB/OKLab/OKLCH conversion, gamut mapping, linearization); all pure.</lang>
+export{clamp,normalizeHex,validHex,hexToRgb,rgbToHex,rgbToOklab,oklabToRgb,hexToOklch,oklchToRgb,inGamut,gamutMapOklch,srgbToLinear,linearToSrgb}from'./color/convert.js';
+// 由基色生成 10 级色阶。
+// <lang zh-CN>主题色阶的唯一来源，输出已做色域校正。</lang>
+// <lang en>Single source of tonal scales; output is gamut-corrected.</lang>
+export{tonalScale}from'./color/scale.js';
+// 和谐配色定义与副色生成。
+// <lang zh-CN>副色候选的理论依据与生成入口；SecondaryCandidate 为类型。</lang>
+// <lang en>Harmony definitions and secondary generation; SecondaryCandidate is the type.</lang>
+export{HARMONY_DEFS,harmonyCandidate,generateSecondarySet}from'./color/harmony.js';
+export type{SecondaryCandidate}from'./color/harmony.js';
+// 对比度与最佳前景色选择（WCAG 相对亮度）。
+// <lang zh-CN>用于自动决定角色色上的文字用白还是深色。</lang>
+// <lang en>Decides white vs dark foreground on a role color via WCAG relative luminance.</lang>
+export{luminance,contrast,bestOnColor}from'./color/contrast.js';
+
+// 数据：主色候选库、内置预设、渐变定义与默认配置。
+// <lang zh-CN>候选库与预设为静态数据；GRADIENT_* 为渐变角色契约与默认值。</lang>
+// <lang en>Static data: primary candidates and built-in presets; GRADIENT_* are gradient role contracts and defaults.</lang>
+export{primaryCandidates}from'./data/primaryCandidates.js';
+export{builtinPresets}from'./data/presets.js';
+export{GRADIENT_DEFS,GRADIENT_DEFAULTS,cloneGradientSettings}from'./data/gradients.js';
+
+// 渐变渲染：起止色停靠点、CSS 生成、运行时变量与导出变量行。
+// <lang zh-CN>GradientRenderMode 区分运行时 var()、导出 var() 与字面量三种渲染。</lang>
+// <lang en>GradientRenderMode switches between runtime var(), export var() and literal rendering.</lang>
+export{gradientStops,gradientCss,gradientDominantColor,createRuntimeCssVariables,exportGradientVariableLines}from'./gradient/render.js';
+export type{GradientRenderMode}from'./gradient/render.js';
+// 由主题输入构建完整主题。
+// <lang zh-CN>连接 color/scale 与 studio 的顶层主题工厂。</lang>
+// <lang en>Top-level theme factory linking color/scale and studio.</lang>
+export{buildTheme}from'./theme.js';
+
+// 操作台状态层 API（草稿/预设/库读写）。
+// <lang zh-CN>web 操作台与各端 UI 的主要调用面。</lang>
+// <lang en>Primary call surface for the web studio and other runtimes' UIs.</lang>
 export{DEFAULT_THEME_DRAFT,autoThemeName,createThemeDraft,draftFromPreset,buildThemeFromDraft,presetFromDraft,findMatchingPrimaryCandidate,secondarySetForDraft,mergePresets,filterPresets,upsertPreset,removePreset,isBuiltinPresetId,serializeThemeLibrary,parseThemeLibrary,parseGradientSettings}from'./studio.js';
-export{exportThemeCss}from'./token/css.js';export{exportThemeJson}from'./token/json.js';export{analyzeTheme}from'./analyze/analyze.js';export type{ExtractSignals,ScoredColor,ExtractResult,CssVarSignal,DomColorSignal,ScreenshotColorSignal}from'./analyze/types.js';
+
+// 令牌导出：CSS 自定义属性与 JSON 主题描述。
+// <lang zh-CN>导出物供设计系统/小程序消费；analyzeTheme 提供网址取色分析。</lang>
+// <lang en>Exports consumed by design systems / mini-programs; analyzeTheme provides URL color extraction.</lang>
+export{exportThemeCss}from'./token/css.js';
+export{exportThemeJson}from'./token/json.js';
+export{analyzeTheme}from'./analyze/analyze.js';
+export type{ExtractSignals,ScoredColor,ExtractResult,CssVarSignal,DomColorSignal,ScreenshotColorSignal}from'./analyze/types.js';
