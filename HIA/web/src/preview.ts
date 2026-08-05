@@ -170,9 +170,9 @@ function pcDashboardContent(): string {
     <h3 style="font-size:14px;font-weight:600;margin:16px 0 10px;color:var(--text-secondary)">副色色阶 Secondary Scale</h3>
     <div class="tonal-scale" id="secondaryScale"></div>
 
-    <!-- 渐变应用展示 / Gradient application display -->
+    <!-- 渐变应用展示 / Gradient application display (多角色预览条) -->
     <h3 style="font-size:14px;font-weight:600;margin:20px 0 10px;color:var(--text-secondary)">渐变应用预览 Gradient Preview</h3>
-    <div id="gradientShowcase"></div>
+    <div id="gradientShowcase" class="grad-showcase-grid"></div>
   `;
 }
 
@@ -339,6 +339,25 @@ export function renderPreview(root: HTMLElement): void {
     // 同步小程序壳内主题色 / Sync theme colors in MP shell
     const notch = root.querySelector<HTMLElement>('.mp-phone-notch');
     if (notch) notch.style.background = theme.primary.value;
+
+    // 填充渐变展示条 / Fill gradient preview bars
+    const gradShowcase = pcPreview.querySelector<HTMLElement>('#gradientShowcase');
+    if (gradShowcase) {
+      const gs = s.gradients;
+      const roles = ['carousel', 'banner', 'textLarge', 'textSmall', 'dataKpi', 'imageThumb', 'profileCard', 'hintCard'];
+      gradShowcase.innerHTML = roles.map(key => {
+        const cfg = gs[key] as Record<string, any>;
+        if (!cfg || !cfg.enabled) return '';
+        const fam = cfg.family === 'primary' ? theme.primary.scale : theme.secondary.scale;
+        const a = fam[cfg.start as keyof typeof fam] || '#ccc';
+        const b = fam[cfg.end as keyof typeof fam] || '#999';
+        return `<div class="grad-preview-bar" style="background:linear-gradient(${cfg.direction||'135deg'},${a} 0%,${b} 100%);height:${cfg.height||56}px" title="${key}"></div>`;
+      }).join('');
+      // 如果全部禁用则显示占位 / Show placeholder if all disabled
+      if (gradShowcase.children.length === 0) {
+        gradShowcase.innerHTML = '<p class="hint" style="text-align:center;padding:16px">暂无启用渐变角色</p>';
+      }
+    }
   });
 }
 

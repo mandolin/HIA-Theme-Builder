@@ -11,9 +11,6 @@ import { GRADIENT_DEFS } from '@hia/theme-core';
 import type { GradientSettings } from '@hia/theme-core';
 import { subscribe, updateGradient, resetGradients, type AppState } from './state.js';
 
-/** @lang zh-CN 色阶选项列表（50–900）。 @en Shade option list (50–900). */
-const SHADES = ['50','100','200','300','400','500','600','700','800','900'];
-
 /** @lang zh-CN 不均分选项列表。 @en Uneven bias options. */
 const BIAS_OPTIONS = [
   { value: 'front75', label: '前75%' },
@@ -27,27 +24,24 @@ const BIAS_OPTIONS = [
  * @en Render gradient settings panel; subscribe for preview bar refresh.
  */
 export function renderGradient(root: HTMLElement): void {
-  // 生成所有角色行 / Generate all role rows
+  // 生成所有角色行 / Generate all role rows (完整参数：启用/色系/起止阶/角度/不均分/高度/宽度)
   const rows = GRADIENT_DEFS.map((d) => {
     return `
       <div class="grad-role-row" data-key="${d.key}">
+        <label title="启用"><input type="checkbox" class="grad-toggle g-enabled" checked /></label>
         <span class="grad-role-name">${d.label}</span>
-        <label title="启用/禁用"><input type="checkbox" class="grad-toggle g-enabled" /></label>
         <select class="grad-select g-family" title="色系">
           <option value="primary">主色系</option>
           <option value="secondary">副色系</option>
         </select>
-        <select class="grad-select g-start" title="起始色阶">
-          ${SHADES.map(s => `<option value="${s}">${s}</option>`).join('')}
-        </select>
-        <select class="grad-select g-end" title="结束色阶">
-          ${SHADES.map(s => `<option value="${s}">${s}</option>`).join('')}
-        </select>
-        <input class="grad-input g-dir" placeholder="角度" title="方向(如 135deg)" />
-        <select class="grad-select g-bias" title="不均分占比">
+        <input class="grad-input g-start" placeholder="起始" title="起始色阶(50-900)" style="width:48px" />
+        <input class="grad-input g-end" placeholder="结束" title="结束色阶(50-900)" style="width:48px" />
+        <input class="grad-input g-dir" placeholder="角度" title="方向(如 135deg)" style="width:54px" />
+        <select class="grad-select g-bias" title="不均分">
           ${BIAS_OPTIONS.map(b => `<option value="${b.value}">${b.label}</option>`).join('')}
         </select>
-        <input class="grad-input g-height" placeholder="高度" title="高度(px)" style="width:52px" />
+        <input class="grad-input g-height" placeholder="高度" title="高度px" style="width:46px" />
+        <input class="grad-input g-width" placeholder="宽度%" title="宽度百分比" style="width:50px" />
         <span class="grad-preview-strip g-preview"></span>
       </div>`;
   }).join('');
@@ -75,28 +69,33 @@ export function renderGradient(root: HTMLElement): void {
   root.querySelectorAll<HTMLDivElement>('.grad-role-row').forEach((row) => {
     const key = row.dataset.key!;
 
+    const bindInput = (sel: string, field: string) => {
+      const el = row.querySelector<HTMLInputElement>(sel);
+      if (el) el.addEventListener('change', () => {
+        const v = el.value;
+        if (field === 'height' || field === 'width') {
+          const n = parseInt(v);
+          if (!isNaN(n)) updateGradient(key, { [field]: n } as Partial<GradientSettings[string]>);
+        } else {
+          updateGradient(key, { [field]: v } as Partial<GradientSettings[string]>);
+        }
+      });
+    };
+
     row.querySelector<HTMLInputElement>('.g-enabled')!.addEventListener('change', (e) => {
       updateGradient(key, { enabled: (e.target as HTMLInputElement).checked });
     });
     row.querySelector<HTMLSelectElement>('.g-family')!.addEventListener('change', (e) => {
       updateGradient(key, { family: (e.target as HTMLSelectElement).value as 'primary' | 'secondary' });
     });
-    row.querySelector<HTMLSelectElement>('.g-start')!.addEventListener('change', (e) => {
-      updateGradient(key, { start: (e.target as HTMLSelectElement).value });
-    });
-    row.querySelector<HTMLSelectElement>('.g-end')!.addEventListener('change', (e) => {
-      updateGradient(key, { end: (e.target as HTMLSelectElement).value });
-    });
-    row.querySelector<HTMLInputElement>('.g-dir')!.addEventListener('change', (e) => {
-      updateGradient(key, { direction: (e.target as HTMLInputElement).value || '135deg' });
-    });
+    bindInput('.g-start', 'start');
+    bindInput('.g-end', 'end');
+    bindInput('.g-dir', 'direction');
     row.querySelector<HTMLSelectElement>('.g-bias')!.addEventListener('change', (e) => {
       updateGradient(key, { bias: (e.target as HTMLSelectElement).value as GradientSettings[string]['bias'] });
     });
-    row.querySelector<HTMLInputElement>('.g-height')!.addEventListener('change', (e) => {
-      const v = parseInt((e.target as HTMLInputElement).value);
-      if (!isNaN(v)) updateGradient(key, { height: v } as Partial<GradientSettings[string]>);
-    });
+    bindInput('.g-height', 'height');
+    bindInput('.g-width', 'width');
   });
 
   // 重置按钮 / Reset button

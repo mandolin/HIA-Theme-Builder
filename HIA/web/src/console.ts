@@ -74,9 +74,9 @@ export function renderConsole(root: HTMLElement): void {
       <p class="hint">仅展示主色，每次选中将自动推荐匹配副色。以第一组选出您想要的颜色。</p>
       <div class="swatch-grid" id="candidateGrid"></div>
 
-      <!-- 主题预设 / Presets -->
+      <!-- 主题预设 / Presets (紧凑列表式) -->
       <h3>主题预设（<span id="presetCount">${builtinPresets.length}</span> 套）</h3>
-      <div class="preset-grid" id="presetGrid"></div>
+      <div class="preset-list" id="presetGrid"></div>
 
       <!-- 和谐副色候选 / Harmony secondaries -->
       <h3>颜色和谐候选（基于主色）</h3>
@@ -148,24 +148,25 @@ export function renderConsole(root: HTMLElement): void {
     candGrid.appendChild(el);
   });
 
-  // ── 渲染 6 个内置预设 / Render 6 built-in presets ──
+  // ── 渲染 6 个内置预设（紧凑列表式，对齐原 HTML 左侧预设区） / Render 6 built-in presets (compact list) ──
   builtinPresets.forEach((p) => {
-    const card = document.createElement('div');
-    card.className = 'preset-card';
-    card.innerHTML = `
-      <div class="preset-dots">
+    const row = document.createElement('div');
+    row.className = 'preset-row';
+    row.innerHTML = `
+      <span class="preset-dots-inline">
         <span class="preset-dot" style="background:${p.primary}"></span>
         <span class="preset-dot" style="background:${p.secondary}"></span>
+      </span>
+      <div class="preset-info">
+        <span class="preset-name">${p.name}</span>
+        <span class="preset-meta">${p.category}${p.industry ? ' · ' + p.industry : ''}</span>
       </div>
-      <div class="preset-name">${p.name}</div>
-      <div class="preset-meta">${p.category}${p.industry ? ' · ' + p.industry : ''}</div>
       <div class="preset-actions">
         <button class="btn sm primary apply-preset">应用</button>
         <button class="btn sm outline load-preset">载入操作台</button>
       </div>
     `;
-    // 应用：整体替换为当前主题 / Apply → replace as current theme
-    card.querySelector('.apply-preset')!.addEventListener('click', () =>
+    row.querySelector('.apply-preset')!.addEventListener('click', () =>
       replaceConsole({
         primary: p.primary,
         secondary: p.secondary,
@@ -174,8 +175,7 @@ export function renderConsole(root: HTMLElement): void {
         themeName: p.name
       })
     );
-    // 载入操作台：填入但不立即生效 / Load to console → fill in but don't activate
-    card.querySelector('.load-preset')!.addEventListener('click', () =>
+    row.querySelector('.load-preset')!.addEventListener('click', () =>
       replaceConsole({
         primary: p.primary,
         secondary: p.secondary,
@@ -184,7 +184,7 @@ export function renderConsole(root: HTMLElement): void {
         themeName: p.name
       })
     );
-    presetGrid.appendChild(card);
+    presetGrid.appendChild(row);
   });
 
   // ── 订阅状态刷新 / Subscribe for state refresh ──
