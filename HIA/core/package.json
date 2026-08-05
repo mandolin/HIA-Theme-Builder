@@ -1,7 +1,7 @@
 {
   "name": "@hia/theme-core",
   "version": "0.1.0",
-  "description": "HIA-Theme-Builder public core: theme model, OKLCH color algorithm, secondary-color harmony, token (CSS/JSON) export. Framework-agnostic, DOM-free.",
+  "description": "HIA cross-platform theme domain core: models, OKLCH algorithms, theme studio state, gradient rendering, token export and website-color analysis.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,12 +22,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "npm run build && node --test test/*.test.mjs",
+    "test:watch": "node --test --watch test/*.test.mjs"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
-    "vitest": "^2.0.0",
     "rimraf": "^5.0.0"
   },
   "engines": {

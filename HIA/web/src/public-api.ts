@@ -1,0 +1,1 @@
+export{mountThemeManager}from'./app.js';export type{ThemeManagerHandle}from'./app.js';export{createAdaptivePlatform}from'./platform.js';export type{ClipboardPort,InjectedThemeBridge,StoragePort,ThemeExplorePort,ThemeManagerPlatform}from'./platform.js';
