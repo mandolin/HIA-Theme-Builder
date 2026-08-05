@@ -1,5 +1,7 @@
-# @lang zh-CN HIA/web 发布到 GitHub Pages 的工作流：构建后部署 dist 到 Pages。
-# @lang en GitHub Pages workflow for HIA/web: build then deploy dist to Pages.
+# @lang zh-CN HIA/web 发布到 GitHub Pages 的工作流：构建前先对 core/web/electron/tauri 四端做构建与测试校验，
+#   任一端校验失败则阻断部署；通过后部署 web 的 dist 到 Pages。
+# @lang en GitHub Pages workflow for HIA/web: verify build+test for core/web/electron/tauri before deploy;
+#   any failure blocks deploy; then deploy web dist to Pages.
 
 name: Deploy web to GitHub Pages
 
@@ -9,6 +11,8 @@ on:
     paths:
       - 'HIA/core/**'
       - 'HIA/web/**'
+      - 'HIA/electron/**'
+      - 'HIA/tauri/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -29,20 +33,47 @@ jobs:
       # <lang zh-CN>用 mise 安装与本地一致的 Node 版本（读取 .mise.toml，当前为 Node 22 LTS）。</lang>
       # <lang en>Use mise to install the same Node version as local (.mise.toml, currently Node 22 LTS).</lang>
       - uses: jdx/mise-action@v2
-      # <lang zh-CN>先构建 core 到本地 dist，供 web 以 file: 链接消费。</lang>
-      # <lang en>Build core to local dist first; web consumes it via file: link.</lang>
-      - name: Build core
+
+      # ----- core：构建 + 单测（领域算法的事实来源）-----
+      # <lang zh-CN>先构建 core 到本地 dist，供其余端以 file: 链接消费；随后跑单测。</lang>
+      # <lang en>Build core to local dist first (consumed via file: by other ends), then run its unit tests.</lang>
+      - name: Verify core
         working-directory: HIA/core
         run: |
           npm install
-          npm run build
-      - name: Build web
+          npm test
+
+      # ----- web：构建（tsc + vite）-----
+      # <lang zh-CN>web 消费本地 core dist；GITHUB_PAGES 触发基路径兼容。</lang>
+      # <lang en>web consumes local core dist; GITHUB_PAGES enables base-path compatibility.</lang>
+      - name: Verify web
         working-directory: HIA/web
         env:
           GITHUB_PAGES: '1'
         run: |
           npm install
           npm run build
+
+      # ----- electron：编译 + SSRF 单测（不下载 Electron 二进制）-----
+      # <lang zh-CN>--ignore-scripts 跳过 Electron 二进制下载以加速 CI；仅验证 tsc + vitest(ssrf)。</lang>
+      # <lang en>--ignore-scripts skips the Electron binary download to speed CI; only tsc + vitest(ssrf) are verified.</lang>
+      - name: Verify electron
+        working-directory: HIA/electron
+        run: |
+          npm install --ignore-scripts
+          npm run build
+          npm test
+
+      # ----- tauri：前端编译 + SSRF 单测（Rust 后端编译待工具链，仅前端证据）-----
+      # <lang zh-CN>tauri 前端以 copy-front 编译；Rust 端到端启动在目标环境复验，CI 仅前端证据。</lang>
+      # <lang en>tauri front-end compiled via copy-front; Rust end-to-end launch is re-verified in target env, CI holds front-end evidence only.</lang>
+      - name: Verify tauri
+        working-directory: HIA/tauri
+        run: |
+          npm install --ignore-scripts
+          npm run build:front
+          npm test
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
