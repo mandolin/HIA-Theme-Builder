@@ -1,0 +1,59 @@
+# @lang zh-CN HIA/web 发布到 GitHub Pages 的工作流：构建后部署 dist 到 Pages。
+# @lang en GitHub Pages workflow for HIA/web: build then deploy dist to Pages.
+
+name: Deploy web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'HIA/core/**'
+      - 'HIA/web/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # <lang zh-CN>先构建并发布 core 到本地 dist，供 web 以 file: 链接消费。</lang>
+      # <lang en>Build and emit core dist first; web consumes it via file: link.</lang>
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build core
+        working-directory: HIA/core
+        run: |
+          npm install
+          npm run build
+      - name: Build web
+        working-directory: HIA/web
+        env:
+          GITHUB_PAGES: '1'
+        run: |
+          npm install
+          npm run build
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: HIA/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

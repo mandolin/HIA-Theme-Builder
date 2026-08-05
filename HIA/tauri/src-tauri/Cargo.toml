@@ -1,0 +1,27 @@
+# @lang zh-CN Tauri Rust 后端清单：窗口 + 取色命令。SSRF 校验在此端再确认一次。
+# @lang en Tauri Rust backend manifest: window + extraction command. SSRF re-checked here.
+[package]
+name = "hia-theme-tauri"
+version = "0.1.0"
+description = "HIA-Theme-Builder desktop (Tauri) backend"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "1", features = [] }
+
+[dependencies]
+tauri = { version = "1", features = ["shell-open"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+
+[features]
+# @lang zh-CN>默认特性；自定义协议按 Tauri 约定在构建时注入。
+# @lang en>Default features; custom protocol injected at build per Tauri convention.
+default = []
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

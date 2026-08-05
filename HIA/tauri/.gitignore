@@ -1,0 +1,4 @@
+# Tauri 本地忽略：前端构建产物与 Rust 编译产物
+dist-front/
+src-tauri/target/
+src-tauri/dist/

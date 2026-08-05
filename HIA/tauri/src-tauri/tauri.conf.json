@@ -1,0 +1,29 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build:front",
+    "devPath": "src-tauri/dist",
+    "distDir": "src-tauri/dist"
+  },
+  "package": {
+    "productName": "HIA Theme Builder",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": { "open": true }
+    },
+    "windows": [
+      {
+        "title": "HIA 主题构建器 · Tauri",
+        "width": 1180,
+        "height": 820,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

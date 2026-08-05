@@ -1,0 +1,23 @@
+{
+  "name": "@hia/theme-tauri",
+  "version": "0.1.0",
+  "description": "HIA-Theme-Builder desktop (Tauri): lightweight theme console plus URL color extraction. MIT. Rust backend + WebView; analyzer shared with core.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build:front": "tsc -p tsconfig.json && node scripts/copy-front.js",
+    "dev": "npm run build:front",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hia/theme-core": "file:../core"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

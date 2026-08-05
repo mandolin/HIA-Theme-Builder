@@ -1,0 +1,17 @@
+/* @lang zh-CN Electron 渲染页样式（精简，与 web 设计语言一致）。 @lang en Electron renderer styles (concise, consistent with web). */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; color: #0f172a; background: #f8fafc; }
+.topbar { padding: 14px 20px; background: #fff; border-bottom: 1px solid #e2e8f0; }
+.topbar h1 { font-size: 16px; margin: 0; }
+.layout { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px 20px; }
+.panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
+.panel h2 { font-size: 15px; margin: 0 0 10px; }
+.panel h3 { font-size: 13px; color: #64748b; margin: 14px 0 8px; }
+.row { display: flex; gap: 8px; }
+label { display: block; margin: 6px 0; }
+input[type="text"] { padding: 6px 8px; border: 1px solid #e2e8f0; border-radius: 8px; }
+button { cursor: pointer; border: 1px solid #e2e8f0; background: #f1f5f9; border-radius: 8px; padding: 6px 12px; }
+#extractOut { background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; min-height: 40px; }
+.cand { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,0.15); }
+.alts { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }

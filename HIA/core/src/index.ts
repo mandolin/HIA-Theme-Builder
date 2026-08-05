@@ -50,3 +50,14 @@ export { exportThemeJson } from './token/json.js';
 
 // 主题整合
 export { buildTheme } from './theme.js';
+
+// 网址取色分析（多信号加权，纯函数，供三端共用）
+export { analyzeTheme } from './analyze/analyze.js';
+export type {
+  ExtractSignals,
+  ScoredColor,
+  ExtractResult,
+  CssVarSignal,
+  DomColorSignal,
+  ScreenshotColorSignal
+} from './analyze/types.js';
