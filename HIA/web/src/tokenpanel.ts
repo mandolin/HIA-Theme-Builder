@@ -1,59 +1,96 @@
 /**
- * @lang zh-CN Token 面板：展示 CSS/JSON 导出，提供复制与下载。
- * @lang en Token panel: show CSS/JSON export with copy and download.
+ * @lang zh-CN Token 导出面板：CSS / JSON 格式切换、代码展示（深色背景）、
+ *   一键复制（含成功反馈）、浏览器下载、Global Gradient Token 包含开关。
+ * @lang en Token export panel: CSS/JSON format toggle, code display (dark background),
+ *   one-click copy (with success feedback), browser download, Global Gradient token include toggle.
  */
 
 import type { Theme } from '@hia/theme-core';
 import { toCss, toJson, copyText, downloadText } from './token.js';
-import { subscribe } from './state.js';
+import { subscribe, setTokenFormat, toggleIncludeGradient, type AppState } from './state.js';
 
 /**
- * @lang zh-CN 渲染 Token 导出面板，订阅主题刷新内容。
- * @lang en Render token export panel, subscribe for content refresh.
+ * @lang zh-CN 渲染 Token 导出面板，订阅主题刷新导出内容。
+ * @en Render token export panel; subscribe for content refresh.
  */
 export function renderTokenPanel(root: HTMLElement): void {
   root.innerHTML = `
-    <section class="panel token">
-      <h2>Token 导出</h2>
-      <div class="tabs">
-        <button data-fmt="css" class="active">CSS</button>
-        <button data-fmt="json">JSON</button>
-        <button id="copyBtn">复制</button>
-        <button id="dlBtn">下载</button>
+    <section class="panel token-panel">
+      <div class="panel-header">
+        <h2>Token 导出</h2>
+        <div style="display:flex;gap:6px;align-items:center">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;font-weight:500;color:var(--text-secondary)">
+            <input type="checkbox" id="gradToggle" checked /> Global Gradient
+          </label>
+        </div>
       </div>
-      <pre id="out"></pre>
+
+      <!-- 格式切换 / Format tabs -->
+      <div class="tabs token-tabs">
+        <button class="tab-btn active" data-fmt="css">CSS</button>
+        <button class="tab-btn" data-fmt="json">JSON</button>
+        <span style="flex:1"></span>
+        <button class="btn sm primary" id="copyBtn">复制</button>
+        <button class="btn sm outline" id="dlBtn">下载</button>
+      </div>
+
+      <!-- 代码输出区 / Code output area -->
+      <pre class="token-output" id="tokenOutput"></pre>
     </section>
   `;
 
-  const out = root.querySelector<HTMLPreElement>('#out')!;
-  const tabs = root.querySelectorAll<HTMLButtonElement>('.tabs button[data-fmt]');
-  let fmt: 'css' | 'json' = 'css';
-  // <lang zh-CN>缓存最新主题，格式切换时立即重渲染。</lang>
-  // <lang en>Cache latest theme; re-render immediately on format switch.</lang>
-  let latest: Theme | null = null;
+  const $ = <T extends HTMLElement>(id: string) => root.querySelector<T>('#' + id)!;
+  const output = $<HTMLPreElement>('tokenOutput');
+  const fmtTabs = root.querySelectorAll<HTMLButtonElement>('.token-tabs .tab-btn');
 
-  tabs.forEach((b) =>
+  // 当前格式缓存 / Current format cache
+  let currentFmt: 'css' | 'json' = 'css';
+  // 最新主题缓存 / Latest theme cache
+  let latestTheme: Theme | null = null;
+
+  // 格式切换 / Format switch
+  fmtTabs.forEach((b) =>
     b.addEventListener('click', () => {
-      fmt = b.dataset.fmt as 'css' | 'json';
-      tabs.forEach((x) => x.classList.toggle('active', x === b));
-      if (latest) render(latest);
+      currentFmt = b.dataset.fmt as 'css' | 'json';
+      fmtTabs.forEach((x) => x.classList.toggle('active', x === b));
+      setTokenFormat(currentFmt);
+      if (latestTheme) renderOutput(latestTheme);
     })
   );
 
-  const render = (theme: Theme) => {
-    latest = theme;
-    out.textContent = fmt === 'css' ? toCss(theme) : toJson(theme);
-  };
+  // Global Gradient 开关 / Gradient toggle
+  const gradToggle = $<HTMLInputElement>('gradToggle');
+  gradToggle.addEventListener('change', () => toggleIncludeGradient());
 
-  root.querySelector<HTMLButtonElement>('#copyBtn')!.addEventListener('click', async () => {
-    const ok = await copyText(out.textContent || '');
-    root.querySelector<HTMLButtonElement>('#copyBtn')!.textContent = ok ? '已复制' : '复制失败';
-    setTimeout(() => (root.querySelector<HTMLButtonElement>('#copyBtn')!.textContent = '复制'), 1200);
-  });
-  root.querySelector<HTMLButtonElement>('#dlBtn')!.addEventListener('click', () => {
-    if (fmt === 'css') downloadText('hia-theme.css', out.textContent || '', 'text/css');
-    else downloadText('hia-theme.json', out.textContent || '', 'application/json');
+  /**
+   * @lang zh-CN 渲染导出内容到代码区。 @en Render export content to code area.
+   */
+  function renderOutput(theme: Theme): void {
+    latestTheme = theme;
+    output.textContent = currentFmt === 'css' ? toCss(theme) : toJson(theme);
+  }
+
+  // 复制按钮 / Copy button
+  $<HTMLButtonElement>('copyBtn').addEventListener('click', async () => {
+    const text = output.textContent || '';
+    const ok = await copyText(text);
+    const btn = $<HTMLButtonElement>('copyBtn');
+    btn.textContent = ok ? '已复制' : '复制失败';
+    btn.classList.toggle('primary', !ok);
+    setTimeout(() => { btn.textContent = '复制'; btn.classList.add('primary'); }, 1500);
   });
 
-  subscribe((_s, theme) => render(theme));
+  // 下载按钮 / Download button
+  $<HTMLButtonElement>('dlBtn').addEventListener('click', () => {
+    const text = output.textContent || '';
+    if (currentFmt === 'css') downloadText('hia-theme.css', text, 'text/css');
+    else downloadText('hia-theme.json', text, 'application/json');
+  });
+
+  // 订阅主题刷新 / Subscribe for theme refresh
+  subscribe((s: AppState) => {
+    renderOutput(s.theme);
+    // 同步 gradient 开关状态 / Sync gradient toggle state
+    gradToggle.checked = s.includeGradientToken;
+  });
 }

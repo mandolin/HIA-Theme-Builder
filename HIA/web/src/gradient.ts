@@ -1,97 +1,142 @@
 /**
- * @lang zh-CN 全局渐变设置面板：8 个渐变角色，仅同色系（主/副），不均分占比。消费 core 渐变定义与默认。
- * @lang en Global gradient settings panel: 8 gradient roles, same-family only (primary/secondary), uneven bias. Consumes core gradient defs/defaults.
+ * @lang zh-CN 全局渐变设置面板：8 个渐变角色（轮播/Banner/文字大卡/文字小卡/数据KPI/
+ *   图片缩略/个人名片/提示说明），每个角色独立控制启用、色系、起止色阶、方向角度、
+ *   不均分占比。消费 core 的 GRADIENT_DEFS / GRADIENT_DEFAULTS / cloneGradientSettings。
+ * @lang en Global gradient settings panel: 8 gradient roles (carousel/banner/text-large/text-small/
+ *   data-kpi/image-thumb/profile-card/hint-card), each with independent enable, color family,
+ *   start/end shade, direction angle, uneven bias. Consumes core gradient defs & defaults.
  */
 
-import { GRADIENT_DEFS, GRADIENT_DEFAULTS, cloneGradientSettings } from '@hia/theme-core';
-import type { Theme, GradientSettings } from '@hia/theme-core';
-import { subscribe } from './state.js';
+import { GRADIENT_DEFS } from '@hia/theme-core';
+import type { GradientSettings } from '@hia/theme-core';
+import { subscribe, updateGradient, resetGradients, type AppState } from './state.js';
 
-/** @lang zh-CN 面板内渐变设置（初始化自 core 默认）。 @lang en In-panel gradient settings (init from core defaults). */
-let settings: GradientSettings = cloneGradientSettings(GRADIENT_DEFAULTS);
+/** @lang zh-CN 色阶选项列表（50–900）。 @en Shade option list (50–900). */
+const SHADES = ['50','100','200','300','400','500','600','700','800','900'];
 
-/** @lang zh-CN 阶选项（50–900），用于下拉。 @lang en Shade options (50–900) for dropdowns. */
-const SHADES = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900'];
-
-/** @lang zh-CN 由设置与主题生成一条 CSS 渐变字符串（预览用）。 @lang en Build one CSS gradient string from settings + theme (for preview). */
-function gradientCss(key: string, theme: Theme): string {
-  const cfg = settings[key];
-  const fam = cfg.family === 'primary' ? theme.primary.scale : theme.secondary.scale;
-  const a = fam[cfg.start as keyof typeof fam];
-  const b = fam[cfg.end as keyof typeof fam];
-  return `linear-gradient(${cfg.direction}, ${a} 0%, ${a} ${biasStart(cfg.bias)}%, ${b} ${biasStart(cfg.bias)}%, ${b} 100%)`;
-}
-
-/** @lang zh-CN 不均分起点：front75→25%；front65→35%；end65→65%；end75→75%。 @lang en Uneven start points: front75→25%; front65→35%; end65→65%; end75→75%. */
-function biasStart(bias: string): number {
-  return bias === 'front75' ? 25 : bias === 'front65' ? 35 : bias === 'end65' ? 65 : 75;
-}
+/** @lang zh-CN 不均分选项列表。 @en Uneven bias options. */
+const BIAS_OPTIONS = [
+  { value: 'front75', label: '前75%' },
+  { value: 'front65', label: '前65%' },
+  { value: 'end65', label: '后65%' },
+  { value: 'end75', label: '后75%' }
+];
 
 /**
  * @lang zh-CN 渲染渐变设置面板，订阅主题刷新预览条。
- * @lang en Render gradient settings panel, subscribe for preview-bar refresh.
+ * @en Render gradient settings panel; subscribe for preview bar refresh.
  */
 export function renderGradient(root: HTMLElement): void {
+  // 生成所有角色行 / Generate all role rows
   const rows = GRADIENT_DEFS.map((d) => {
-    const cfg = settings[d.key];
-    const shadeOpts = SHADES.map((s) => `<option ${s === cfg.start ? 'selected' : ''}>${s}</option>`).join('');
-    const biasOpts = ['front75', 'front65', 'end65', 'end75']
-      .map((b) => `<option value="${b}" ${b === cfg.bias ? 'selected' : ''}>${b}</option>`)
-      .join('');
     return `
-      <div class="grad-row" data-key="${d.key}">
-        <span class="grad-name">${d.label}</span>
-        <label><input type="checkbox" class="g-enabled" ${cfg.enabled ? 'checked' : ''}/> 启用</label>
-        <select class="g-family">
-          <option value="primary" ${cfg.family === 'primary' ? 'selected' : ''}>主色系</option>
-          <option value="secondary" ${cfg.family === 'secondary' ? 'selected' : ''}>副色系</option>
+      <div class="grad-role-row" data-key="${d.key}">
+        <span class="grad-role-name">${d.label}</span>
+        <label title="启用/禁用"><input type="checkbox" class="grad-toggle g-enabled" /></label>
+        <select class="grad-select g-family" title="色系">
+          <option value="primary">主色系</option>
+          <option value="secondary">副色系</option>
         </select>
-        <select class="g-start">${shadeOpts}</select>
-        <select class="g-end">${SHADES.map((s) => `<option ${s === cfg.end ? 'selected' : ''}>${s}</option>`).join('')}</select>
-        <input class="g-dir" value="${cfg.direction}" size="7" />
-        <select class="g-bias">${biasOpts}</select>
-        <span class="grad-bar"></span>
+        <select class="grad-select g-start" title="起始色阶">
+          ${SHADES.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+        <select class="grad-select g-end" title="结束色阶">
+          ${SHADES.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+        <input class="grad-input g-dir" placeholder="角度" title="方向(如 135deg)" />
+        <select class="grad-select g-bias" title="不均分占比">
+          ${BIAS_OPTIONS.map(b => `<option value="${b.value}">${b.label}</option>`).join('')}
+        </select>
+        <input class="grad-input g-height" placeholder="高度" title="高度(px)" style="width:52px" />
+        <span class="grad-preview-strip g-preview"></span>
       </div>`;
   }).join('');
 
   root.innerHTML = `
-    <section class="panel gradient">
-      <h2>全局渐变设置</h2>
-      <p class="hint">仅同色系渐变（主/副），不均分占比。8 个角色：${GRADIENT_DEFS.length}。</p>
+    <section class="panel gradient-panel">
+      <div class="panel-header">
+        <h2>全局渐变设置</h2>
+        <button class="btn sm outline" id="resetGradBtn">全部恢复默认</button>
+      </div>
+      <p class="hint">此区域基于当前主题的配色方案，同时作用于 PC 企业后台和小程序预览。预览包含仪表盘、表格、组件、色阶与渐变；部分设置覆盖色，禁止全局。</p>
+
+      <!-- 核心横幅卡片类 / Core banner card types -->
+      <h3>核心横幅卡片类设置</h3>
       ${rows}
+
+      <!-- 全局操作 / Global actions -->
+      <div class="btn-group" style="margin-top:14px">
+        <button class="btn primary" id="applyGradBtn">全部保存应用</button>
+      </div>
     </section>
   `;
 
-  // <lang zh-CN>绑定每行控件，写回 settings。</lang>
-  // <lang en>Bind each row control, write back to settings.</lang>
-  root.querySelectorAll<HTMLDivElement>('.grad-row').forEach((row) => {
+  // 绑定每行控件事件 / Bind per-row control events
+  root.querySelectorAll<HTMLDivElement>('.grad-role-row').forEach((row) => {
     const key = row.dataset.key!;
-    const cfg = settings[key];
+
     row.querySelector<HTMLInputElement>('.g-enabled')!.addEventListener('change', (e) => {
-      settings[key] = { ...cfg, enabled: (e.target as HTMLInputElement).checked };
+      updateGradient(key, { enabled: (e.target as HTMLInputElement).checked });
     });
     row.querySelector<HTMLSelectElement>('.g-family')!.addEventListener('change', (e) => {
-      settings[key] = { ...settings[key], family: (e.target as HTMLSelectElement).value as 'primary' | 'secondary' };
+      updateGradient(key, { family: (e.target as HTMLSelectElement).value as 'primary' | 'secondary' });
     });
     row.querySelector<HTMLSelectElement>('.g-start')!.addEventListener('change', (e) => {
-      settings[key] = { ...settings[key], start: (e.target as HTMLSelectElement).value };
+      updateGradient(key, { start: (e.target as HTMLSelectElement).value });
     });
     row.querySelector<HTMLSelectElement>('.g-end')!.addEventListener('change', (e) => {
-      settings[key] = { ...settings[key], end: (e.target as HTMLSelectElement).value };
+      updateGradient(key, { end: (e.target as HTMLSelectElement).value });
     });
     row.querySelector<HTMLInputElement>('.g-dir')!.addEventListener('change', (e) => {
-      settings[key] = { ...settings[key], direction: (e.target as HTMLInputElement).value };
+      updateGradient(key, { direction: (e.target as HTMLInputElement).value || '135deg' });
     });
     row.querySelector<HTMLSelectElement>('.g-bias')!.addEventListener('change', (e) => {
-      settings[key] = { ...settings[key], bias: (e.target as HTMLSelectElement).value as typeof cfg.bias };
+      updateGradient(key, { bias: (e.target as HTMLSelectElement).value as GradientSettings[string]['bias'] });
+    });
+    row.querySelector<HTMLInputElement>('.g-height')!.addEventListener('change', (e) => {
+      const v = parseInt((e.target as HTMLInputElement).value);
+      if (!isNaN(v)) updateGradient(key, { height: v } as Partial<GradientSettings[string]>);
     });
   });
 
-  subscribe((_s, theme) => {
-    root.querySelectorAll<HTMLDivElement>('.grad-row').forEach((row) => {
+  // 重置按钮 / Reset button
+  root.querySelector<HTMLButtonElement>('#resetGradBtn')?.addEventListener('click', () => resetGradients());
+
+  // 订阅刷新预览条与控件值 / Subscribe to refresh preview bars and control values
+  subscribe((s: AppState) => {
+    const { gradients, theme } = s;
+    root.querySelectorAll<HTMLDivElement>('.grad-role-row').forEach((row) => {
       const key = row.dataset.key!;
-      const bar = row.querySelector<HTMLSpanElement>('.grad-bar')!;
-      bar.style.background = settings[key].enabled ? gradientCss(key, theme) : '#e5e7eb';
+      const cfg = gradients[key];
+      if (!cfg) return;
+
+      // 同步控件值 / Sync control values
+      const setChecked = (sel: string, val: boolean) => {
+        const el = row.querySelector<HTMLInputElement>(sel); if (el) el.checked = val;
+      };
+      const setVal = (sel: string, val: string) => {
+        const el = row.querySelector<HTMLInputElement | HTMLSelectElement>(sel);
+        if (el) el.value = val;
+      };
+      setChecked('.g-enabled', cfg.enabled);
+      setVal('.g-family', cfg.family);
+      setVal('.g-start', cfg.start);
+      setVal('.g-end', cfg.end);
+      setVal('.g-dir', cfg.direction);
+      setVal('.g-bias', cfg.bias);
+
+      // 更新预览条 / Update preview strip
+      const bar = row.querySelector<HTMLElement>('.g-preview');
+      if (bar) {
+        if (!cfg.enabled) {
+          bar.style.background = '#e5e7eb';
+        } else {
+          const fam = cfg.family === 'primary' ? theme.primary.scale : theme.secondary.scale;
+          const a = fam[cfg.start as keyof typeof fam] || '#ccc';
+          const b = fam[cfg.end as keyof typeof fam] || '#999';
+          bar.style.background = `linear-gradient(${cfg.direction || '135deg'}, ${a} 0%, ${b} 100%)`;
+        }
+      }
     });
   });
 }
