@@ -165,6 +165,14 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
     // 环境变量 HIA_CHROME_PATH（仅 launch 模式用，指向系统浏览器）与 HIA_CHROME_WS（connect 模式 ws/http URL）。
     // <lang zh-CN>两者皆可选。</lang>
     // <lang en>Both env vars are optional.</lang>
+    // 标记是否为 connect 模式：connect 复用外部 Chrome，结束时不能 close（否则关闭外部进程）；
+    // launch 模式由 Tauri 启动子进程，结束时需 close 释放资源。
+    // <lang zh-CN>connect 模式下 close() 会关闭用户 Chrome，必须跳过。</lang>
+    // <lang en>In connect mode close() kills the user's Chrome; must skip.</lang>
+    let is_connect_mode = std::env::var("HIA_CHROME_WS")
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false);
+
     let (mut browser, mut handler) = match std::env::var("HIA_CHROME_WS") {
         Ok(ws) if !ws.trim().is_empty() => {
             // connect 模式：复用外部已启动的 --remote-debugging-port Chrome。
@@ -308,9 +316,11 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
     .await;
 
     // 关闭浏览器并等待 handler 结束（释放 chromium 进程）。
-    // <lang zh-CN>避免泄漏子进程。</lang>
-    // <lang en>Avoid leaking the child process.</lang>
-    let _ = browser.close().await;
+    // <lang zh-CN>connect 模式下跳过 close（否则关闭外部 Chrome），仅 launch 模式关闭子进程。</lang>
+    // <lang en>Skip close in connect mode (would kill external Chrome); only close in launch mode.</lang>
+    if !is_connect_mode {
+        let _ = browser.close().await;
+    }
     let _ = browser_handle.await;
 
     result
