@@ -12,3 +12,8 @@
 // <lang en>Pure algorithm, no DOM/Canvas/network; Node-testable and fixture-comparable.</lang>
 export { quantizeMedianCut } from './quantize/median-cut.js';
 export type { RgbaPixel, QuantizedColor } from './quantize/median-cut.js';
+
+// 实验性量化基准（Celebi 思想，Lab 空间确定性 k-means）。
+// <lang zh-CN>仅作与 median-cut 的对比基准，不接入主评分路径（见 celebi.ts 头部说明）。</lang>
+// <lang en>Experimental baseline vs median-cut only; not on the main scoring path (see celebi.ts header).</lang>
+export { quantizeCelebi, quantizerDivergence } from './quantize/celebi.js';

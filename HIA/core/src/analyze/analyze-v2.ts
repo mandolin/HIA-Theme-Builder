@@ -328,22 +328,20 @@ function calcConfidence(primary: Cluster, scored: Map<Cluster, { score: number; 
  * @lang en V2 analysis entry: cluster → score → pick primary/secondary → confidence/reasons → alternatives.
  *   Pure; degraded-static mode caps confidence at 0.45.
  */
-export function analyzeThemeV2(signals: WebsiteColorSignalsV2): WebsiteThemeAnalysisV2 {
-  const baseDiag: CaptureDiagnostics = signals.diagnostics;
-  const clusters = clusterEvidence(signals.evidence);
+// 内部：对一组证据评出主副色、排序与评分映射（light/dark 双模式复用，避免重复实现）。
+// <lang zh-CN>降级封顶、主副色选择、置信度合成逻辑统一；dark 模式复用同一套评分保证跨模式一致。</lang>
+// <lang en>Degrade cap, primary/secondary pick, confidence synthesis unified; dark mode reuses the same scoring for cross-mode consistency.</lang>
+function analyzeColors(evidence: ColorEvidence[], degraded: boolean): {
+  primary: Cluster | null; primaryScored: ScoredColorV2 | null; secondaryScored: ScoredColorV2 | null;
+  top: number; second: number; sorted: Cluster[]; scored: Map<Cluster, { score: number; reasons: string[] }>;
+} {
+  const cap = degraded ? 0.45 : 1;
+  const clusters = clusterEvidence(evidence);
   const scored = new Map<Cluster, { score: number; reasons: string[] }>();
   for (const c of clusters) scored.set(c, scoreCluster(c));
-
   const sorted = [...clusters].sort((a, b) => (scored.get(b)?.score ?? 0) - (scored.get(a)?.score ?? 0));
   const primary = pickPrimary(clusters, scored);
   const secondaryPick = pickSecondary(primary, clusters, scored);
-
-  // 降级模式封顶置信度。
-  // <lang zh-CN>静态降级（无真实渲染）证据不完整，置信度上限 0.45。</lang>
-  // <lang en>Static degraded (no real render) has incomplete evidence; confidence capped at 0.45.</lang>
-  const degraded = baseDiag.mode === 'degraded-static';
-  const cap = degraded ? 0.45 : 1;
-
   const top = primary ? scored.get(primary)?.score ?? 0 : 0;
   const second = sorted[1] ? scored.get(sorted[1]!)?.score ?? 0 : 0;
 
@@ -356,9 +354,6 @@ export function analyzeThemeV2(signals: WebsiteColorSignalsV2): WebsiteThemeAnal
       })()
     : null;
 
-  // 副色：真实或 derived fallback（由主色协调生成，明确标记）。
-  // <lang zh-CN>derived 副色不得伪装成网页观测色。</lang>
-  // <lang en>derived secondary must not be disguised as observed.</lang>
   let secondaryScored: ScoredColorV2 | null = null;
   if (secondaryPick.cluster) {
     const c = secondaryPick.cluster;
@@ -381,6 +376,26 @@ export function analyzeThemeV2(signals: WebsiteColorSignalsV2): WebsiteThemeAnal
       evidenceSummary: { sources: [], sourceFamilies: 0, count: 0, areaRatio: 0, pixelRatio: 0, tokenNames: [], contexts: [] }
     };
   }
+  return { primary, primaryScored, secondaryScored, top, second, sorted, scored };
+}
+
+export function analyzeThemeV2(signals: WebsiteColorSignalsV2): WebsiteThemeAnalysisV2 {
+  const baseDiag: CaptureDiagnostics = signals.diagnostics;
+  // 降级模式封顶置信度。
+  // <lang zh-CN>静态降级（无真实渲染）证据不完整，置信度上限 0.45。</lang>
+  // <lang en>Static degraded (no real render) has incomplete evidence; confidence capped at 0.45.</lang>
+  const degraded = baseDiag.mode === 'degraded-static';
+  const cap = degraded ? 0.45 : 1;
+  // 主（light）证据评分；dark 双模式复用同一评分逻辑评出 dark 主副色。
+  // <lang zh-CN>darkMode 由适配器强制 prefers-color-scheme:dark 复采得到。</lang>
+  // <lang en>darkMode comes from adapter forcing prefers-color-scheme:dark recapture.</lang>
+  const main = analyzeColors(signals.evidence, degraded);
+  const { primary, primaryScored, secondaryScored, top, second, sorted, scored } = main;
+  const dark = signals.darkMode ? analyzeColors(signals.darkMode.evidence, degraded) : null;
+  // logo 色板：由 logo 区域裁剪量化识别的颜色（P5 logo crop）。
+  // <lang zh-CN>供 UI 在候选中标注 logo 来源。</lang>
+  // <lang en>Surfaced to UI so logo-origin candidates are tagged.</lang>
+  const logoHexes = [...new Set(signals.evidence.filter(e => e.isLogo).map(e => e.hex))];
 
   // 备选：取主色之外分数最高的 8~12 个，跳过中性与状态竞争主色者。
   // <lang zh-CN>覆盖主副色之外的可辨识候选，供操作台展示。</lang>
@@ -417,6 +432,9 @@ export function analyzeThemeV2(signals: WebsiteColorSignalsV2): WebsiteThemeAnal
     alternatives: altList,
     confidence,
     warnings,
-    diagnostics: baseDiag
+    diagnostics: baseDiag,
+    darkPrimary: dark?.primaryScored ?? null,
+    darkSecondary: dark?.secondaryScored ?? null,
+    logoHexes
   };
 }

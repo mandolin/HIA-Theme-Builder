@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { quantizeMedianCut } from '@hia/theme-url-extractor';
+import { quantizeMedianCut, quantizeCelebi, quantizerDivergence } from '@hia/theme-url-extractor';
 import { collectSignals } from './fetch-signals.js';
 import { guardUrl } from './ssrf.js';
 import type { WebsiteColorSignalsV2, ColorEvidence, CaptureWarning } from '@hia/theme-core';
@@ -74,12 +74,11 @@ async function applyUiOnlyMode(win:BrowserWindow):Promise<void>{
 }
 
 // 截图并转 RGBA 像素交给 extractor 量化。
-// <lang zh-CN>截图仅在内存短暂存在，分析后释放；normal/ui-only 两张对照分类。</lang>
-// <lang en>Screenshot lives only briefly in memory; compared normal vs ui-only to classify sources.</lang>
-async function captureAndQuantize(win:BrowserWindow):Promise<{ normal:ColorEvidence[]; uiOnly:ColorEvidence[] }>{
-  const toRgba=async ():Promise<{r:number;g:number;b:number;a:number}[]>=>{
-    const img=await win.webContents.capturePage();
-    const { width, height }=img.getSize();
+// <lang zh-CN>截图仅在内存短暂存在，分析后释放；normal/ui-only 两张对照分类；可选 logo 区域裁剪单独量化。</lang>
+// <lang en>Screenshot lives only briefly in memory; compared normal vs ui-only to classify sources; optional logo crop quantizes separately.</lang>
+async function captureAndQuantize(win:BrowserWindow, logos?:{rect:{x:number;y:number;width:number;height:number};kind:string}[]):Promise<{ normal:ColorEvidence[]; uiOnly:ColorEvidence[]; logo:ColorEvidence[]; celebiDivergence:number }>{
+  const toRgba=async (rect?:{x:number;y:number;width:number;height:number})=>{
+    const img=rect?await win.webContents.capturePage(rect):await win.webContents.capturePage();
     const buf=img.toBitmap(); // BGRA
     const out:{r:number;g:number;b:number;a:number}[]=[];
     for(let i=0;i<buf.length;i+=4){
@@ -88,22 +87,51 @@ async function captureAndQuantize(win:BrowserWindow):Promise<{ normal:ColorEvide
     return out;
   };
   const norm=await toRgba();
-  const nq=quantizeMedianCut(norm,14).map<ColorEvidence>(c=>({ value:c.hex, hex:c.hex, alpha:1, source:'screenshot-ui', role:'unknown', count:c.count, pixelRatio:c.ratio }));
+  const nqRaw=quantizeMedianCut(norm,14);
+  const nq=nqRaw.map<ColorEvidence>(c=>({ value:c.hex, hex:c.hex, alpha:1, source:'screenshot-ui', role:'unknown', count:c.count, pixelRatio:c.ratio }));
+  // P5 实验性基准：Celebi(lab k-means) 与 median-cut 的偏离度观测，仅写诊断报告，不替换主评分。
+  // <lang zh-CN>文档明确不得采用 Celebi 的 seed Score 作为网页品牌色评分，故仅作对比基准；divergence 用原始 QuantizedColor。</lang>
+  // <lang en>Spec forbids using Celebi seed Score for brand scoring; baseline-only; divergence uses raw QuantizedColor.</lang>
+  const celebiQ=quantizeCelebi(norm,14);
+  const celebiDivergence=quantizerDivergence(nqRaw,celebiQ,5);
   await applyUiOnlyMode(win);
   // 等待重绘。
   await new Promise(r=>setTimeout(r,300));
   const ui=await toRgba();
   const uq=quantizeMedianCut(ui,14).map<ColorEvidence>(c=>({ value:c.hex, hex:c.hex, alpha:1, source:'screenshot-ui', role:'unknown', count:c.count, pixelRatio:c.ratio }));
-  return { normal:nq, uiOnly:uq };
+  // logo crop：对每个有有效包围盒的 logo 区域裁剪截图，量化为 logo-raster（标记 isLogo/brand）。
+  // <lang zh-CN>P5 logo crop；favicon 包围盒为 0 跳过（无页面像素可裁），仅 brand-image/svg 实体裁剪。</lang>
+  // <lang en>P5 logo crop; favicon (zero rect) skipped, only real brand-image/svg rects are cropped.</lang>
+  const logo:ColorEvidence[]=[];
+  for(const lg of (logos||[])){
+    if(lg.rect.width<8||lg.rect.height<8)continue;
+    try{
+      const px=await toRgba(lg.rect);
+      const q=quantizeMedianCut(px,6).map<ColorEvidence>(c=>({ value:c.hex, hex:c.hex, alpha:1, source:'logo-raster', role:'brand', count:c.count, pixelRatio:c.ratio, isLogo:true }));
+      logo.push(...q);
+    }catch{ /* 裁剪失败忽略 */ }
+  }
+  return { normal:nq, uiOnly:uq, logo, celebiDivergence };
+}
+
+/**
+ * @lang zh-CN 真实渲染采集选项：dark 双模式（强制 prefers-color-scheme:dark 复采）与 logo crop 默认开启。
+ *   precision 侧车打包固定 chromium 不属于首版默认方案（见 ADR-002），此处仅预留开关位。
+ * @lang en Real-render options: dark dual-mode (force prefers-color-scheme:dark recapture) and logo crop default on.
+ *   Precision sidecar (bundled fixed chromium) is non-default per ADR-002; switch placeholder only.
+ */
+export interface RenderCollectOptions{
+  emulateDark?:boolean;
+  captureLogo?:boolean;
 }
 
 /**
  * @lang zh-CN 真实渲染采集主入口：隐藏窗口加载 URL，稳定化后注入 scanner 采集 DOM 证据 + 截图量化，
- *   返回 V2 信号（mode:'render'）。任何失败抛错，由调用方决定回退静态采集。
+ *   返回 V2 信号（mode:'render'）。默认开启 dark 双模式与 logo crop（P5 增强）。任何失败抛错，由调用方决定回退静态采集。
  * @lang en Real-render collection entry: hidden window loads URL, stabilizes, injects scanner for DOM evidence + screenshot quantize,
- *   returns V2 signals (mode:'render'). Any failure throws; caller decides static fallback.
+ *   returns V2 signals (mode:'render'). Dark dual-mode and logo crop on by default (P5). Any failure throws; caller decides static fallback.
  */
-export async function renderCollect(rawUrl:string):Promise<WebsiteColorSignalsV2>{
+export async function renderCollect(rawUrl:string, opts?:RenderCollectOptions):Promise<WebsiteColorSignalsV2>{
   const guard=guardUrl(rawUrl);
   if(!guard.ok)throw new Error('SSRF:'+guard.reason);
 
@@ -157,19 +185,56 @@ export async function renderCollect(rawUrl:string):Promise<WebsiteColorSignalsV2
     // <lang en>Page side serializes to string; main parses. Un-serializable fields dropped at page side.</lang>
     const domEvJson:string=String(await exec('scan-dom', `(function(){
       const ctx={ width:${VIEWPORT.width}, height:${VIEWPORT.height}, dpr:${VIEWPORT.dpr} };
-      const { evidence } = window.__hiaScanner.scanDocument(document, ctx);
-      return JSON.stringify(evidence);
+      const r=window.__hiaScanner.scanDocument(document, ctx);
+      return JSON.stringify({ evidence:r.evidence, warnings:r.warnings });
     })()`));
-    const domEv:ColorEvidence[]=JSON.parse(domEvJson);
+    const scanRes=JSON.parse(domEvJson);
+    const domEv:ColorEvidence[]=scanRes.evidence||[];
+    // 合并 scanner 端 warnings（节点上限/证据上限/同源 frame 跳过等）。
+    // <lang zh-CN>scanner 内部已对同源 iframe 递归扫描并标记 frameKind，第三方 frame 自然跳过。</lang>
+    // <lang en>Scanner already recurses same-origin iframes and tags frameKind; third-party skipped by SOP.</lang>
+    for(const w of (scanRes.warnings||[]))warnings.push({ code:w.code, message:w.message, scope:w.scope||'scanner' });
 
-    const shots=await captureAndQuantize(win);
+    // logo 检测：拿到页面 logo 包围盒，供截图裁剪量化（P5 logo crop）。
+    // <lang zh-CN>仅当 captureLogo 未显式关闭时检测；favicon 包围盒为 0，后续裁剪会跳过。</lang>
+    // <lang en>Detect only when captureLogo not disabled; favicon zero-rect skipped at crop.</lang>
+    let logos:{rect:{x:number;y:number;width:number;height:number};kind:string}[]=[];
+    if(opts?.captureLogo!==false){
+      try{
+        const logosJson:string=String(await exec('detect-logos', `JSON.stringify(window.__hiaScanner.detectLogos(document))`));
+        logos=JSON.parse(logosJson)||[];
+      }catch{ /* 忽略检测失败 */ }
+    }
+
+    const shots=await captureAndQuantize(win, logos);
     // normal 与 ui-only 对照：仅 ui-only 出现 → screenshot-ui；仅 normal 出现 → screenshot-artwork（降权由 P3 处理）。
     // <lang zh-CN>此处先统一为 screenshot-ui，artwork 标记留给 P3 评分。</lang>
     // <lang en>Unified to screenshot-ui here; artwork tagging deferred to P3 scoring.</lang>
-    const evidence:ColorEvidence[]=[...domEv, ...shots.normal, ...shots.uiOnly];
+    const evidence:ColorEvidence[]=[...domEv, ...shots.normal, ...shots.uiOnly, ...shots.logo];
 
     const title=String(await exec('read-title','document.title').catch(()=> ''));
     const colorScheme=String(await exec('read-scheme',`(function(){ return matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'; })()`).catch(()=> 'light'));
+
+    // dark 双模式采集（P5）：强制 prefers-color-scheme:dark 后 reload 复采，得到 dark 套证据。
+    // <lang zh-CN>较短的稳定化窗口（4s/8s）控制额外耗时；reload 后需重新注入 scanner bundle。</lang>
+    // <lang en>Force dark then reload+rescan; shorter stabilize (4s/8s) bounds extra cost; re-inject scanner after reload.</lang>
+    let darkMode:WebsiteColorSignalsV2['darkMode'];
+    if(opts?.emulateDark!==false){
+      try{
+        await (win.webContents as unknown as { setEmulatedMedia:(o:{prefersColorScheme?:'light'|'dark'})=>void }).setEmulatedMedia({ prefersColorScheme:'dark' });
+        await win.webContents.reload();
+        await stabilize(win,4000,8000);
+        await exec('inject-scanner-dark', scannerSrc);
+        const darkJson:string=String(await exec('scan-dom-dark', `(function(){
+          const ctx={ width:${VIEWPORT.width}, height:${VIEWPORT.height}, dpr:${VIEWPORT.dpr}, colorScheme:'dark' };
+          const r=window.__hiaScanner.scanDocument(document, ctx);
+          return JSON.stringify({ evidence:r.evidence, warnings:r.warnings });
+        })()`));
+        const dres=JSON.parse(darkJson);
+        darkMode={ evidence:dres.evidence||[], colorScheme:'dark', warnings:dres.warnings||[] };
+        await (win.webContents as unknown as { setEmulatedMedia:(o:{prefersColorScheme?:'light'|'dark'})=>void }).setEmulatedMedia({ prefersColorScheme:'light' });
+      }catch(e){ const m=e instanceof Error?e.message:String(e); warnings.push({ code:'dark-capture', message:`dark 双模式采集失败：${m}`, scope:'adapter' }); }
+    }
 
     return {
       schemaVersion:2,
@@ -182,8 +247,9 @@ export async function renderCollect(rawUrl:string):Promise<WebsiteColorSignalsV2
         capturedAt:new Date().toISOString()
       },
       evidence,
+      darkMode,
       warnings,
-      diagnostics:{ mode:'render', durationMs:Date.now()-started, notes:['Electron hidden BrowserWindow render'] }
+      diagnostics:{ mode:'render', durationMs:Date.now()-started, notes:['Electron hidden BrowserWindow render', `Celebi baseline divergence=${shots.celebiDivergence.toFixed(3)}`] }
     };
   } finally {
     // 无论成败销毁窗口并释放 session 引用。
@@ -199,7 +265,10 @@ export async function renderCollect(rawUrl:string):Promise<WebsiteColorSignalsV2
  */
 export async function collectSignalsV2(rawUrl:string):Promise<WebsiteColorSignalsV2>{
   try{
-    return await renderCollect(rawUrl);
+    // P5 增强默认开启 dark 双模式与 logo crop；后续可由调用方显式关闭（如性能敏感场景）。
+    // <lang zh-CN>precision 侧车打包固定 chromium 不在首版默认范围（见 ADR-002）。</lang>
+    // <lang en>Precision sidecar is out of default scope (ADR-002).</lang>
+    return await renderCollect(rawUrl, { emulateDark:true, captureLogo:true });
   }catch(e){
     const msg=e instanceof Error?e.message:String(e);
     // 静态降级：保留现有 fetch-signals，转 V2 并封顶置信度。

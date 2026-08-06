@@ -7,6 +7,7 @@
 //   both ends algorithmically identical and hash-testable.
 
 use chromiumoxide::browser::{Browser, BrowserConfig};
+use chromiumoxide::cdp::browser_protocol::emulation::{MediaFeature, SetEmulatedMediaParams};
 use chromiumoxide::page::Page;
 use futures::StreamExt;
 use serde_json::{json, Value};
@@ -69,8 +70,16 @@ fn parse_ipv4(s: &str) -> Result<[u8; 4], ()> {
 }
 
 /// @lang zh-CN 单页真实渲染采集：启动无头 chromium → 导航 → 注入 scanner 采集 DOM 证据 → 截图返回 PNG base64。
+///   emulate_dark（默认 true）时额外以 prefers-color-scheme:dark 复采一次，对称 Electron 的双模式深色证据。
 /// @lang en Per-page real render: launch headless chromium → navigate → inject scanner for DOM evidence → screenshot to PNG base64.
+///   When emulate_dark (default true) also re-scans under prefers-color-scheme:dark to mirror Electron's dual-mode dark evidence.
 pub async fn render_collect(url: &str) -> Result<Value, String> {
+    render_collect_impl(url, true).await
+}
+
+/// @lang zh-CN 带开关的内部实现：emulate_dark=false 时跳过深色复采（受限多页面/性能场景用）。
+/// @lang en Internal impl with toggle: emulate_dark=false skips dark re-scan (limited multi-page/perf cases).
+pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value, String> {
     // 连接/启动无头 chromium（独立渲染上下文，不污染应用 WebView）。
     // <lang zh-CN>优先 connect 到已运行的 Chrome（HIA_CHROME_WS），避开新版 Chrome 与 chromiumoxide
     //   launch 的 CDP 兼容问题（oneshot canceled）；否则回退 Browser::launch 自动下载/探测。</lang>
@@ -133,33 +142,12 @@ pub async fn render_collect(url: &str) -> Result<Value, String> {
         page.wait_for_navigation()
             .await
             .map_err(|e| format!("等待导航失败：{e}"))?;
-        // 注入 scanner 并执行采集，返回 evidence JSON 字符串。
-        // <lang zh-CN>scanner 注入末尾自带 true; 收尾，避免克隆对象失败。</lang>
-        // <lang en>Scanner bundle ends with `true;` to avoid clone failures.</lang>
-        let scan_js = format!(
-            r#"(function(){{
-  {scanner}
-  try {{
-    const ctx = {{ width: {w}, height: {h}, dpr: 1 }};
-    const {{ evidence }} = window.__hiaScanner.scanDocument(document, ctx);
-    return JSON.stringify(evidence);
-  }} catch(e) {{ return JSON.stringify({{ error: String(e) }}); }}
-}})()"#,
-            scanner = SCANNER_SRC,
-            w = VIEWPORT_W,
-            h = VIEWPORT_H
-        );
-        let ev_json: String = page
-            .evaluate(scan_js)
+        // 浅色主采集：注入同源 scanner bundle，返回 evidence JSON。
+        // <lang zh-CN>scanner 每次 evaluate 重新注入，故 reload 后仍可复用。</lang>
+        // <lang en>Scanner re-injected on each evaluate, so it survives reload.</lang>
+        let light_evidence = scan_once(&page, None)
             .await
-            .map_err(|e| format!("注入 scanner 失败：{e}"))?
-            .into_value()
-            .map_err(|e| format!("解析 scanner 结果失败：{e}"))?;
-        let evidence: Value = serde_json::from_str(&ev_json)
-            .map_err(|e| format!("解析 evidence JSON 失败：{e}"))?;
-        if let Some(err) = evidence.get("error") {
-            return Err(format!("scanner 执行错误：{err}"));
-        }
+            .map_err(|e| format!("浅色采集失败：{e}"))?;
         // 截图（PNG bytes）转 base64，供前端量化。
         // <lang zh-CN>截图仅内存短暂存在；base64 回传前端做 median-cut 量化。</lang>
         // <lang en>Screenshot lives briefly in memory; base64 back to front for median-cut.</lang>
@@ -168,11 +156,32 @@ pub async fn render_collect(url: &str) -> Result<Value, String> {
             .await
             .map_err(|e| format!("截图失败：{e}"))?;
         let screenshot_b64 = base64_encode(&shot);
-        Ok::<Value, String>(json!({
-            "evidence": evidence,
+
+        // 深色双模式复采（P5 对称 Electron）：用 CDP Emulation.setEmulatedMedia 强制暗色，
+        // reload 后重新注入 scanner 复采，最后恢复浅色媒体查询避免影响后续。
+        // <lang zh-CN>失败不致命：仅记录警告，浅色证据仍可用。</lang>
+        // <lang en>Non-fatal: on failure keep a warning; light evidence still usable.</lang>
+        let mut dark_evidence: Value = Value::Null;
+        let mut dark_warning: Option<String> = None;
+        if emulate_dark {
+            match emulate_dark_and_rescan(&page).await {
+                Ok(dark) => dark_evidence = dark,
+                Err(e) => dark_warning = Some(e),
+            }
+        }
+
+        let mut out = json!({
+            "evidence": light_evidence,
             "screenshot": screenshot_b64,
             "finalUrl": url
-        }))
+        });
+        if emulate_dark {
+            out["darkEvidence"] = dark_evidence;
+            if let Some(w) = dark_warning {
+                out["darkWarning"] = json!(w);
+            }
+        }
+        Ok::<Value, String>(out)
     }
     .await;
 
@@ -183,6 +192,84 @@ pub async fn render_collect(url: &str) -> Result<Value, String> {
     let _ = browser_handle.await;
 
     result
+}
+
+/// @lang zh-CN 单次 DOM 采集：构造与 Electron 同源的 scanner 注入脚本并执行，返回 evidence JSON（含错误透传）。
+///   color_scheme 为 None 表示浅色主采集；Some("dark") 用于深色双模式复采，标记证据配色方案。
+/// @lang en One DOM scan: build the same scanner injection as Electron, run it, return evidence JSON (errors surfaced).
+///   color_scheme None = light primary scan; Some("dark") = dark dual-mode rescan, tags evidence scheme.
+async fn scan_once(page: &Page, color_scheme: Option<&str>) -> Result<Value, String> {
+    // 注入脚本包裹 IIFE：先展开 SCANNER_SRC（自带 true; 收尾），再用 __hiaScanner.scanDocument 采集。
+    // <lang zh-CN>每次 evaluate 重建 scanner 全局，故 reload 后仍能复采。</lang>
+    // <lang en>Rebuilds the scanner global each evaluate, so it re-scans after reload.</lang>
+    // <lang zh-CN>colorScheme 仅当深色复采时传入，与 Electron 双模式一致。</lang>
+    // <lang en>colorScheme passed only on dark rescan, mirroring Electron dual-mode.</lang>
+    let scheme_js = match color_scheme {
+        Some(s) => format!("colorScheme: \"{s}\","),
+        None => String::new(),
+    };
+    let scan_js = format!(
+        r#"(function(){{
+  {scanner}
+  try {{
+    const ctx = {{ width: {w}, height: {h}, dpr: 1, {scheme} }};
+    const {{ evidence }} = window.__hiaScanner.scanDocument(document, ctx);
+    return JSON.stringify(evidence);
+  }} catch(e) {{ return JSON.stringify({{ error: String(e) }}); }}
+}})()"#,
+        scanner = SCANNER_SRC,
+        w = VIEWPORT_W,
+        h = VIEWPORT_H,
+        scheme = scheme_js
+    );
+    let ev_json: String = page
+        .evaluate(scan_js)
+        .await
+        .map_err(|e| format!("注入 scanner 失败：{e}"))?
+        .into_value()
+        .map_err(|e| format!("解析 scanner 结果失败：{e}"))?;
+    let evidence: Value = serde_json::from_str(&ev_json)
+        .map_err(|e| format!("解析 evidence JSON 失败：{e}"))?;
+    if let Some(err) = evidence.get("error") {
+        return Err(format!("scanner 执行错误：{err}"));
+    }
+    Ok(evidence)
+}
+
+/// @lang zh-CN 强制暗色媒体查询并复采：CDP Emulation.setEmulatedMedia(prefers-color-scheme:dark) → reload → 复采 → 恢复浅色。
+/// @lang en Force dark media query and re-scan: CDP Emulation.setEmulatedMedia(prefers-color-scheme:dark) → reload → rescan → restore light.
+async fn emulate_dark_and_rescan(page: &Page) -> Result<Value, String> {
+    // 通过 CDP 注入 prefers-color-scheme:dark 媒体特性，覆盖页面 prefers-color-scheme 探测。
+    // <lang zh-CN>MediaFeature::new(name, value) 对应 DevTools 的 name/value 媒体特性对。</lang>
+    // <lang en>MediaFeature::new(name, value) maps to DevTools name/value media feature pair.</lang>
+    page.execute(
+        SetEmulatedMediaParams::builder()
+            .feature(MediaFeature::new("prefers-color-scheme", "dark"))
+            .build(),
+    )
+    .await
+    .map_err(|e| format!("设置暗色媒体查询失败：{e}"))?;
+    // 重载让页面按暗色重新应用样式与配色。
+    // <lang zh-CN>reload 后 JS 上下文重置，下一次 scan_once 会重新注入 scanner。</lang>
+    // <lang en>After reload the JS context resets; next scan_once re-injects the scanner.</lang>
+    page.reload()
+        .await
+        .map_err(|e| format!("暗色重载失败：{e}"))?;
+    page.wait_for_navigation()
+        .await
+        .map_err(|e| format!("暗色等待导航失败：{e}"))?;
+    let dark = scan_once(page, Some("dark")).await?;
+    // 恢复浅色媒体查询，避免影响后续同进程页面（纵深清理）。
+    // <lang zh-CN>失败仅告警，不阻断返回。</lang>
+    // <lang en>Failure is non-fatal; only a warning, does not block return.</lang>
+    let _ = page
+        .execute(
+            SetEmulatedMediaParams::builder()
+                .feature(MediaFeature::new("prefers-color-scheme", "light"))
+                .build(),
+        )
+        .await;
+    Ok(dark)
 }
 
 /// @lang zh-CN 简易 base64 编码（避免额外依赖；输入为 PNG 字节）。

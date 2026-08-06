@@ -450,10 +450,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Fewer than 5 falls back to all so evidence sources stay reviewable.</lang>
     const reasons=primary?primary.reasons.slice(0,5):[];
     const reasonHtml=reasons.map(r=>`<li>${escapeHtml(r)}</li>`).join('');
-    // 候选：8~12 个 alternatives，色块 + HEX。
+    // 候选：8~12 个 alternatives，色块 + HEX；命中 logo 来源时标注。
     // <lang zh-CN>点击候选直接填入副色输入框，便于快速对比。</lang>
     // <lang en>Clicking a candidate fills the secondary input for quick comparison.</lang>
-    const altHtml=a.alternatives.slice(0,12).map(c=>`<button class="explore-swatch" data-alt="${escapeHtml(c.hex)}" title="${escapeHtml(c.hex)}" style="background:${c.hex}"><span>${escapeHtml(c.hex)}</span></button>`).join('');
+    const logoSet=new Set(a.logoHexes||[]);
+    const altHtml=a.alternatives.slice(0,12).map(c=>`<button class="explore-swatch" data-alt="${escapeHtml(c.hex)}" title="${escapeHtml(c.hex)}${logoSet.has(c.hex)?'（logo）':''}" style="background:${c.hex}"><span>${escapeHtml(c.hex)}</span>${logoSet.has(c.hex)?'<i class="explore-logo-tag">logo</i>':''}</button>`).join('');
     // warnings：降级/证据不足提示。
     // <lang zh-CN>warnings 为空时显示“无特别提示”。</lang>
     // <lang en>Empty warnings show "无特别提示".</lang>
@@ -462,10 +463,17 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>应用动作始终需用户主动点击，不静默覆盖当前主题。</lang>
     // <lang en>Apply is always an explicit user click; never silently overwrites the current theme.</lang>
     const high=a.confidence>=0.5;
+    // dark 双模式主色：由 signals.darkMode 复采评出，独立展示避免与 light 混淆。
+    // <lang zh-CN>仅在存在 dark 结果时显示深色模式卡片。</lang>
+    // <lang en>Dark card shown only when a dark result exists.</lang>
+    const dColor=a.darkPrimary?a.darkPrimary.hex:'—';
+    const dConf=a.darkPrimary?Math.round(a.darkPrimary.confidence*100):0;
+    const darkHtml=a.darkPrimary?`<div class="explore-color-card"><div class="explore-swatch-lg" style="background:${dColor}"></div><div class="explore-color-meta"><div class="explore-label">深色模式主色</div><div class="explore-hex">${dColor}</div><div class="explore-conf">置信度 ${dConf}%</div></div></div>`:'';
     body.innerHTML=`
       <div class="explore-colors">
-        <div class="explore-color-card"><div class="explore-swatch-lg" style="background:${pColor}"></div><div class="explore-color-meta"><div class="explore-label">推荐主色</div><div class="explore-hex">${pColor}</div><div class="explore-conf">置信度 ${pConf}%</div></div></div>
+        <div class="explore-color-card"><div class="explore-swatch-lg" style="background:${pColor}"></div><div class="explore-color-meta"><div class="explore-label">推荐主色（浅色）</div><div class="explore-hex">${pColor}</div><div class="explore-conf">置信度 ${pConf}%</div></div></div>
         <div class="explore-color-card"><div class="explore-swatch-lg" style="background:${sColor}"></div><div class="explore-color-meta"><div class="explore-label">推荐副色 ${sDerived} ${sTag}</div><div class="explore-hex">${sColor}</div><div class="explore-conf">置信度 ${sConf}%</div></div></div>
+        ${darkHtml}
       </div>
       <div class="explore-block"><div class="explore-sub">推荐理由（前 ${reasons.length} 条）</div><ul class="explore-reasons">${reasonHtml}</ul></div>
       <div class="explore-block"><div class="explore-sub">备选颜色（${a.alternatives.length} 个，点击设为副色）</div><div class="explore-swatches">${altHtml}</div></div>

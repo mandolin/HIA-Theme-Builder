@@ -62,6 +62,10 @@ export interface ColorEvidence {
   contexts?: string[];
   selectors?: string[];
   frameKind?: 'main' | 'same-origin' | 'third-party';
+  /** 证据所属配色方案（dark mode 双模式采集时区分 light/dark 来源）。 */
+  colorScheme?: 'light' | 'dark';
+  /** 是否为 logo 区域裁剪量化得到的颜色（P5 logo crop）。 */
+  isLogo?: boolean;
 }
 
 // 采集警告：跨域 stylesheet 跳过、节点上限、降级原因等。
@@ -100,6 +104,12 @@ export interface WebsiteColorSignalsV2 {
   evidence: ColorEvidence[];
   warnings: CaptureWarning[];
   diagnostics: CaptureDiagnostics;
+  /** dark mode 双模式采集结果（可选）：强制 prefers-color-scheme: dark 后重新采集的证据集。 */
+  darkMode?: {
+    evidence: ColorEvidence[];
+    colorScheme: 'dark';
+    warnings?: CaptureWarning[];
+  };
 }
 
 // V2 已打分颜色：含 OKLCH、置信度、角色、家族与理由摘要。
@@ -140,4 +150,9 @@ export interface WebsiteThemeAnalysisV2 {
   confidence: number;
   warnings: string[];
   diagnostics: CaptureDiagnostics;
+  /** dark 双模式分析结果（可选）：强制 prefers-color-scheme:dark 复采后评出的主副色。 */
+  darkPrimary?: ScoredColorV2 | null;
+  darkSecondary?: ScoredColorV2 | null;
+  /** 由 logo 区域裁剪量化识别的颜色（P5 logo crop），供 UI 在候选中标注。 */
+  logoHexes?: string[];
 }

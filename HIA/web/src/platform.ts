@@ -36,9 +36,9 @@ interface LegacySuccess{ok:true;result:unknown;}
 interface LegacyFailure{ok:false;reason?:string;}
 interface LegacyHiaBridge{extractFromUrl(url:string):Promise<LegacySuccess|LegacyFailure>;}
 // Tauri 信号提取的成功/失败响应形态。
-// <lang zh-CN>P4 起 Rust 返回 { evidence, screenshot(base64), finalUrl }，由前端量化+评分。</lang>
-// <lang en>P4 onward Rust returns { evidence, screenshot(base64), finalUrl }; front quantizes+scores.</lang>
-interface TauriSignalSuccess{ok:true;signals:{evidence:ColorEvidence[];screenshot:string;finalUrl:string};}
+// <lang zh-CN>P4 起 Rust 返回 { evidence, screenshot(base64), finalUrl }，P5 起可选含 darkEvidence（深色双模式复采）。</lang>
+// <lang en>P4 onward Rust returns { evidence, screenshot(base64), finalUrl }; P5 adds optional darkEvidence (dark dual-mode rescan).</lang>
+interface TauriSignalSuccess{ok:true;signals:{evidence:ColorEvidence[];screenshot:string;finalUrl:string;darkEvidence?:ColorEvidence[];darkWarning?:string};}
 interface TauriSignalFailure{ok:false;reason?:string;}
 // Tauri 命令调用签名（来自 @tauri-apps/api 全局注入）。
 // <lang zh-CN>参数为命令名与可选负载，返回未知 Promise。</lang>
@@ -86,19 +86,29 @@ function tauriExplorer():ThemeExplorePort|undefined{
     // P4 起 Rust 返回 { evidence, screenshot(base64 PNG), finalUrl }。
     // <lang zh-CN>前端解码截图 → RGBA → median-cut 量化，与 DOM 证据合并构造 V2 信号再评分。</lang>
     // <lang en>Front decodes screenshot → RGBA → median-cut, merges with DOM evidence into V2 signals then scores.</lang>
-    const data=response.signals as { evidence:ColorEvidence[]; screenshot:string; finalUrl:string };
+    const data=response.signals as { evidence:ColorEvidence[]; screenshot:string; finalUrl:string; darkEvidence?:ColorEvidence[]; darkWarning?:string };
     const domEvidence=data.evidence??[];
     let evidence:ColorEvidence[]=domEvidence;
     try{
       const shotEvidence=await decodeAndQuantize(data.screenshot);
       evidence=[...domEvidence,...shotEvidence];
     }catch{ /* 截图量化失败不阻断 DOM 证据分析 */ }
+    // 深色双模式证据：Rust 已用 CDP 强制暗色复采并标记 colorScheme:'dark'。
+    // <lang zh-CN>缺失或为空时仍构造完整 V2 报告，仅 darkMode 缺位。</lang>
+    // <lang en>Absent/empty still yields a full V2 report, just without darkMode.</lang>
+    const darkEvidence=data.darkEvidence??[];
+    const warnings:import('@hia/theme-core').CaptureWarning[]=[];
+    if(data.darkWarning) warnings.push({ code:'dark-rescan-fallback', message:data.darkWarning });
     const v2:WebsiteColorSignalsV2={
       schemaVersion:2,
       page:{ requestedUrl:url, finalUrl:data.finalUrl||url, title:'', viewport:{width:1440,height:900,dpr:1}, colorScheme:'light', capturedAt:new Date().toISOString() },
       evidence,
-      warnings:[],
-      diagnostics:{ mode:'render', durationMs:0, notes:['Tauri chromiumoxide real render'] }
+      warnings,
+      diagnostics:{ mode:'render', durationMs:0, notes:['Tauri chromiumoxide real render', ...(darkEvidence.length?['dark dual-mode captured']:[])] },
+      // 仅当确有深色证据时提供 darkMode，与 Electron 对称。
+      // <lang zh-CN>darkMode.evidence 直接复用 Rust 深色复采结果（已带 colorScheme:'dark'）。</lang>
+      // <lang en>darkMode.evidence reuses Rust dark rescan (already tagged colorScheme:'dark').</lang>
+      ...(darkEvidence.length?{ darkMode:{ evidence:darkEvidence, colorScheme:'dark' as const } }:{})
     };
     return analyzeThemeV2(v2);
   }};

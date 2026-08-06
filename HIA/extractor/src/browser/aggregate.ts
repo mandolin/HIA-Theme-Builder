@@ -25,13 +25,14 @@ export interface RawEvidence{
   context?:string;
   selector?:string;
   frameKind?:'main'|'same-origin'|'third-party';
+  colorScheme?:'light'|'dark';
 }
 
-// 聚合键：颜色+来源+角色+帧类型，四元组唯一标识一条证据。
-// <lang zh-CN>同色同来源同角色跨多元素合并为一条，避免记录爆炸。</lang>
-// <lang en>Same color+source+role across elements merges to one record, avoiding record explosion.</lang>
+// 聚合键：颜色+来源+角色+帧类型+配色方案，五元组唯一标识一条证据。
+// <lang zh-CN>同色同来源同角色跨多元素合并为一条；dark mode 双模式采集时 light/dark 分开聚合。</lang>
+// <lang en>Same color+source+role merges to one record; dark-mode dual capture keeps light/dark separate.</lang>
 function keyOf(e:RawEvidence):string{
-  return [e.hex,e.source,e.role,e.frameKind??'main'].join('|');
+  return [e.hex,e.source,e.role,e.frameKind??'main',e.colorScheme??'light'].join('|');
 }
 
 // tokenName 上限，防止 CSS 变量名集合无限膨胀。

@@ -20,6 +20,15 @@
 - **P4 Tauri 真实渲染**：`chromiumoxide` 0.5.7 + CDP 无头渲染 + `include_str!` 嵌入同源 scanner bundle + 截图 PNG base64 回传前端 `analyzeThemeV2` 量化评分；`render.rs` 抽离 `render_collect` 与集成测试（真实渲染 `example.com` 1 passed）；采用 connect 优先模式（`HIA_CHROME_WS` 复用已运行 Chrome CDP，避开 chromiumoxide launch 与新版 Chrome 的 CDP 兼容问题），launch 作离线/CI 回退。
 - **跨端同源约束**：Electron 注入与 Tauri `include_str!` 必须复用同一份 `extractor/dist/browser-scanner.bundle.js`；提供 `HIA/extractor/scripts/verify-bundle-consistency.mjs` 校验两端引用为同一文件（hash 一致），保证算法一致与评分可复现。
 
+### P5 增强项（5 项，完整交付 ChatGPT 原始规格 P5 节）
+
+- **① logo 检测与裁剪**：`scanner.detectLogos` 识别 favicon / brand-image / 内联 SVG 包围盒；命中证据标记 `ColorEvidence.isLogo`，报告层新增 `logoHexes`（去重）。Electron `captureAndQuantize` 对 logo 包围盒 `capturePage(rect)` 裁剪并量化，web/electron 候选标注 logo 标签。
+- **② dark 双模式**：`ColorEvidence.colorScheme` 维度贯穿 scanner/aggregate（`colorScheme` 进入聚合五元组键）；Electron `setEmulatedMedia({prefersColorScheme:'dark'})` + reload 复采，Tauri 经 CDP `Emulation.setEmulatedMedia(prefers-color-scheme:dark)` + reload 复采（复采后恢复 light），两端产出 `darkMode.evidence`（`colorScheme:'dark'`）；core `analyzeThemeV2` 复用 `analyzeColors` 产出 `darkPrimary` / `darkSecondary`；web 色板区新增"深色模式主色"卡片。
+- **③ 受限多页面**：`scanDocument` 递归扫描同源 iframe（标记 `frameKind:'same-origin'`），第三方 iframe 跳过并记 `frame-skip` warning；扫描受 `MAX_ELEMENTS`/`MAX_EVIDENCE` 封顶，超限写 warning 不阻断。
+- **④ QuantizerCelebi 对比基准**：新增 `extractor/src/quantize/celebi.ts`（RGB→linear→XYZ→Lab 确定性 k-means++ 种子 + 固定 10 迭代）；`quantizeCelebi` / `quantizerDivergence`（0..1 偏离度）**仅作对比基准**，写入 `diagnostics.notes`，**不替换**主 median-cut 评分（符合原始规格"实验性基准，不直接采用其主题 seed Score"）。单测 5/5 覆盖确定性/主导色识别/偏离度区间/空输入/低 alpha 忽略。
+- **⑤ precision 模式（可选骨架，非首版默认）**：原始规格明确 precision 不属于首版默认方案。保留为可选开关骨架，并在 README/ADR 说明其安全约束（externalBin / 受限 shell scope），不打包 sidecar、默认关闭、与标准模式对称。
+- **验证**：extractor 单测 19/19（含 5 celebi）、core 22/22、electron `tsc` 0 错误、web `tsc` 0 错误、tauri `cargo check` 0 错误；两端 scanner bundle 同源（Electron `node_modules` 为 Junction 直连 `extractor`，Tauri `include_str!` 直读 `extractor/dist`）。Electron 真实渲染 fixture 运行时验证因本环境无显示上下文 `app.ready` 无法完成被阻断（非代码缺陷），dark/logo/多页面逻辑由 scanner/aggregate/core 单测与类型检查覆盖。
+
 ## [P4] 工程化、合规与文档化收尾（2026-08-05）
 
 - CI 矩阵增强：`.github/workflows/pages.yml` 在部署前对 `core`/`web`/`electron`/`tauri` 四端做构建与测试校验（electron/tauri 以 `--ignore-scripts` 跳过重型二进制下载，仅编译 + SSRF 单测）。
