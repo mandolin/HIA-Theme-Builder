@@ -10,6 +10,8 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 | 公共核心 (`HIA/core`) | 供以上各端调用的公共主题模型、颜色算法、Token 导出与预览组件。 |
 
 > 跨端一致性：桌面端不重写 UI，直接复用 `HIA/web` 的 Vite 构建产物（`index.html` + `assets`），因此三端呈现与操作一致；桌面端专属能力（从网址取色）通过各自平台桥（`window.hia.extractFromUrl` / `__TAURI_INVOKE__('extract_signals')`）由 `createAdaptivePlatform` 的回退链自动接入。详见 `work-zone/docs/adr/ADR-001-shared-ui-reuse.md`。
+>
+> 取色算法同源：Electron 注入与 Tauri 编译期 `include_str!` 嵌入的 scanner bundle 均来自同一份 `HIA/extractor/dist/browser-scanner.bundle.js`（IIFE 自包含），且 Electron 运行期读取 `node_modules/@hia/theme-url-extractor/dist/` 副本须与其内容一致。可用 `HIA/extractor/scripts/verify-bundle-consistency.mjs` 校验三端 bundle 内容 hash 一致，保证评分可复现。详见 `work-zone/docs/adr/ADR-002-url-color-extraction.md`。
 
 ## 仓库与边界
 
