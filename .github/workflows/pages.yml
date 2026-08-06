@@ -43,9 +43,18 @@ jobs:
           npm install
           npm test
 
+      # ----- extractor：先构建（web/electron/tauri 均依赖其 dist 类型与 bundle）-----
+      # <lang zh-CN>extractor 经 file: 链接被 web 等消费；CI 全新 checkout 须先 install+build 产出 dist/.d.ts 与 scanner bundle。</lang>
+      # <lang en>extractor is consumed via file: by web etc.; CI fresh checkout must install+build to emit dist/.d.ts and scanner bundle.</lang>
+      - name: Build extractor
+        working-directory: HIA/extractor
+        run: |
+          npm install
+          npm run build
+
       # ----- web：构建（tsc + vite）-----
-      # <lang zh-CN>web 消费本地 core dist；GITHUB_PAGES 触发基路径兼容。</lang>
-      # <lang en>web consumes local core dist; GITHUB_PAGES enables base-path compatibility.</lang>
+      # <lang zh-CN>web 消费本地 core/extractor dist；GITHUB_PAGES 触发基路径兼容。</lang>
+      # <lang en>web consumes local core/extractor dist; GITHUB_PAGES enables base-path compatibility.</lang>
       - name: Verify web
         working-directory: HIA/web
         env:

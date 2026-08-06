@@ -129,7 +129,7 @@ async function decodeAndQuantize(b64:string):Promise<ColorEvidence[]>{
   const data=ctx.getImageData(0,0,bmp.width,bmp.height).data;
   const pixels:{r:number;g:number;b:number;a:number}[]=[];
   for(let i=0;i<data.length;i+=4)pixels.push({r:data[i]!,g:data[i+1]!,b:data[i+2]!,a:data[i+3]!});
-  return quantizeMedianCut(pixels,14).map<ColorEvidence>(c=>({ value:c.hex, hex:c.hex, alpha:1, source:'screenshot-ui', role:'unknown', count:c.count, pixelRatio:c.ratio }));
+  return quantizeMedianCut(pixels,14).map<ColorEvidence>((c:{hex:string;count:number;ratio:number})=>({ value:c.hex, hex:c.hex, alpha:1, source:'screenshot-ui', role:'unknown', count:c.count, pixelRatio:c.ratio }));
 }
 
 /**
