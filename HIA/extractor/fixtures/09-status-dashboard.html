@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- fixture 09: success/warning/error 很多的 dashboard（状态色不误判为品牌色） -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#2563EB">
+<title>Status Dashboard</title>
+<style>
+  :root{ --brand:#2563EB; }
+  body{ margin:0; font-family:system-ui,sans-serif; background:#F8FAFC; color:#0F172A; }
+  .topbar{ background:var(--brand); color:#fff; padding:14px; }
+  .success{ color:#16A34A; }
+  .warning{ color:#CA8A04; }
+  .error{ color:#DC2626; }
+  .info{ color:#2563EB; }
+  .card{ background:#fff; border:1px solid #E2E8F0; margin:8px; padding:12px; }
+</style>
+</head>
+<body>
+  <div class="topbar brand-top">Dashboard</div>
+  <div class="card"><span class="success success-badge">Build passed</span></div>
+  <div class="card"><span class="warning warning-badge">Disk 80%</span></div>
+  <div class="card"><span class="error error-badge">Deploy failed</span></div>
+  <div class="card"><span class="info info-badge">New feature</span></div>
+</body>
+</html>

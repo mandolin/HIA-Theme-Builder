@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- fixture 11: OKLCH / LAB / color-mix()（需浏览器原生解析器注入） -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="oklch(55% 0.22 280)">
+<title>Modern Color Funcs</title>
+<style>
+  :root{
+    --brand: oklch(55% 0.22 280);
+    --accent: color-mix(in srgb, var(--brand) 70%, white);
+    --deep: lab(45% -20 -40);
+  }
+  body{ margin:0; font-family:system-ui,sans-serif; background:#fff; color:lab(20% 0 0); }
+  .hero{ background:var(--brand); color:#fff; padding:28px; }
+  .pill{ background:var(--accent); color:#111; padding:8px 14px; border-radius:999px; }
+  .deep{ background:var(--deep); color:#fff; padding:12px; }
+</style>
+</head>
+<body>
+  <div class="hero brand-hero">Modern Palette</div>
+  <span class="pill">Accent</span>
+  <div class="deep">Deep</div>
+</body>
+</html>

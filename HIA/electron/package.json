@@ -6,12 +6,13 @@
   "main": "dist/main.js",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-renderer.js",
+    "build": "tsc -p tsconfig.json && node scripts/fix-preload-cjs.js && node scripts/copy-renderer.js",
     "start": "npm run build && electron dist/main.js",
     "test": "vitest run"
   },
   "dependencies": {
-    "@hia/theme-core": "file:../core"
+    "@hia/theme-core": "file:../core",
+    "@hia/theme-url-extractor": "file:../extractor"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

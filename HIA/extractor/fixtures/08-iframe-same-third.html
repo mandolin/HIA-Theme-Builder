@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- fixture 08: same-origin / third-party iframe（适配器逐 frame 扫描） -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#7C3AED">
+<title>IFrame Host</title>
+<style>
+  body{ margin:0; font-family:system-ui,sans-serif; background:#fff; color:#4C1D95; }
+  .hostbar{ background:#7C3AED; color:#fff; padding:16px; }
+</style>
+</head>
+<body>
+  <div class="hostbar brand-bar">Host Page</div>
+  <!-- same-origin frame -->
+  <iframe src="08b-same-origin-frame.html" title="same-origin" width="300" height="120"></iframe>
+  <!-- third-party frame: 仅安全允许时采集，标记低权重 -->
+  <iframe src="https://external.example.com/widget.html" title="third-party" width="300" height="120"></iframe>
+</body>
+</html>

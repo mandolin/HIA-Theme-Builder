@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- fixture 10: dark theme -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#0EA5E9">
+<meta name="color-scheme" content="dark">
+<title>Dark Theme</title>
+<style>
+  :root{ --brand:#0EA5E9; --bg:#0B1120; --text:#E2E8F0; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; }
+  .nav{ background:var(--brand); color:#06121F; padding:16px; }
+  .cta{ background:var(--brand); color:#06121F; border:0; padding:12px 18px; border-radius:8px; }
+</style>
+</head>
+<body>
+  <nav class="nav brand-nav">Nightly</nav>
+  <button class="cta">Activate</button>
+</body>
+</html>

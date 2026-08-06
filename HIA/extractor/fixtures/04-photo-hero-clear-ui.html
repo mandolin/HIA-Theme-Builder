@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- fixture 04: 大面积照片 hero，但 UI 品牌色明确（照片色不应抢主色） -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#E11D48">
+<title>Photo Hero Clear UI</title>
+<style>
+  :root{ --brand:#E11D48; }
+  body{ margin:0; font-family:system-ui,sans-serif; color:#fff; }
+  .hero{ height:600px; background:url('https://example.com/photo.jpg') center/cover, #222; }
+  .nav{ background:var(--brand); padding:16px; }
+  .cta{ background:var(--brand); color:#fff; border:0; padding:12px 20px; }
+  .caption{ color:#E11D48; }
+</style>
+</head>
+<body>
+  <nav class="nav brand-nav"><span class="logo">Shop</span></nav>
+  <div class="hero"></div>
+  <button class="cta">Add to cart</button>
+  <p class="caption">Sale ends soon</p>
+</body>
+</html>

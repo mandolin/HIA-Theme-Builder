@@ -14,6 +14,9 @@ tauri = { version = "1", features = ["shell-open"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 url = "2"
+chromiumoxide = "0.5"
+futures = "0.3"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
 [features]
 # @lang zh-CN>默认特性；自定义协议按 Tauri 约定在构建时注入。

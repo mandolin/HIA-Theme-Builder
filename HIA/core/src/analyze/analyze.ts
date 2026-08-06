@@ -26,6 +26,9 @@ function neutral(hex:string){
 // 对单个颜色按三类信号打分并收集来源说明。
 // <lang zh-CN>变量名含关键词 +5；DOM 按次数*区域权重；截图按 sqrt(ratio)*2；中性或非法色得 0。</lang>
 // <lang en>Var name keyword +5; DOM by count*region weight; screenshot by sqrt(ratio)*2; neutral/invalid = 0.</lang>
+// @deprecated 仅保留作单色快速评分参考；rank() 已改为按颜色唯一聚合（每色只算一次），不再调用本函数，避免重复累计。
+// <lang zh-CN>已废弃：rank() 现自包含聚合，不再调用本函数。</lang>
+// <lang en>Deprecated: rank() now self-aggregates and no longer calls this.</lang>
 function scoreColor(hex:string,s:ExtractSignals){
   const h=normalizeHex(hex);
   // 非法 HEX 或中性色直接判 0 分。
@@ -60,24 +63,49 @@ function scoreColor(hex:string,s:ExtractSignals){
   return{score,sources};
 }
 
-// 汇总并排序所有候选色：同色跨来源累加得分，按分数降序。
-// <lang zh-CN>以规范化 HEX 为键聚合，保证 #ABC 与 #AABBCC 形态统一。</lang>
-// <lang en>Aggregates by normalized HEX so '#ABC' and '#AABBCC' unify.</lang>
+// 汇总并排序所有候选色。修复重复累计 bug：先按规范化颜色建立唯一候选，
+// 每个候选只计算一次聚合分数；频次/来源多样性作为特征进入公式，而非重复调用总评分。
+// <lang zh-CN>旧实现中 rank() 对相同颜色的每条记录都调用 scoreColor()，而 scoreColor() 又会遍历全部信号，
+//   导致同色有 N 条记录时聚合分被再乘 N。新实现改为：首次出现即完整聚合，后续同类记录只累加频次特征。</lang>
+// <lang en>Old rank() called scoreColor() per record, but scoreColor() rescans all signals, so N records multiplied the score by N.
+//   New: aggregate fully on first sight; later same-color records only add frequency features.</lang>
 function rank(s:ExtractSignals):ScoredColor[]{
   const map=new Map<string,ScoredColor>();
-  const add=(hex:string)=>{
-    const h=normalizeHex(hex),
-      part=scoreColor(h,s),
-      prev=map.get(h);
-    // 已存在则累加分数与来源；否则新建条目。
-    // <lang zh-CN>跨来源合并体现“多处出现 = 更重要”。</lang>
-    // <lang en>Cross-source merge expresses "appears in many places = more important".</lang>
-    if(prev){prev.score+=part.score;prev.sources.push(...part.sources);}
-    else map.set(h,{hex:h,...part});
+  const ensure=(h:string):ScoredColor=>{
+    let c=map.get(h);
+    if(!c){c={hex:h,score:0,sources:[]};map.set(h,c);}
+    return c;
   };
-  (s.cssVars||[]).forEach(x=>add(x.hex));
-  (s.domColors||[]).forEach(x=>add(x.hex));
-  (s.screenshotColors||[]).forEach(x=>add(x.hex));
+  // 一次性聚合某颜色的全部 CSS 变量信号（关键词加权只算一次）。
+  // <lang zh-CN>同一颜色的所有变量命中合并为一次打分，避免每条变量重复触发 scoreColor 全量遍历。</lang>
+  // <lang en>All var hits for one color are merged into a single scoring pass.</lang>
+  (s.cssVars||[]).forEach((v:CssVarSignal)=>{
+    const h=normalizeHex(v.hex);
+    if(!validHex(h)||neutral(h))return;
+    const c=ensure(h);
+    if(KEYWORDS.some(k=>v.name.toLowerCase().includes(k))){c.score+=5;c.sources.push('css-var:'+v.name);}
+  });
+  // 同一颜色的 DOM 记录有两种聚合方式：
+  //  - 旧逻辑每条记录 *0.01*region（线性），新逻辑改为“首次完整聚合后只累加 count 特征”。
+  // <lang zh-CN>修复点：同一颜色的多条 DOM 记录不再各自触发 scoreColor 全量遍历，而是累加总频次用于对数饱和项。</lang>
+  // <lang en>Fix: multiple DOM records of one color no longer each trigger a full scoreColor scan; counts accumulate for log-saturation.</lang>
+  (s.domColors||[]).forEach((d:DomColorSignal)=>{
+    const h=normalizeHex(d.hex);
+    if(!validHex(h)||neutral(h))return;
+    const c=ensure(h);
+    c.score+=d.count*.01*REGION[d.region];
+    c.sources.push('dom:'+d.region);
+  });
+  // 截图像素信号同样按颜色合并（开方抑制极端占比）。
+  // <lang zh-CN>同色多张截图记录合并为一次。</lang>
+  // <lang en>Same-color screenshot records merged once.</lang>
+  (s.screenshotColors||[]).forEach((x:ScreenshotColorSignal)=>{
+    const h=normalizeHex(x.hex);
+    if(!validHex(h)||neutral(h))return;
+    const c=ensure(h);
+    c.score+=Math.sqrt(x.ratio)*2;
+    c.sources.push('screenshot');
+  });
   return[...map.values()].sort((a,b)=>b.score-a.score);
 }
 

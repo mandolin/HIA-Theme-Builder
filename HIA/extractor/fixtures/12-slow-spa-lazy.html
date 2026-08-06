@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- fixture 12: 慢 SPA、字体与 lazy content（验证稳定化等待与滚动触发） -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#D97706">
+<title>Slow SPA Lazy</title>
+<style>
+  :root{ --brand:#D97706; }
+  @font-face{ font-family:'Slow'; src:url('https://example.com/slow.woff2') format('woff2'); }
+  body{ margin:0; font-family:'Slow',system-ui,sans-serif; background:#fff; color:#431407; }
+  .top{ background:var(--brand); color:#fff; padding:16px; position:sticky; top:0; }
+  .lazy{ height:400px; padding:16px; }
+  .lazycta{ background:var(--brand); color:#fff; border:0; padding:10px 16px; }
+</style>
+</head>
+<body>
+  <div class="top brand-top">Slow App</div>
+  <main id="mount"></main>
+  <script>
+    // 模拟懒加载：2 秒后插入内容
+    setTimeout(()=>{
+      const m=document.getElementById('mount');
+      for(let i=0;i<5;i++){
+        const s=document.createElement('section'); s.className='lazy';
+        s.innerHTML='<button class="lazycta">Load more '+i+'</button>';
+        m.appendChild(s);
+      }
+    },2000);
+  </script>
+</body>
+</html>

@@ -1,4 +1,5 @@
-import{analyzeTheme,type ExtractResult,type ExtractSignals}from'@hia/theme-core';
+import{type WebsiteThemeAnalysisV2,type WebsiteColorSignalsV2,type ColorEvidence,analyzeThemeV2}from'@hia/theme-core';
+import{quantizeMedianCut}from'@hia/theme-url-extractor';
 
 /**
  * @lang zh-CN 跨运行时桥接层：定义操作台所需的最小平台能力（存储/剪贴板/时钟/弹窗/网址探索），
@@ -15,10 +16,10 @@ export interface StoragePort{getItem(key:string):string|null;setItem(key:string,
 // <lang zh-CN>包装 navigator.clipboard 或原生桥，统一 Promise 接口。</lang>
 // <lang en>Wraps navigator.clipboard or a native bridge behind a uniform Promise interface.</lang>
 export interface ClipboardPort{writeText(value:string):Promise<void>;}
-// 网址探索能力：从目标站点提取主题信号并分析出主副色。
-// <lang zh-CN>实现可来自 Electron 预加载或 Tauri 命令，结果统一为 ExtractResult。</lang>
-// <lang en>Backed by Electron preload or a Tauri command; result is always ExtractResult.</lang>
-export interface ThemeExplorePort{exploreUrl(url:string):Promise<ExtractResult>;}
+// 网址探索能力：从目标站点提取主题信号并分析出主副色（V2 报告）。
+// <lang zh-CN>实现可来自 Electron 预加载或 Tauri 命令，结果统一为 WebsiteThemeAnalysisV2。</lang>
+// <lang en>Backed by Electron preload or a Tauri command; result is always WebsiteThemeAnalysisV2.</lang>
+export interface ThemeExplorePort{exploreUrl(url:string):Promise<WebsiteThemeAnalysisV2>;}
 // 平台聚合：操作台运行时依赖的完整能力集合。
 // <lang zh-CN>explorer 可选，仅当宿主提供网址探索时存在。</lang>
 // <lang en>explorer is optional and present only when the host provides URL exploration.</lang>
@@ -31,13 +32,13 @@ export interface InjectedThemeBridge{storage?:StoragePort;clipboard?:ClipboardPo
 // 旧版 Electron 桥的成功/失败响应形态。
 // <lang zh-CN>兼容 window.hia.extractFromUrl 的老协议（ok + result/reason）。</lang>
 // <lang en>Supports the legacy window.hia.extractFromUrl protocol (ok + result/reason).</lang>
-interface LegacySuccess{ok:true;result:ExtractResult;}
+interface LegacySuccess{ok:true;result:unknown;}
 interface LegacyFailure{ok:false;reason?:string;}
 interface LegacyHiaBridge{extractFromUrl(url:string):Promise<LegacySuccess|LegacyFailure>;}
 // Tauri 信号提取的成功/失败响应形态。
-// <lang zh-CN>返回原始信号，由 core 的 analyzeTheme 统一分析。</lang>
-// <lang en>Returns raw signals; core's analyzeTheme does the uniform analysis.</lang>
-interface TauriSignalSuccess{ok:true;signals:ExtractSignals;}
+// <lang zh-CN>P4 起 Rust 返回 { evidence, screenshot(base64), finalUrl }，由前端量化+评分。</lang>
+// <lang en>P4 onward Rust returns { evidence, screenshot(base64), finalUrl }; front quantizes+scores.</lang>
+interface TauriSignalSuccess{ok:true;signals:{evidence:ColorEvidence[];screenshot:string;finalUrl:string};}
 interface TauriSignalFailure{ok:false;reason?:string;}
 // Tauri 命令调用签名（来自 @tauri-apps/api 全局注入）。
 // <lang zh-CN>参数为命令名与可选负载，返回未知 Promise。</lang>
@@ -63,21 +64,62 @@ function legacyElectronExplorer():ThemeExplorePort|undefined{
   return{async exploreUrl(url:string){
     const response=await window.hia!.extractFromUrl(url);
     if(!response.ok)throw new Error(response.reason||'网址主题探索失败。');
-    return response.result;
+    // 新版协议（P3 起）response 直接带 analysis 字段（V2 报告）；旧版 V1 协议无此字段，
+    // 因 V1 与 V2 报告结构不兼容，旧版桥无法产出 V2，提示升级宿主到 P3+ 协议。
+    // <lang zh-CN>有 analysis 直接返回；否则报错引导升级。</lang>
+    // <lang en>Return analysis when present; otherwise error to prompt a host upgrade.</lang>
+    const maybeAnalysis=(response as {analysis?:WebsiteThemeAnalysisV2}).analysis;
+    if(maybeAnalysis)return maybeAnalysis;
+    throw new Error('宿主取色桥为旧版（V1），不支持 V2 报告。请升级到 P3+ 协议（extract-from-url 返回 analysis）。');
   }};
 }
 
 // Tauri 探索器：把 __TAURI_INVOKE__('extract_signals') 适配为 ThemeExplorePort。
-// <lang zh-CN>取回原始信号后调用 core.analyzeTheme 得到结果，失败抛中文错误。</lang>
-// <lang en>Pulls raw signals then calls core.analyzeTheme; throws a localized error on failure.</lang>
+// <lang zh-CN>取回 V1 原始信号后，经 core 的 toV2Signals + analyzeThemeV2 产出 V2 报告，失败抛中文错误。</lang>
+// <lang en>Pulls V1 signals then runs core's toV2Signals + analyzeThemeV2 for the V2 report; throws a localized error.</lang>
 function tauriExplorer():ThemeExplorePort|undefined{
   const invoke=window.__TAURI_INVOKE__;
   if(!invoke)return undefined;
   return{async exploreUrl(url:string){
     const response=await invoke('extract_signals',{url})as TauriSignalSuccess|TauriSignalFailure;
     if(!response.ok)throw new Error(response.reason||'网址主题探索失败。');
-    return analyzeTheme(response.signals);
+    // P4 起 Rust 返回 { evidence, screenshot(base64 PNG), finalUrl }。
+    // <lang zh-CN>前端解码截图 → RGBA → median-cut 量化，与 DOM 证据合并构造 V2 信号再评分。</lang>
+    // <lang en>Front decodes screenshot → RGBA → median-cut, merges with DOM evidence into V2 signals then scores.</lang>
+    const data=response.signals as { evidence:ColorEvidence[]; screenshot:string; finalUrl:string };
+    const domEvidence=data.evidence??[];
+    let evidence:ColorEvidence[]=domEvidence;
+    try{
+      const shotEvidence=await decodeAndQuantize(data.screenshot);
+      evidence=[...domEvidence,...shotEvidence];
+    }catch{ /* 截图量化失败不阻断 DOM 证据分析 */ }
+    const v2:WebsiteColorSignalsV2={
+      schemaVersion:2,
+      page:{ requestedUrl:url, finalUrl:data.finalUrl||url, title:'', viewport:{width:1440,height:900,dpr:1}, colorScheme:'light', capturedAt:new Date().toISOString() },
+      evidence,
+      warnings:[],
+      diagnostics:{ mode:'render', durationMs:0, notes:['Tauri chromiumoxide real render'] }
+    };
+    return analyzeThemeV2(v2);
   }};
+}
+
+// 解码 base64 PNG 为 RGBA 像素并用 median-cut 量化，产出 screenshot-ui 证据。
+// <lang zh-CN>浏览器/WebView 环境可用 createImageBitmap + canvas 解码；量化复用 extractor 纯算法。</lang>
+// <lang en>Browser/WebView decode via createImageBitmap + canvas; quantization reuses extractor's pure algorithm.</lang>
+async function decodeAndQuantize(b64:string):Promise<ColorEvidence[]>{
+  const res=await fetch(`data:image/png;base64,${b64}`);
+  const blob=await res.blob();
+  const bmp=await createImageBitmap(blob);
+  const canvas=document.createElement('canvas');
+  canvas.width=bmp.width;canvas.height=bmp.height;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)return [];
+  ctx.drawImage(bmp,0,0);
+  const data=ctx.getImageData(0,0,bmp.width,bmp.height).data;
+  const pixels:{r:number;g:number;b:number;a:number}[]=[];
+  for(let i=0;i<data.length;i+=4)pixels.push({r:data[i]!,g:data[i+1]!,b:data[i+2]!,a:data[i+3]!});
+  return quantizeMedianCut(pixels,14).map<ColorEvidence>(c=>({ value:c.hex, hex:c.hex, alpha:1, source:'screenshot-ui', role:'unknown', count:c.count, pixelRatio:c.ratio }));
 }
 
 /**

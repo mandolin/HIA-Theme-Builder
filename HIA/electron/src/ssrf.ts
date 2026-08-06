@@ -60,9 +60,14 @@ export function guardUrl(raw: string): SsrfReject | SsrfAccept {
   } catch {
     return { ok: false, reason: 'URL 格式非法 / invalid URL' };
   }
-  // <lang zh-CN>协议限制。</lang>
-  // <lang en>Scheme restriction.</lang>
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+  // <lang zh-CN>测试逃生舱：仅当显式设置 HIA_TEST_LOCAL=1 时允许 file: 与回环地址，
+  //   用于本地 fixture 冒烟；生产默认关闭，不影响 SSRF 防护。</lang>
+  // <lang en>Test escape hatch: only when HIA_TEST_LOCAL=1, allow file: and loopback for local fixture smoke;
+  //   off by default in production, SSRF guard unchanged.</lang>
+  const testLocal = process.env.HIA_TEST_LOCAL === '1';
+  // <lang zh-CN>协议限制（测试态额外允许 file:）。</lang>
+  // <lang en>Scheme restriction (test mode additionally allows file:).</lang>
+  if (url.protocol !== 'http:' && url.protocol !== 'https:' && !(testLocal && url.protocol === 'file:')) {
     return { ok: false, reason: `不允许的协议 ${url.protocol} / disallowed scheme` };
   }
   // <lang zh-CN>端口限制（缺省按协议）。</lang>
@@ -82,9 +87,9 @@ export function guardUrl(raw: string): SsrfReject | SsrfAccept {
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) && isPrivateIpv4(host)) {
     return { ok: false, reason: '私网/保留地址禁止 / private address blocked' };
   }
-  // <lang zh-CN>localhost 及回环域名。</lang>
-  // <lang en>localhost and loopback names.</lang>
-  if (host === 'localhost' || host.endsWith('.localhost') || host === '0.0.0.0' || host === '[::1]') {
+  // <lang zh-CN>localhost 及回环域名（测试态放行）。</lang>
+  // <lang en>localhost and loopback names (allowed in test mode).</lang>
+  if (!testLocal && (host === 'localhost' || host.endsWith('.localhost') || host === '0.0.0.0' || host === '[::1]')) {
     return { ok: false, reason: '本地回环地址禁止 / loopback blocked' };
   }
   return { ok: true, host, port };

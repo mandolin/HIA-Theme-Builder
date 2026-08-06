@@ -10,7 +10,8 @@ import{
   exportThemeCss,exportThemeJson,filterPresets,findMatchingPrimaryCandidate,generateSecondarySet,
   gradientCss,isBuiltinPresetId,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,
-  upsertPreset,validHex,type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey
+  upsertPreset,validHex,type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
+  type WebsiteThemeAnalysisV2
 }from'@hia/theme-core';
 import{all,byId,inputValue,setInputValue,setText}from'./dom.js';
 import type{ThemeManagerPlatform}from'./platform.js';
@@ -97,6 +98,13 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>切换 pcShell/wxFrame 的 dark 类。</lang>
   // <lang en>Toggles the dark class on pcShell/wxFrame.</lang>
   let appearanceMode:'light'|'dark'='light';
+
+  // 网址取色探索状态（指令十五节）：最近一次探索分析、阶段状态与是否正在探索。
+  // <lang zh-CN>exploreResult 为 V2 报告；exploreStage 驱动阶段状态徽标；exploring 防重复提交。</lang>
+  // <lang en>exploreResult is the V2 report; exploreStage drives the status badge; exploring prevents duplicate submits.</lang>
+  let exploreResult:WebsiteThemeAnalysisV2|null=null;
+  let exploreStage:'idle'|'exploring'|'done'|'degraded'|'error'='idle';
+  let exploring=false;
 
   // 由当前草稿构建完整主题（用于渲染/导出）。
   // <lang zh-CN>每次调用都会重新计算色阶，确保与草稿同步。</lang>
@@ -411,6 +419,84 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     if(selectedPresetId===id)selectedPresetId='preset-default';
     renderPresetList();
   }
+  // 渲染网址取色探索面板（指令十五节）：阶段状态、推荐主副色、置信度、reasons、8~12 候选、warnings、应用入口。
+  // <lang zh-CN>无 explorer 能力时隐藏面板；无结果时仅显示状态；有结果时展开完整报告。</lang>
+  // <lang en>Hidden without explorer; only status when empty; full report when a result exists.</lang>
+  function renderExplore(){
+    const wrap=byId<HTMLElement>('explorePanel');
+    // 无探索能力（纯浏览器）则隐藏整块面板，保持界面整洁。
+    // <lang zh-CN>explorer 由 platform 按宿主注入决定，未提供则不打扰用户。</lang>
+    // <lang en>explorer is host-injected; absent means plain browser, so hide the panel.</lang>
+    if(!platform.explorer){wrap.style.display='none';return;}
+    wrap.style.display='block';
+    const status=byId<HTMLElement>('exploreStatus');
+    const stageText={idle:'等待输入网址',exploring:'正在渲染并分析…',done:'已生成推荐主题',degraded:'已生成（静态降级，置信度受限）',error:'探索失败'} as const;
+    status.textContent=stageText[exploreStage];
+    status.dataset.stage=exploreStage;
+    const body=byId<HTMLElement>('exploreBody');
+    if(!exploreResult){body.innerHTML='';return;}
+    const a=exploreResult;
+    // 主副色色板：含 HEX、置信度百分比；副色 derived 明确标注。
+    // <lang zh-CN>置信度用百分比呈现，低于 0.5 视觉提示“低于建议阈值”。</lang>
+    // <lang en>Confidence shown as percent; below 0.5 flagged visually as under suggestion.</lang>
+    const primary=a.primary,secondary=a.secondary;
+    const pColor=primary?primary.hex:'—',sColor=secondary?secondary.hex:'—';
+    const pConf=primary?Math.round(primary.confidence*100):0;
+    const sConf=secondary?Math.round(secondary.confidence*100):0;
+    const sDerived=secondary?.derived?'<span class="explore-derived" title="由主色协调生成，非网页原始颜色">协调生成</span>':'';
+    const sTag=secondary?.origin==='harmony-fallback'?'<span class="explore-tag">derived</span>':'';
+    // reasons：取主色前 5 条，保证 3~5 条可解释。
+    // <lang zh-CN>不足 5 条则取全部，便于审阅证据来源。</lang>
+    // <lang en>Fewer than 5 falls back to all so evidence sources stay reviewable.</lang>
+    const reasons=primary?primary.reasons.slice(0,5):[];
+    const reasonHtml=reasons.map(r=>`<li>${escapeHtml(r)}</li>`).join('');
+    // 候选：8~12 个 alternatives，色块 + HEX。
+    // <lang zh-CN>点击候选直接填入副色输入框，便于快速对比。</lang>
+    // <lang en>Clicking a candidate fills the secondary input for quick comparison.</lang>
+    const altHtml=a.alternatives.slice(0,12).map(c=>`<button class="explore-swatch" data-alt="${escapeHtml(c.hex)}" title="${escapeHtml(c.hex)}" style="background:${c.hex}"><span>${escapeHtml(c.hex)}</span></button>`).join('');
+    // warnings：降级/证据不足提示。
+    // <lang zh-CN>warnings 为空时显示“无特别提示”。</lang>
+    // <lang en>Empty warnings show "无特别提示".</lang>
+    const warnHtml=a.warnings.length?a.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join(''):'<li class="explore-muted">无特别提示</li>';
+    // 高置信不自动覆盖：应用按钮文案随置信度变化，主色高置信时强调“确认后应用”。
+    // <lang zh-CN>应用动作始终需用户主动点击，不静默覆盖当前主题。</lang>
+    // <lang en>Apply is always an explicit user click; never silently overwrites the current theme.</lang>
+    const high=a.confidence>=0.5;
+    body.innerHTML=`
+      <div class="explore-colors">
+        <div class="explore-color-card"><div class="explore-swatch-lg" style="background:${pColor}"></div><div class="explore-color-meta"><div class="explore-label">推荐主色</div><div class="explore-hex">${pColor}</div><div class="explore-conf">置信度 ${pConf}%</div></div></div>
+        <div class="explore-color-card"><div class="explore-swatch-lg" style="background:${sColor}"></div><div class="explore-color-meta"><div class="explore-label">推荐副色 ${sDerived} ${sTag}</div><div class="explore-hex">${sColor}</div><div class="explore-conf">置信度 ${sConf}%</div></div></div>
+      </div>
+      <div class="explore-block"><div class="explore-sub">推荐理由（前 ${reasons.length} 条）</div><ul class="explore-reasons">${reasonHtml}</ul></div>
+      <div class="explore-block"><div class="explore-sub">备选颜色（${a.alternatives.length} 个，点击设为副色）</div><div class="explore-swatches">${altHtml}</div></div>
+      <div class="explore-block"><div class="explore-sub">注意事项</div><ul class="explore-warnings">${warnHtml}</ul></div>
+      <div class="explore-actions"><button class="btn primary" id="exploreApplyBtn">${high?'确认并应用到操作台':'应用到操作台'}</button><span class="explore-muted">${high?'高置信度，请确认后覆盖当前主副色':'置信度偏低，建议人工校正后再应用'}</span></div>
+    `;
+    // 候选点击：写入副色输入框并同步拾色器（不自动应用）。
+    // <lang zh-CN>仅填充输入，由用户决定是否应用。</lang>
+    // <lang en>Only fills inputs; user decides whether to apply.</lang>
+    all<HTMLButtonElement>('[data-alt]',body).forEach(btn=>btn.addEventListener('click',()=>{
+      const hex=normalizeHex(btn.dataset.alt||'');
+      if(!validHex(hex))return;
+      setInputValue('secondaryHexInput',hex);byId<HTMLInputElement>('secondaryPicker').value=hex;
+      draft.secondary=hex;setInputValue('secondaryNameInput','副色');
+      applyCurrentTheme(false);
+    }));
+    // 应用按钮：用推荐主副色覆盖草稿并刷新全界面（显式点击，遵循高置信不静默覆盖）。
+    // <lang zh-CN>始终需用户主动确认；应用后仍可被后续“取色器/候选”改动撤销。</lang>
+    // <lang en>Always an explicit confirm; later picker/candidate edits can still override.</lang>
+    byId<HTMLButtonElement>('exploreApplyBtn').addEventListener('click',()=>{
+      if(!primary)return;
+      draft.primary=normalizeHex(primary.hex);
+      if(secondary)draft.secondary=normalizeHex(secondary.hex);
+      draft.primaryName=primary.role==='brand'?'提取主色':'提取主色';
+      draft.secondaryName=secondary?'提取副色':'副色';
+      draft.name=inputValue('themeNameInput').trim()||autoThemeName(draft.primaryName,draft.secondaryName);
+      syncInputs();applyCurrentTheme(false);
+      setText('generateStatus',`已应用网址取色结果（主色 ${draft.primary}${secondary?` / 副色 ${draft.secondary}`:''}）。`);
+    });
+  }
+
   // 应用预设到操作台：标记选中、载入草稿、重算副色候选并刷新全界面。
   // <lang zh-CN>同时持久化当前渐变（独立键），并回显主色候选来源。</lang>
   // <lang en>Also persists current gradients (separate key) and re-shows the primary candidate source.</lang>
@@ -569,6 +655,27 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>按钮文字在“展开设置/收起设置”间切换。</lang>
     // <lang en>Button text toggles between "展开设置" / "收起设置".</lang>
     byId<HTMLButtonElement>('toggleGradientPanelBtn').addEventListener('click',e=>{const panel=byId<HTMLElement>('gradientSettingsPanel');panel.classList.toggle('collapsed');(e.currentTarget as HTMLButtonElement).textContent=panel.classList.contains('collapsed')?'展开设置':'收起设置';});
+    // 网址取色探索：提交 URL 给宿主 explorer，更新阶段状态并渲染 V2 报告。
+    // <lang zh-CN>仅当存在 explorer 能力时绑定，纯浏览器不报错。</lang>
+    // <lang en>Only binds when an explorer exists; plain browsers stay error-free.</lang>
+    const exploreBtn=byId<HTMLButtonElement>('exploreBtn');
+    if(platform.explorer&&exploreBtn){
+      exploreBtn.addEventListener('click',async()=>{
+        if(exploring)return;
+        const url=inputValue('exploreUrlInput').trim();
+        if(!/^https?:\/\//i.test(url)){platform.alert('请输入以 http(s):// 开头的网址。');return;}
+        exploring=true;exploreStage='exploring';renderExplore();
+        try{
+          const result=await platform.explorer!.exploreUrl(url);
+          exploreResult=result;
+          // 降级（degraded-static）或置信度封顶时标记 degraded 阶段。
+          // <lang zh-CN>让 UI 提示证据不完整，应用更审慎。</lang>
+          // <lang en>Lets the UI flag incomplete evidence and recommend caution.</lang>
+          exploreStage=result.diagnostics.mode==='degraded-static'||result.confidence<=0.45?'degraded':'done';
+        }catch(e){exploreStage='error';exploreResult=null;platform.alert(e instanceof Error?e.message:'网址探索失败。');}
+        finally{exploring=false;renderExplore();}
+      });
+    }
   }
 
   // 启动操作台：恢复持久化数据、初始化候选、首渲染各区域并绑定事件。
@@ -585,6 +692,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>顺序保证变量注入先于依赖 var() 的预览渲染。</lang>
     // <lang en>Order ensures vars are injected before var()-dependent previews render.</lang>
     applyRuntimeTheme();syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();
+    // 探索面板初始渲染（无 explorer 时隐藏）。
+    // <lang zh-CN>放在最后避免影响其他面板的首次布局。</lang>
+    // <lang en>Rendered last to avoid disturbing other panels' first layout.</lang>
+    renderExplore();
     // 进入默认视图：左右布局、浅色、PC 仪表盘、小程序首页。
     // <lang zh-CN>与原 HTML 初始呈现一致。</lang>
     // <lang en>Matches the original HTML's initial presentation.</lang>

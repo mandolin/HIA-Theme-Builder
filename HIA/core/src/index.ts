@@ -58,3 +58,12 @@ export{exportThemeCss}from'./token/css.js';
 export{exportThemeJson}from'./token/json.js';
 export{analyzeTheme}from'./analyze/analyze.js';
 export type{ExtractSignals,ScoredColor,ExtractResult,CssVarSignal,DomColorSignal,ScreenshotColorSignal}from'./analyze/types.js';
+// V2 契约与 V1→V2 兼容层（P0 建立，P1/P3 填充真实渲染实现）。
+// <lang zh-CN>V2 为跨端取色分析的稳定可序列化契约。</lang>
+// <lang en>V2 is the stable serializable contract for cross-end extraction analysis.</lang>
+export type{ColorSource,SemanticRole,ColorEvidence,CaptureWarning,CaptureDiagnostics,WebsiteColorSignalsV2,ScoredColorV2,WebsiteThemeAnalysisV2}from'./analyze/types-v2.js';
+export{toV2Signals}from'./analyze/v1-compat.js';
+// V2 分析：OKLab 聚类 + role-aware 评分 + 主副色/置信度/alternatives（P3）。
+// <lang zh-CN>P3 跨端共用的主题分析实现，输入 V2 信号，输出可读分析报告。</lang>
+// <lang en>P3 cross-end theme analysis: takes V2 signals, emits explainable report.</lang>
+export{analyzeThemeV2,clusterEvidence}from'./analyze/analyze-v2.js';

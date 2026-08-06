@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- fixture 01: 显式 --brand-primary token 并在多个可见元素使用 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#6D28D9">
+<title>Explicit Brand Primary</title>
+<style>
+  :root{
+    --brand-primary:#6D28D9;
+    --brand-primary-hover:#5B21B6;
+    --text-on-brand:#FFFFFF;
+    --surface:#F5F3FF;
+  }
+  body{ margin:0; background:var(--surface); color:#1F2937; font-family:system-ui,sans-serif; }
+  .header{ background:var(--brand-primary); color:var(--text-on-brand); padding:24px; }
+  .cta{ background:var(--brand-primary); color:var(--text-on-brand); border:0; padding:12px 20px; border-radius:8px; }
+  .card{ background:#fff; border:1px solid #E5E7EB; padding:16px; }
+  .link{ color:var(--brand-primary); }
+</style>
+</head>
+<body>
+  <header class="header brand-header">Acme Brand</header>
+  <main>
+    <div class="card">
+      <button class="cta">Get started</button>
+      <a class="link" href="#">Learn more</a>
+    </div>
+  </main>
+</body>
+</html>

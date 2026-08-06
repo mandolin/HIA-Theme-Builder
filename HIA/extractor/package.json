@@ -1,0 +1,48 @@
+{
+  "name": "@hia/theme-url-extractor",
+  "version": "0.1.0",
+  "description": "HIA cross-end website color extractor: injectable browser scanner + deterministic screenshot quantizer. DOM/Canvas-free core; browser bundle injected by Electron/Tauri adapters.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser/index.d.ts",
+      "import": "./dist/browser/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node build-scanner-bundle.mjs",
+    "clean": "rimraf dist",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@hia/theme-core": "file:../core"
+  },
+  "devDependencies": {
+    "esbuild": "^0.23.1",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "color-extraction",
+    "theme",
+    "oklch",
+    "hia"
+  ]
+}

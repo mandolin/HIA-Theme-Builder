@@ -10,7 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@hia/theme-core": "file:../core"
+    "@hia/theme-core": "file:../core",
+    "@hia/theme-url-extractor": "file:../extractor"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

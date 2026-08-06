@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- fixture 07: open shadow root（scanner 须递归进入） -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Open Shadow Root</title>
+<style>
+  body{ margin:0; font-family:system-ui,sans-serif; background:#fff; color:#1E3A8A; }
+  .host{ --accent:#1E3A8A; padding:24px; }
+  .cta{ background:#1E3A8A; color:#fff; border:0; padding:10px 16px; }
+</style>
+</head>
+<body>
+  <div class="host" id="host"></div>
+  <script>
+    const host=document.getElementById('host');
+    const sr=host.attachShadow({mode:'open'});
+    sr.innerHTML='<style>.badge{background:#1E3A8A;color:#fff;padding:8px 12px;border-radius:6px}.txt{color:#1E3A8A}</style><span class="badge brand-badge">Inside Shadow</span><span class="txt">text</span>';
+    // 再嵌套一个 slot 中的 cta
+    const inner=document.createElement('button'); inner.className='cta'; inner.textContent='Shadow CTA'; sr.appendChild(inner);
+  </script>
+</body>
+</html>

@@ -6,8 +6,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { collectSignals } from './fetch-signals.js';
-import { analyzeTheme } from '@hia/theme-core';
+import { collectSignalsV2 } from './render-adapter.js';
+import { analyzeThemeV2 } from '@hia/theme-core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +29,9 @@ function createWindow(): void {
     }
   });
   win.loadFile(join(__dirname, 'renderer', 'index.html'));
+  // <lang zh-CN>开发阶段打开 DevTools 便于诊断渲染器桥接与 explorer 检测。</lang>
+  // <lang en>Open DevTools during dev for diagnosing renderer bridge and explorer detection.</lang>
+  win.webContents.openDevTools();
 }
 
 /**
@@ -38,9 +41,11 @@ function createWindow(): void {
 function registerIpc(): void {
   ipcMain.handle(CHANNEL, async (_evt, url: string) => {
     try {
-      const signals = await collectSignals(url);
-      const result = analyzeTheme(signals);
-      return { ok: true, result };
+      // <lang zh-CN>P2 真实渲染采集（失败自动降级静态）+ P3 V2 评分：返回完整主题分析报告（主副色/置信度/候选/理由）。</lang>
+      // <lang en>P2 real-render collect (auto static fallback) + P3 V2 scoring: returns full analysis report.</lang>
+      const signals = await collectSignalsV2(url);
+      const analysis = analyzeThemeV2(signals);
+      return { ok: true, signals, analysis, mode: signals.diagnostics.mode };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       // <lang zh-CN>区分 SSRF 拒绝与其他错误。</lang>
