@@ -239,10 +239,29 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
         // 导航到目标网址（真实渲染）。
         // <lang zh-CN>goto 后等待导航完成，近似稳定。</lang>
         // <lang en>Wait for navigation after goto for approximate stability.</lang>
-        page.goto(url)
+        // Chrome 148 与 chromiumoxide 0.5.7 的 Page.navigate 存在 CDP 兼容问题（oneshot canceled），
+        // 改用 Runtime.evaluate 直接设置 location.href 触发导航，再轮询等待加载完成。
+        // <lang zh-CN>绕过 Page.navigate 的兼容问题，用 JS 导航 + 轮询 readyState。</lang>
+        // <lang en>Bypass Page.navigate compat issue with JS navigation + readyState polling.</lang>
+        let nav_js = format!(
+            r#"window.location.href = {}; "navigating""#,
+            serde_json::to_string(url).map_err(|e| format!("URL 序列化失败：{e}"))?
+        );
+        page.evaluate(nav_js)
             .await
             .map_err(|e| format!("导航失败：{e}"))?;
-        page.wait_for_navigation()
+        // 轮询等待页面加载完成（readyState === 'complete'），替代 wait_for_navigation。
+        // <lang zh-CN>最多等 10 秒，每 200ms 检查一次。</lang>
+        // <lang en>Poll up to 10s, checking every 200ms.</lang>
+        let wait_js = r#"new Promise(res => {
+            const check = () => {
+                if (document.readyState === 'complete') res('complete');
+                else setTimeout(check, 200);
+            };
+            check();
+            setTimeout(() => res('timeout'), 10000);
+        })"#;
+        page.evaluate(wait_js)
             .await
             .map_err(|e| format!("等待导航失败：{e}"))?;
         // 浅色主采集：注入同源 scanner bundle，返回 evidence JSON。
