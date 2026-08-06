@@ -11,6 +11,7 @@ use chromiumoxide::cdp::browser_protocol::emulation::{MediaFeature, SetEmulatedM
 use chromiumoxide::page::Page;
 use futures::StreamExt;
 use serde_json::{json, Value};
+use std::net::ToSocketAddrs;
 
 // 编译期嵌入 scanner bundle（与 Electron 共用同一份自包含 IIFE，确保算法一致）。
 // <lang zh-CN>路径相对本文件：src-tauri/src/render.rs → extractor/dist/browser-scanner.bundle.js。</lang>
@@ -67,6 +68,82 @@ fn parse_ipv4(s: &str) -> Result<[u8; 4], ()> {
         return Err(());
     }
     Ok(out)
+}
+
+/// @lang zh-CN 判断 IPv6 是否为私网/保留段：ULA(fd00::/8、fc00::/8)、回环(::1)、链路本地(fe80::/10)、
+///   未指定(::)、IPv4 映射地址(::ffff:a.b.c.d 且内嵌 IPv4 私网)、映射元数据(::ffff:169.254.169.254)。
+/// @lang en Decide if IPv6 is private/reserved: ULA(fd00::/8, fc00::/8), loopback(::1), link-local(fe80::/10),
+///   unspecified(::), IPv4-mapped (::ffff:a.b.c.d with embedded private IPv4), mapped metadata (::ffff:169.254.169.254).
+fn is_private_ipv6(ip: &str) -> bool {
+    let v = ip.trim().to_lowercase();
+    if v == "::1" || v == "::" || v == "fe80::" || v.starts_with("fe80:") {
+        return true; // <lang zh-CN>回环/未指定/链路本地</lang> // <lang en>loopback/unspecified/link-local</lang>
+    }
+    if v.starts_with("fd") || v.starts_with("fc") {
+        return true; // <lang zh-CN>ULA fd00::/8 / fc00::/8</lang> // <lang en>ULA fd00::/8 / fc00::/8</lang>
+    }
+    // <lang zh-CN>抽取 IPv4 映射地址（::ffff:a.b.c.d）的裸 IPv4 部分复用私网判断。</lang>
+    // <lang en>Extract bare IPv4 from mapped (::ffff:a.b.c.d) for private reuse.</lang>
+    let mapped = if let Some(stripped) = v.strip_prefix("::ffff:") {
+        stripped.to_string()
+    } else if v.starts_with("::") && v[2..].split('.').count() == 4 {
+        v[2..].to_string()
+    } else {
+        String::new()
+    };
+    if !mapped.is_empty() && parse_ipv4(&mapped).is_ok() && is_blocked_host(&mapped) {
+        return true;
+    }
+    if mapped == "169.254.169.254" {
+        return true; // <lang zh-CN>映射云元数据</lang> // <lang en>mapped cloud metadata</lang>
+    }
+    false
+}
+
+/// @lang zh-CN 统一私网判定入口：IPv4 走 is_blocked_host，IPv6 走 is_private_ipv6；兼容方括号/裸地址。
+/// @lang en Unified private check: IPv4→is_blocked_host, IPv6→is_private_ipv6; tolerant of brackets/bare.
+pub fn is_private_ip(ip: &str) -> bool {
+    let v = ip.trim();
+    let bare = if v.starts_with('[') && v.ends_with(']') {
+        &v[1..v.len() - 1]
+    } else {
+        v
+    };
+    if bare.split('.').count() == 4 && bare.chars().all(|c| c.is_ascii_digit() || c == '.') {
+        return is_blocked_host(bare);
+    }
+    is_private_ipv6(bare)
+}
+
+/// @lang zh-CN 运行时 DNS 解析二次校验：阻塞解析 host 的全部 A/AAAA，逐个检查私网/保留/元数据。
+///   解析失败按 fail-closed 处理（阻断），防止 DNS rebinding 在连接时把公开域名跳私网。
+///   用 spawn_blocking 包标准库解析，避免阻塞异步运行时。
+/// @lang en Runtime DNS resolution 2nd-check: blocking-resolve all A/AAAA of host, check each for private/reserved/metadata.
+///   Resolution failure is fail-closed (blocked) to stop DNS rebinding jumping a public name to a private IP at connect time.
+///   Wrapped in spawn_blocking to avoid blocking the async runtime.
+pub async fn resolve_host_safe(host: &str) -> Result<bool, String> {
+    let host = host.to_string();
+    let blocked = tokio::task::spawn_blocking(move || {
+        // <lang zh-CN>用标准库 ToSocketAddrs 解析（带端口占位，不影响主机解析）。</lang>
+        // <lang en>Use std ToSocketAddrs (port placeholder, host resolution unaffected).</lang>
+        let addrs = format!("{host}:0").to_socket_addrs();
+        match addrs {
+            Ok(iter) => {
+                let mut any = false;
+                for sa in iter {
+                    any = true;
+                    if is_private_ip(&sa.ip().to_string()) {
+                        return true; // <lang zh-CN>任一解析地址为私网即阻断</lang> // <lang en>block if any resolved addr is private</lang>
+                    }
+                }
+                !any // <lang zh-CN>无解析结果亦阻断（fail-closed）</lang> // <lang en>no records also blocked (fail-closed)</lang>
+            }
+            Err(_) => true, // <lang zh-CN>解析失败一律阻断</lang> // <lang en>resolution failure always blocked</lang>
+        }
+    })
+    .await
+    .map_err(|e| format!("解析任务失败：{e}"))?;
+    Ok(blocked)
 }
 
 /// @lang zh-CN 单页真实渲染采集：启动无头 chromium → 导航 → 注入 scanner 采集 DOM 证据 → 截图返回 PNG base64。
@@ -133,6 +210,19 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
             .new_page("about:blank")
             .await
             .map_err(|e| format!("新建页面失败：{e}"))?;
+        // 导航前 DNS 解析二次校验（防 DNS rebinding）：解析 host 全部 A/AAAA，命中私网/元数据即阻断。
+        // <lang zh-CN>字面量关卡由 main.rs 的 is_blocked_host 完成；此处补连接级解析校验，fail-closed。</lang>
+        // <lang en>Literal gate done by main.rs is_blocked_host; this adds connect-time resolution check, fail-closed.</lang>
+        if let Ok(parsed) = url::Url::parse(url) {
+            let host = parsed.host_str().unwrap_or("").to_string();
+            if !host.is_empty() {
+                match resolve_host_safe(&host).await {
+                    Ok(true) => return Err(format!("SSRF: DNS 解析到私网/保留地址 / resolved to private: {host}")),
+                    Ok(false) => {}
+                    Err(e) => return Err(format!("SSRF: {e}")),
+                }
+            }
+        }
         // 导航到目标网址（真实渲染）。
         // <lang zh-CN>goto 后等待导航完成，近似稳定。</lang>
         // <lang en>Wait for navigation after goto for approximate stability.</lang>
@@ -325,5 +415,29 @@ mod tests {
             .expect("应含 screenshot base64");
         assert!(screenshot.len() > 1000, "screenshot base64 应足够长");
         assert_eq!(v.get("finalUrl").and_then(|s| s.as_str()), Some(url));
+    }
+
+    /// @lang zh-CN 单元：统一私网判定覆盖 IPv4/IPv6 私网段与公网放行。
+    /// @lang en Unit: unified private check covers IPv4/IPv6 private ranges and public pass.
+    #[test]
+    fn is_private_ip_covers_v4_v6() {
+        // IPv4 私网/保留
+        assert!(is_private_ip("10.0.0.1"));
+        assert!(is_private_ip("192.168.0.1"));
+        assert!(is_private_ip("172.16.5.5"));
+        assert!(is_private_ip("127.0.0.1"));
+        assert!(is_private_ip("169.254.169.254"));
+        assert!(is_private_ip("100.64.0.1"));
+        // IPv4 公网放行
+        assert!(!is_private_ip("93.184.216.34"));
+        // IPv6 私网/保留
+        assert!(is_private_ip("::1"));
+        assert!(is_private_ip("fe80::1"));
+        assert!(is_private_ip("fd00::1"));
+        assert!(is_private_ip("::"));
+        assert!(is_private_ip("::ffff:127.0.0.1"));
+        assert!(is_private_ip("::ffff:169.254.169.254"));
+        // IPv6 公网放行
+        assert!(!is_private_ip("2606:2800:220:1:248:1893:25c8:1946"));
     }
 }

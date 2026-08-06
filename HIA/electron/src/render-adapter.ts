@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { quantizeMedianCut, quantizeCelebi, quantizerDivergence } from '@hia/theme-url-extractor';
 import { collectSignals } from './fetch-signals.js';
-import { guardUrl } from './ssrf.js';
+import { guardUrl, guardUrlDeep, guardRequestUrl } from './ssrf.js';
 import type { WebsiteColorSignalsV2, ColorEvidence, CaptureWarning } from '@hia/theme-core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -132,8 +132,11 @@ export interface RenderCollectOptions{
  *   returns V2 signals (mode:'render'). Dark dual-mode and logo crop on by default (P5). Any failure throws; caller decides static fallback.
  */
 export async function renderCollect(rawUrl:string, opts?:RenderCollectOptions):Promise<WebsiteColorSignalsV2>{
-  const guard=guardUrl(rawUrl);
-  if(!guard.ok)throw new Error('SSRF:'+guard.reason);
+  // 深度 SSRF 校验：同步字面量关卡 + 运行时 DNS 解析二次校验（防 DNS rebinding 把公开域名跳私网）。
+  // <lang zh-CN>导航前先解析 host 的全部 A/AAAA 并核对私网/元数据，fail-closed。</lang>
+  // <lang en>Pre-navigation deep check: resolve all A/AAAA and verify against private/metadata, fail-closed.</lang>
+  const guard=await guardUrlDeep(rawUrl);
+  if(!guard.ok)throw new Error((guard.reason.startsWith('SSRF:')?guard.reason:'SSRF:'+guard.reason));
 
   const scannerSrc=loadScannerSource();
   const win=new BrowserWindow({
@@ -172,6 +175,18 @@ export async function renderCollect(rawUrl:string, opts?:RenderCollectOptions):P
     // <lang zh-CN>阻止一切新窗口/弹窗导航。</lang>
     // <lang en>Block all new-window/popup navigations.</lang>
     (win.webContents as unknown as { on:(ev:string,cb:(e:{preventDefault:()=>void})=>void)=>void }).on('new-window',(e)=>{ e.preventDefault(); });
+
+    // 请求级 SSRF 重校验（文档十三节第 5/6 条）：每个新请求（含重定向链每一跳与子资源）都过 onBeforeRequest 字面量关卡。
+    // <lang zh-CN>域名型 host 的 DNS rebinding 已由导航前 guardUrlDeep 兜底；此处阻断字面量私网/IP 变体与非常规协议，
+    //   并阻断 file:/data:/javascript: 等注入面。onBeforeRedirect 仅作观察无法取消，重定向链各 hop 会重新触发 onBeforeRequest。</lang>
+    // <lang en>Per-request SSRF recheck (spec §13.5/6): each new request (incl. every redirect hop and subresource) hits onBeforeRequest literal gate.
+    //   DNS rebinding for domain hosts is covered pre-navigation by guardUrlDeep; here we block literal private/IP variants and odd schemes.
+    //   onBeforeRedirect is observe-only (uncancelable); each redirect hop re-triggers onBeforeRequest.</lang>
+    win.webContents.session.webRequest.onBeforeRequest((details, cb)=>{
+      const r=guardRequestUrl(details.url);
+      if(!r.ok){ cb({ cancel:true }); return; }
+      cb({ cancel:false });
+    });
 
     await win.loadURL(rawUrl,{ userAgent:'HIA-Theme-Builder/0.1 (+color-extraction)' });
     await stabilize(win);

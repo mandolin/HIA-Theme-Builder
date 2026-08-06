@@ -4,6 +4,8 @@
  * @lang en SSRF safety guard for URL color extraction: block private/loopback/link-local/cloud-metadata, restrict scheme and ports. Mandatory gate before fetching; error carries reason for UI.
  */
 
+import dns from 'node:dns';
+
 /** @lang zh-CN 校验失败原因。 @lang en Validation failure reason. */
 export interface SsrfReject {
   ok: false;
@@ -87,10 +89,101 @@ export function guardUrl(raw: string): SsrfReject | SsrfAccept {
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) && isPrivateIpv4(host)) {
     return { ok: false, reason: '私网/保留地址禁止 / private address blocked' };
   }
+  // <lang zh-CN>字面量 IPv6 私网检查（ULA/回环/链路本地/未指定/映射私网）。</lang>
+  // <lang en>Literal IPv6 private check (ULA/loopback/link-local/unspecified/mapped-private).</lang>
+  if (host.startsWith('[') && host.endsWith(']')) {
+    const v6 = host.slice(1, -1);
+    if (isPrivateIpv6(v6)) {
+      return { ok: false, reason: '私网/保留 IPv6 禁止 / private IPv6 blocked' };
+    }
+  }
   // <lang zh-CN>localhost 及回环域名（测试态放行）。</lang>
   // <lang en>localhost and loopback names (allowed in test mode).</lang>
   if (!testLocal && (host === 'localhost' || host.endsWith('.localhost') || host === '0.0.0.0' || host === '[::1]')) {
     return { ok: false, reason: '本地回环地址禁止 / loopback blocked' };
   }
   return { ok: true, host, port };
+}
+
+/**
+ * @lang zh-CN 判断 IPv6 是否为私网/保留段：ULA(fd00::/8)、回环(::1)、链路本地(fe80::/10)、
+ *   未指定(::)、IPv4 映射地址(::ffff:a.b.c.d 且内嵌 IPv4 私网)、以及文档点名的 IPv4 映射元数据。
+ * @lang en Decide if IPv6 is private/reserved: ULA(fd00::/8), loopback(::1), link-local(fe80::/10),
+ *   unspecified(::), IPv4-mapped (::ffff:a.b.c.d with embedded private IPv4), and mapped metadata.
+ */
+function isPrivateIpv6(ip: string): boolean {
+  const v = ip.toLowerCase().trim();
+  if (v === '::1' || v === '::' || v === 'fe80::' || v.startsWith('fe80:')) return true; // <lang zh-CN>回环/未指定/链路本地</lang> // <lang en>loopback/unspecified/link-local</lang>
+  if (v.startsWith('fd') || v.startsWith('fc')) return true; // <lang zh-CN>ULA fd00::/8 / fc00::/8</lang> // <lang en>ULA fd00::/8 / fc00::/8</lang>
+  // <lang zh-CN>IPv4 映射地址（::ffff:a.b.c.d）抽取内嵌 IPv4 复用私网判断。</lang>
+  // <lang en>IPv4-mapped (::ffff:a.b.c.d) extract embedded IPv4 and reuse private check.</lang>
+  const mapped = v.startsWith('::ffff:') ? v.slice(7) : (v.startsWith('::') && /^\d{1,3}(\.\d{1,3}){3}$/.test(v.slice(2)) ? v.slice(2) : '');
+  if (mapped && /^\d{1,3}(\.\d{1,3}){3}$/.test(mapped) && isPrivateIpv4(mapped)) return true;
+  // <lang zh-CN>IPv4 映射元数据（::ffff:169.254.169.254）。</lang>
+  // <lang en>IPv4-mapped metadata (::ffff:169.254.169.254).</lang>
+  if (mapped === '169.254.169.254') return true;
+  return false;
+}
+
+/**
+ * @lang zh-CN 统一私网判定入口：IPv4 走 isPrivateIpv4，IPv6 走 isPrivateIpv6，兼容方括号/裸地址。
+ * @lang en Unified private check: IPv4→isPrivateIpv4, IPv6→isPrivateIpv6, tolerant of brackets/bare.
+ */
+export function isPrivateIp(ip: string): boolean {
+  const v = ip.trim();
+  const bare = v.startsWith('[') && v.endsWith(']') ? v.slice(1, -1) : v;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(bare)) return isPrivateIpv4(bare);
+  return isPrivateIpv6(bare);
+}
+
+/**
+ * @lang zh-CN 运行时 DNS 解析二次校验：解析 host 的全部 A/AAAA，逐个检查是否为私网/保留/元数据。
+ *   解析失败按 fail-closed 处理（阻断），防止 DNS rebinding 把公开域名在连接时跳到私网。
+ * @lang en Runtime DNS resolution 2nd-check: resolve all A/AAAA of host, check each for private/reserved/metadata.
+ *   Resolution failure is fail-closed (blocked) to prevent DNS rebinding jumping a public name to a private IP at connect time.
+ */
+export async function resolveHostSafe(host: string): Promise<{ blocked: boolean; reason?: string }> {
+  const testLocal = process.env.HIA_TEST_LOCAL === '1';
+  if (testLocal && (host === 'localhost' || host.endsWith('.localhost'))) return { blocked: false };
+  let addrs: { address: string; family: number }[];
+  try {
+    addrs = await dns.promises.lookup(host, { all: true });
+  } catch {
+    // <lang zh-CN>解析失败（NXDOMAIN/超时等）一律阻断，避免绕过。</lang>
+    // <lang en>Resolution failure (NXDOMAIN/timeout) is blocked unconditionally.</lang>
+    return { blocked: true, reason: 'DNS 解析失败 / DNS resolution failed' };
+  }
+  if (addrs.length === 0) return { blocked: true, reason: 'DNS 无解析结果 / no DNS records' };
+  for (const a of addrs) {
+    // <lang zh-CN>family 6 为 IPv6 地址字符串，family 4 为 IPv4 字符串；均经统一私网判定。</lang>
+    // <lang en>family 6 = IPv6 string, family 4 = IPv4 string; both via unified private check.</lang>
+    if (isPrivateIp(a.address)) {
+      return { blocked: true, reason: `DNS 解析到私网/保留地址 ${a.address} / resolved to private ${a.address}` };
+    }
+  }
+  return { blocked: false };
+}
+
+/**
+ * @lang zh-CN 深度校验（导航前调用）：先同步字面量关卡 guardUrl，再异步 DNS 解析二次校验。
+ *   二者皆过才放行，返回 { ok:true, host, port }，否则携带 SSRF 原因。
+ * @lang en Deep check (before navigation): synchronous literal guardUrl then async DNS 2nd-check. Passes only if both clear.
+ */
+export async function guardUrlDeep(raw: string): Promise<SsrfReject | SsrfAccept> {
+  const first = guardUrl(raw);
+  if (!first.ok) return { ok: false, reason: 'SSRF:' + first.reason };
+  const res = await resolveHostSafe(first.host);
+  if (res.blocked) return { ok: false, reason: 'SSRF:' + (res.reason ?? 'DNS rebinding/私网') };
+  return first;
+}
+
+/**
+ * @lang zh-CN 请求级关卡（webRequest 拦截器用）：对每个请求/重定向 URL 做同步字面量校验。
+ *   域名型 host 的 DNS rebinding 由导航前 resolveHostSafe 兜底；此处拦截字面量私网/IP 变体与非常规协议。
+ * @lang en Per-request gate (for webRequest interceptors): synchronous literal check on every request/redirect URL.
+ *   DNS-rebinding for domain hosts is covered by pre-navigation resolveHostSafe; here we block literal private/IP variants and odd schemes.
+ */
+export function guardRequestUrl(urlStr: string): { ok: boolean; reason?: string } {
+  const r = guardUrl(urlStr);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }

@@ -29,6 +29,14 @@
 - **⑤ precision 模式（可选骨架，非首版默认）**：原始规格明确 precision 不属于首版默认方案。保留为可选开关骨架，并在 README/ADR 说明其安全约束（externalBin / 受限 shell scope），不打包 sidecar、默认关闭、与标准模式对称。
 - **验证**：extractor 单测 19/19（含 5 celebi）、core 22/22、electron `tsc` 0 错误、web `tsc` 0 错误、tauri `cargo check` 0 错误；两端 scanner bundle 同源（Electron `node_modules` 为 Junction 直连 `extractor`，Tauri `include_str!` 直读 `extractor/dist`）。Electron 真实渲染 fixture 运行时验证因本环境无显示上下文 `app.ready` 无法完成被阻断（非代码缺陷），dark/logo/多页面逻辑由 scanner/aggregate/core 单测与类型检查覆盖。
 
+### SSRF 升级：DNS rebinding 二次校验（补齐十三节要求）
+
+- **背景**：原规格十三节要求"防止 DNS rebinding、公开域名跳私网、混合公共/私有解析"，并对每次 redirect 与子资源重校验。基础关卡（协议/端口/字面量私网/元数据/回环）此前已完成，本次补齐运行时解析二次校验。
+- **Electron**：`ssrf.ts` 新增 `isPrivateIpv6`（ULA/回环/链路本地/未指定/IPv4 映射私网/映射元数据）、`isPrivateIp`（统一入口）、`resolveHostSafe`（DNS 解析全部 A/AAAA，解析失败 fail-closed）、`guardUrlDeep`（导航前同步+异步解析）、`guardRequestUrl`（请求级关卡）；`render-adapter.ts` 在 `loadURL` 前调用 `guardUrlDeep`，并注册 `webRequest.onBeforeRequest` 对每次新请求（含重定向链每 hop 与子资源）重校验，阻断字面量私网/IP 变体与 `file:`/`data:`/`javascript:` 注入面。
+- **Tauri**：`render.rs` 新增 `is_private_ipv6`/`is_private_ip`/`resolve_host_safe`（spawn_blocking + `ToSocketAddrs` 解析全部 A/AAAA，fail-closed），在 `render_collect_impl` 导航前对 host 解析二次校验，命中私网/元数据即阻断（main.rs 已做字面量关卡，纵深防御）。
+- **限制**：Electron `onBeforeRedirect` 仅观察不可取消，重定向链各 hop 经 `onBeforeRequest` 重校验覆盖；Tauri 的 redirect/子请求级 CDP Fetch 拦截因 chromiumoxide 集成成本较高未做，域名型 host 的 rebinding 由导航前解析兜底（同源页内 DNS 通常已缓存，二次解析一致），列为后续增强。
+- **验证**：electron `ssrf` 单测 15/15（含 IPv6 私网、解析 fail-closed、guardUrlDeep SSRF 前缀）；tauri `is_private_ip` 单测 1 passed。
+
 ## [P4] 工程化、合规与文档化收尾（2026-08-05）
 
 - CI 矩阵增强：`.github/workflows/pages.yml` 在部署前对 `core`/`web`/`electron`/`tauri` 四端做构建与测试校验（electron/tauri 以 `--ignore-scripts` 跳过重型二进制下载，仅编译 + SSRF 单测）。
