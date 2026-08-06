@@ -316,12 +316,16 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
     .await;
 
     // 关闭浏览器并等待 handler 结束（释放 chromium 进程）。
-    // <lang zh-CN>connect 模式下跳过 close（否则关闭外部 Chrome），仅 launch 模式关闭子进程。</lang>
-    // <lang en>Skip close in connect mode (would kill external Chrome); only close in launch mode.</lang>
-    if !is_connect_mode {
+    // <lang zh-CN>connect 模式下跳过 close（否则关闭外部 Chrome），且必须 abort handler 任务——
+    //   否则 handler 循环永不结束，await 死锁。launch 模式正常 close 并等待。</lang>
+    // <lang en>Skip close in connect mode (would kill external Chrome), and must abort the handler task—
+    //   otherwise the handler loop never ends and await deadlocks. Launch mode closes and waits normally.</lang>
+    if is_connect_mode {
+        browser_handle.abort();
+    } else {
         let _ = browser.close().await;
+        let _ = browser_handle.await;
     }
-    let _ = browser_handle.await;
 
     result
 }
