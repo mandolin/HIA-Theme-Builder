@@ -19,9 +19,10 @@ futures = "0.3"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
 [features]
-# @lang zh-CN>默认特性；自定义协议按 Tauri 约定在构建时注入。
-# @lang en>Default features; custom protocol injected at build per Tauri convention.
+# @lang zh-CN>默认特性；custom-protocol 由 Tauri 在 release 构建时注入，用于内嵌前端资源。
+# @lang en>Default features; custom-protocol is injected by Tauri at release build to embed front-end assets.
 default = []
+custom-protocol = []
 
 [profile.release]
 opt-level = "s"

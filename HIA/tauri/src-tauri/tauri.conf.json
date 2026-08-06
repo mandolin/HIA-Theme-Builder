@@ -16,6 +16,11 @@
       "shell": { "open": true },
       "dialog": { "all": true }
     },
+    "bundle": {
+      "active": false,
+      "identifier": "com.hia.theme-builder",
+      "icon": ["icons/icon.ico"]
+    },
     "windows": [
       {
         "title": "HIA 主题构建器 · Tauri",

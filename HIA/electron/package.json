@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/fix-preload-cjs.js && node scripts/copy-renderer.js",
     "start": "npm run build && electron dist/main.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dist": "npm run build && electron-builder --win portable"
   },
   "dependencies": {
     "@hia/theme-core": "file:../core",
@@ -17,10 +18,29 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "electron": "^31.0.0",
+    "electron-builder": "^25.1.8",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   },
   "engines": {
     "node": ">=18"
+  },
+  "build": {
+    "appId": "com.hia.theme-builder.electron",
+    "productName": "HIA Theme Builder",
+    "copyright": "Copyright © 2026 HIA. Apache-2.0.",
+    "files": [
+      "dist/**/*",
+      "node_modules/@hia/theme-core/dist/**/*",
+      "node_modules/@hia/theme-url-extractor/dist/**/*",
+      "node_modules/@hia/theme-core/package.json",
+      "node_modules/@hia/theme-url-extractor/package.json"
+    ],
+    "portable": {
+      "artifactName": "HIA-Theme-Builder-Electron-${version}-portable.exe"
+    },
+    "win": {
+      "target": ["portable"]
+    }
   }
 }
