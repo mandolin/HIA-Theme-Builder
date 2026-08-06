@@ -206,10 +206,23 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
     });
 
     let result = async {
-        let page: Page = browser
-            .new_page("about:blank")
-            .await
-            .map_err(|e| format!("新建页面失败：{e}"))?;
+        // 创建/复用页面：优先 new_page；connect 模式下若 new_page 因 CDP 兼容失败（oneshot canceled），
+        // 回退复用现有第一个页面（Chrome 启动时通常已有一个 about:blank 标签）。
+        // <lang zh-CN>chromiumoxide 0.5.7 与 Chrome 148 的 Target.createTarget 存在兼容问题，复用现有页面可绕过。</lang>
+        // <lang en>chromiumoxide 0.5.7 + Chrome 148 Target.createTarget has a compat issue; reuse an existing page to bypass.</lang>
+        let page: Page = match browser.new_page("about:blank").await {
+            Ok(p) => p,
+            Err(e) => {
+                let pages = browser
+                    .pages()
+                    .await
+                    .map_err(|e2| format!("新建页面失败且无法枚举页面：{e} / {e2}"))?;
+                pages
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| format!("新建页面失败且无现有页面可复用：{e}"))?
+            }
+        };
         // 导航前 DNS 解析二次校验（防 DNS rebinding）：解析 host 全部 A/AAAA，命中私网/元数据即阻断。
         // <lang zh-CN>字面量关卡由 main.rs 的 is_blocked_host 完成；此处补连接级解析校验，fail-closed。</lang>
         // <lang en>Literal gate done by main.rs is_blocked_host; this adds connect-time resolution check, fail-closed.</lang>
