@@ -2,6 +2,16 @@
 
 本项目遵循阶段化发布。以下记录公开可验证的发布与里程碑节点。
 
+## 桌面端三端发布（2026-08-06）
+
+- **Web 版 → GitHub Pages**：`pages.yml` 工作流在 `main` 推送时自动构建四端并部署 `web/dist`；修复了 CI 失败根因——`web` 依赖 `@hia/theme-url-extractor` 但工作流此前未先构建 extractor，导致 `tsc` 报 `TS2307`；并在 `web/src/platform.ts` 显式标注 `quantizeMedianCut` 回调参数类型以消除隐式 any。
+- **桌面端打包与发布（便携版、未签名）**：
+  - Electron：新增 `electron-builder` 开发依赖与 `dist` 脚本，产出便携 `.exe`（`HIA-Theme-Builder-Electron-<ver>-portable.exe`，内置 Electron 运行时，双击即用）。
+  - Tauri：新增 `@tauri-apps/cli` 与 `tauri`/`build` 脚本；修复 release 构建所需的 `custom-protocol` feature 缺失；关闭 bundle（本机未装 WiX），release 产出独立便携 `exe`（`HIA-Theme-Builder-Tauri-<ver>-portable.exe`，需系统 WebView2 Runtime）。
+  - 三端版本号各自独立演进（当前均为 `0.1.0`）。
+- **GitHub Release**：`v0.1.0-desktop` 已创建并上传两个桌面便携版产物；Web 版经 Pages 分发。
+- **chromiumoxide 0.5 → 0.9 升级（关键修复）**：`tauri/src-tauri` 的 `chromiumoxide` 由 `0.5.7` 升级到 `0.9.1`，修复 Chrome 148 下的 CDP 兼容问题（`new_page` 的 `oneshot canceled`、导航后 `receiver is gone` 连接断开），使 baidu 等含跨域重定向的站点能正常取色；`render.rs` 同步改用 Rust 侧独立短 `evaluate` 轮询 `readyState`（接受 `interactive`/`complete`，5 秒上限）替代会随导航销毁的长 Promise，并为关键错误路径补 `rlog` 日志。
+
 ## [P5] 桌面端跑通与跨端一致性（2026-08-06）
 
 - 桌面端复用 web 共享渲染器（ADR-001）：`HIA/electron/scripts/copy-renderer.js` 与 `HIA/tauri/scripts/copy-front.js` 改为复制 `HIA/web/dist`（`index.html` + `assets`），使 Electron/Tauri 启动即为与 web 版相同的主题操作台 + PC/小程序预览 + 8 渐变角色 + Token 导出，呈现与操作三端一致。

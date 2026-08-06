@@ -13,3 +13,8 @@ npm run build
 ```
 
 Electron/Tauri 推荐直接加载 `web/dist/index.html`，不要复制一份独立 renderer。
+
+## 发布
+
+- 网页版部署到 GitHub Pages：`.github/workflows/pages.yml` 在 `main` 推送时自动构建 `core`/`extractor`/`web`/`electron`/`tauri` 四端并部署 `web/dist`（基路径 `/HIA-Theme-Builder/`）。
+- 本地预览构建产物：`npm run preview`。

@@ -51,6 +51,16 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 
 默认 UI、示例、测试与生成产物只使用来源与许可证明确的开源字体或 generic fallback；闭源或来源不明字体只作为兼容输入，不作默认值或打包资产。
 
+## 构建与发布
+
+三端各自构建与发布，版本号相互独立。
+
+- **网页版（`HIA/web`）**：`npm install && npm run build`（`GITHUB_PAGES=1` 时基路径适配）；产物部署到 GitHub Pages（`.github/workflows/pages.yml` 在 `main` 推送时自动构建四端并部署 `web/dist`）。
+- **Electron 版（`HIA/electron`）**：`npm install && npm run build` 编译；`npm run dist` 用 `electron-builder` 产出**便携版** `dist/HIA-Theme-Builder-Electron-<ver>-portable.exe`（内置运行时，双击即用）。
+- **Tauri 版（`HIA/tauri`）**：`npm install`（含 `@tauri-apps/cli`）→ `npm run build`（`build:front` + `tauri build`）；release 产物为独立便携 `exe`（`src-tauri/target/release/`，需系统 WebView2 Runtime）。
+
+桌面端产物为**未签名便携版**，运行时会提示"未知发布者"。GitHub Release 聚合桌面端产物，网页版经 Pages 分发。
+
 ## 许可证
 
 本项目采用**混合许可证**策略：
