@@ -6,10 +6,46 @@ param(
     [string]$ChromePath = "C:\Program Files\Google\Chrome\Application\chrome.exe",
     [string]$TauriExe = "$PSScriptRoot\src-tauri\target\debug\hia-theme-tauri.exe",
     [int]$Port = 9222,
-    [int]$TimeoutSec = 15
+    [int]$TimeoutSec = 15,
+    [switch]$NoProxy
 )
 
 $ErrorActionPreference = "Stop"
+
+Write-Host "=== HIA Theme Builder Tauri 启动器 ===" -ForegroundColor Cyan
+Write-Host ""
+
+# 代理注入：baidu 等站点对直连/代理敏感，Chrome 必须走与系统一致的代理。
+# <lang zh-CN>优先读 HTTP_PROXY/HTTPS_PROXY 环境变量，否则尝试读取 Windows 系统代理设置。</lang>
+# <lang en>Prefer HTTP_PROXY/HTTPS_PROXY env, else try Windows system proxy settings.</lang>
+function Get-SystemProxy {
+    $envProxy = $env:HTTPS_PROXY, $env:HTTP_PROXY | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1
+    if ($envProxy) { return $envProxy.Trim() }
+    try {
+        $settings = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -ErrorAction SilentlyContinue
+        if ($settings -and $settings.ProxyEnable -eq 1 -and $settings.ProxyServer) {
+            # ProxyServer 可能是 "host:port" 或 "scheme=host:port;..."；取第一个 host:port。
+            $server = ($settings.ProxyServer -split ';' | Select-Object -First 1) -replace '^https?=', ''
+            return $server
+        }
+    } catch { }
+    return $null
+}
+
+$proxyArg = $null
+if (-not $NoProxy) {
+    $proxy = Get-SystemProxy
+    if ($proxy) {
+        # 归一化为 http://host:port（Chrome --proxy-server 接受 host:port 或 scheme://host:port）。
+        if ($proxy -notmatch '^https?://') { $proxy = "http://$proxy" }
+        $proxyArg = "--proxy-server=$proxy"
+        Write-Host "检测到代理：$proxy，已注入 Chrome --proxy-server" -ForegroundColor Green
+    } else {
+        Write-Host "未检测到代理设置，Chrome 将直连（如访问 baidu 失败可加 -NoProxy 反向排查或配置代理）" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "已指定 -NoProxy，Chrome 直连" -ForegroundColor Yellow
+}
 
 Write-Host "=== HIA Theme Builder Tauri 启动器 ===" -ForegroundColor Cyan
 Write-Host ""
@@ -50,6 +86,7 @@ if (-not $chromeRunning) {
         "--no-default-browser-check",
         "--user-data-dir=$env:TEMP\hia-chrome-profile"
     )
+    if ($proxyArg) { $chromeArgs += $proxyArg }
     Start-Process -FilePath $ChromePath -ArgumentList $chromeArgs -WindowStyle Hidden
     Write-Host "Chrome 已启动，等待就绪..." -ForegroundColor Yellow
 }

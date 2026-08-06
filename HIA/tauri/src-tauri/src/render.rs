@@ -11,7 +11,16 @@ use chromiumoxide::cdp::browser_protocol::emulation::{MediaFeature, SetEmulatedM
 use chromiumoxide::page::Page;
 use futures::StreamExt;
 use serde_json::{json, Value};
+use std::env;
 use std::net::ToSocketAddrs;
+
+/// @lang zh-CN 统一日志：打到 stderr，Tauri 运行时捕获到应用日志，便于排查渲染/代理/CDP 问题。
+/// @lang en Unified logging to stderr; Tauri runtime captures it for diagnosing render/proxy/CDP issues.
+macro_rules! rlog {
+    ($($arg:tt)*) => {
+        eprintln!("[render] {}", format_args!($($arg)*))
+    };
+}
 
 // 编译期嵌入 scanner bundle（与 Electron 共用同一份自包含 IIFE，确保算法一致）。
 // <lang zh-CN>路径相对本文件：src-tauri/src/render.rs → extractor/dist/browser-scanner.bundle.js。</lang>
@@ -169,15 +178,17 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
     // launch 模式由 Tauri 启动子进程，结束时需 close 释放资源。
     // <lang zh-CN>connect 模式下 close() 会关闭用户 Chrome，必须跳过。</lang>
     // <lang en>In connect mode close() kills the user's Chrome; must skip.</lang>
-    let is_connect_mode = std::env::var("HIA_CHROME_WS")
+    let is_connect_mode = env::var("HIA_CHROME_WS")
         .map(|v| !v.trim().is_empty())
         .unwrap_or(false);
+    rlog!("render_collect start url={url} connect_mode={is_connect_mode} emulate_dark={emulate_dark}");
 
-    let (mut browser, mut handler) = match std::env::var("HIA_CHROME_WS") {
+    let (mut browser, mut handler) = match env::var("HIA_CHROME_WS") {
         Ok(ws) if !ws.trim().is_empty() => {
             // connect 模式：复用外部已启动的 --remote-debugging-port Chrome。
             // <lang zh-CN>http(s) URL 时 chromiumoxide 会自动从 /json/version 取 ws 地址。</lang>
             // <lang en>For http(s) URL chromiumoxide auto-fetches ws from /json/version.</lang>
+            rlog!("connect mode: connecting to {ws}");
             Browser::connect(ws.trim())
                 .await
                 .map_err(|e| format!("连接 chromium 失败：{e}"))?
@@ -186,13 +197,33 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
             // launch 模式：--no-sandbox 等参数在受限/容器环境必需；--window-size 对齐 1440×900 契约。
             // <lang zh-CN>若 HIA_CHROME_PATH 指向系统浏览器则复用，避免受限网络下下载失败。</lang>
             // <lang en>If HIA_CHROME_PATH points to a system browser, reuse it to avoid download failures.</lang>
-            let mut builder = BrowserConfig::builder().args(vec![
-                "--no-sandbox",
-                "--disable-gpu",
-                "--disable-dev-shm-usage",
-                &format!("--window-size={VIEWPORT_W},{VIEWPORT_H}"),
-            ]);
-            if let Ok(p) = std::env::var("HIA_CHROME_PATH") {
+            // 代理：默认继承系统/环境变量代理（HTTP_PROXY/HTTPS_PROXY），用户可用 HIA_CHROME_NO_PROXY=1 关闭。
+            // <lang zh-CN>baidu 等站点对直连/代理敏感，未走代理易超时或重置。</lang>
+            // <lang en>baidu etc. are proxy-sensitive; without proxy they may time out or reset.</lang>
+            let mut args: Vec<String> = vec![
+                "--no-sandbox".into(),
+                "--disable-gpu".into(),
+                "--disable-dev-shm-usage".into(),
+                format!("--window-size={VIEWPORT_W},{VIEWPORT_H}"),
+            ];
+            let no_proxy = env::var("HIA_CHROME_NO_PROXY").map(|v| v == "1").unwrap_or(false);
+            if !no_proxy {
+                let proxy = env::var("HTTPS_PROXY")
+                    .or_else(|_| env::var("HTTP_PROXY"))
+                    .ok()
+                    .filter(|p| !p.trim().is_empty());
+                if let Some(p) = proxy {
+                    rlog!("launch mode: applying proxy {p}");
+                    args.push(format!("--proxy-server={p}"));
+                } else {
+                    rlog!("launch mode: no proxy env found, direct connect");
+                }
+            } else {
+                rlog!("launch mode: proxy disabled by HIA_CHROME_NO_PROXY");
+            }
+            let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            let mut builder = BrowserConfig::builder().args(arg_refs);
+            if let Ok(p) = env::var("HIA_CHROME_PATH") {
                 if !p.trim().is_empty() {
                     builder = builder.chrome_executable(p);
                 }
@@ -200,11 +231,13 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
             let config = builder
                 .build()
                 .map_err(|e| format!("构建 chromium 配置失败：{e}"))?;
+            rlog!("launch mode: launching chromium");
             Browser::launch(config)
                 .await
                 .map_err(|e| format!("启动 chromium 失败：{e}"))?
         }
     };
+    rlog!("browser ready");
 
     // 后台驱动浏览器事件循环。
     // <lang zh-CN>必须轮询 handler，否则浏览器命令无响应。</lang>
@@ -214,13 +247,18 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
     });
 
     let result = async {
+        let t0 = std::time::Instant::now();
         // 创建/复用页面：优先 new_page；connect 模式下若 new_page 因 CDP 兼容失败（oneshot canceled），
         // 回退复用现有第一个页面（Chrome 启动时通常已有一个 about:blank 标签）。
         // <lang zh-CN>chromiumoxide 0.5.7 与 Chrome 148 的 Target.createTarget 存在兼容问题，复用现有页面可绕过。</lang>
         // <lang en>chromiumoxide 0.5.7 + Chrome 148 Target.createTarget has a compat issue; reuse an existing page to bypass.</lang>
         let page: Page = match browser.new_page("about:blank").await {
-            Ok(p) => p,
+            Ok(p) => {
+                rlog!("new_page ok (+{:.1?})", t0.elapsed());
+                p
+            }
             Err(e) => {
+                rlog!("new_page failed ({e}), falling back to existing pages (+{:.1?})", t0.elapsed());
                 let pages = browser
                     .pages()
                     .await
@@ -231,61 +269,80 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
                     .ok_or_else(|| format!("新建页面失败且无现有页面可复用：{e}"))?
             }
         };
+        rlog!("page acquired (+{:.1?})", t0.elapsed());
         // 导航前 DNS 解析二次校验（防 DNS rebinding）：解析 host 全部 A/AAAA，命中私网/元数据即阻断。
         // <lang zh-CN>字面量关卡由 main.rs 的 is_blocked_host 完成；此处补连接级解析校验，fail-closed。</lang>
         // <lang en>Literal gate done by main.rs is_blocked_host; this adds connect-time resolution check, fail-closed.</lang>
         if let Ok(parsed) = url::Url::parse(url) {
             let host = parsed.host_str().unwrap_or("").to_string();
             if !host.is_empty() {
+                rlog!("resolve_host_safe start host={host} (+{:.1?})", t0.elapsed());
                 match resolve_host_safe(&host).await {
                     Ok(true) => return Err(format!("SSRF: DNS 解析到私网/保留地址 / resolved to private: {host}")),
-                    Ok(false) => {}
+                    Ok(false) => rlog!("resolve_host_safe ok (public) (+{:.1?})", t0.elapsed()),
                     Err(e) => return Err(format!("SSRF: {e}")),
                 }
             }
         }
         // 导航到目标网址（真实渲染）。
-        // <lang zh-CN>goto 后等待导航完成，近似稳定。</lang>
-        // <lang en>Wait for navigation after goto for approximate stability.</lang>
-        // Chrome 148 与 chromiumoxide 0.5.7 的 Page.navigate 存在 CDP 兼容问题（oneshot canceled），
-        // 改用 Runtime.evaluate 直接设置 location.href 触发导航，再轮询等待加载完成。
-        // <lang zh-CN>绕过 Page.navigate 的兼容问题，用 JS 导航 + 轮询 readyState。</lang>
-        // <lang en>Bypass Page.navigate compat issue with JS navigation + readyState polling.</lang>
+        // Chrome 148 与 chromiumoxide 0.5.7 的 Page.navigate（page.goto）在复杂/重定向页面下不稳定，
+        // 统一用 Runtime.evaluate 设置 location.href 触发导航（connect 模式 new_page 可用，此路径已验证）。
+        // <lang zh-CN>用 JS 导航 + 轮询 readyState；缩短轮询以减少复杂页面下的 CDP 连接窗口。</lang>
+        // <lang en>JS navigation + readyState polling; shorter poll to reduce CDP window on complex pages.</lang>
         let nav_js = format!(
             r#"window.location.href = {}; "navigating""#,
             serde_json::to_string(url).map_err(|e| format!("URL 序列化失败：{e}"))?
         );
+        rlog!("nav evaluate send (+{:.1?})", t0.elapsed());
         page.evaluate(nav_js)
             .await
-            .map_err(|e| format!("导航失败：{e}"))?;
-        // 轮询等待页面加载完成（readyState === 'complete'），替代 wait_for_navigation。
-        // <lang zh-CN>最多等 10 秒，每 200ms 检查一次。</lang>
-        // <lang en>Poll up to 10s, checking every 200ms.</lang>
-        let wait_js = r#"new Promise(res => {
-            const check = () => {
-                if (document.readyState === 'complete') res('complete');
-                else setTimeout(check, 200);
-            };
-            check();
-            setTimeout(() => res('timeout'), 10000);
-        })"#;
-        page.evaluate(wait_js)
-            .await
-            .map_err(|e| format!("等待导航失败：{e}"))?;
+            .map_err(|e| { rlog!("nav evaluate failed: {e} (+{:.1?})", t0.elapsed()); format!("导航注入失败：{e}") })?;
+        rlog!("nav evaluate done, waiting readyState (+{:.1?})", t0.elapsed());
+        // 轮询等待页面加载完成。注意：不能用“单条 evaluate 内长 Promise 等 readyState”——
+        // baidu 等跨域重定向会销毁原 JS 上下文，导致该 Promise 被 Chrome 中断（oneshot canceled）。
+        // 改为 Rust 侧循环、每次独立短 evaluate 查 document.readyState；上下文切换瞬间命令可能失败，短暂重试。
+        // <lang zh-CN>最多等 15 秒，每 500ms 查一次；complete 即继续，超时仅记警告继续采集。</lang>
+        // <lang en>Poll up to 15s, checking every 500ms via independent short evaluate; timeout is a warning, not fatal.</lang>
+        let mut ready_ok = false;
+        for _ in 0..10 {
+            match page.evaluate("document.readyState").await {
+                Ok(v) => {
+                    let s = v.into_value().unwrap_or_else(|_| "\"loading\"".to_string());
+                    // baidu 等 SPA 有持续后台轮询，readyState 可能停在 interactive；DOM 已就绪即可采集。
+                    // <lang zh-CN>接受 interactive/complete 两种就绪态，缩短等待（最多 5 秒）。</lang>
+                    // <lang en>Accept interactive/complete; DOM ready suffices. Cap at 5s.</lang>
+                    if s.contains("complete") || s.contains("interactive") {
+                        ready_ok = true;
+                        break;
+                    }
+                }
+                Err(_) => { /* 上下文切换瞬间失败，下一轮重试 */ }
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+        if ready_ok {
+            rlog!("readyState ready (+{:.1?})", t0.elapsed());
+        } else {
+            rlog!("WARN readyState polling timed out (continue anyway) (+{:.1?})", t0.elapsed());
+        }
         // 浅色主采集：注入同源 scanner bundle，返回 evidence JSON。
         // <lang zh-CN>scanner 每次 evaluate 重新注入，故 reload 后仍可复用。</lang>
         // <lang en>Scanner re-injected on each evaluate, so it survives reload.</lang>
+        rlog!("scan_once(light) start (+{:.1?})", t0.elapsed());
         let light_evidence = scan_once(&page, None)
             .await
             .map_err(|e| format!("浅色采集失败：{e}"))?;
+        rlog!("scan_once(light) done (+{:.1?})", t0.elapsed());
         // 截图（PNG bytes）转 base64，供前端量化。
         // <lang zh-CN>截图仅内存短暂存在；base64 回传前端做 median-cut 量化。</lang>
         // <lang en>Screenshot lives briefly in memory; base64 back to front for median-cut.</lang>
+        rlog!("screenshot start (+{:.1?})", t0.elapsed());
         let shot: Vec<u8> = page
             .screenshot(chromiumoxide::page::ScreenshotParams::default())
             .await
             .map_err(|e| format!("截图失败：{e}"))?;
         let screenshot_b64 = base64_encode(&shot);
+        rlog!("screenshot done bytes={} (+{:.1?})", shot.len(), t0.elapsed());
 
         // 深色双模式复采（P5 对称 Electron）：用 CDP Emulation.setEmulatedMedia 强制暗色，
         // reload 后重新注入 scanner 复采，最后恢复浅色媒体查询避免影响后续。
@@ -294,9 +351,16 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
         let mut dark_evidence: Value = Value::Null;
         let mut dark_warning: Option<String> = None;
         if emulate_dark {
+            rlog!("emulate_dark_and_rescan start (+{:.1?})", t0.elapsed());
             match emulate_dark_and_rescan(&page).await {
-                Ok(dark) => dark_evidence = dark,
-                Err(e) => dark_warning = Some(e),
+                Ok(dark) => {
+                    dark_evidence = dark;
+                    rlog!("emulate_dark_and_rescan done (+{:.1?})", t0.elapsed());
+                }
+                Err(e) => {
+                    dark_warning = Some(e.clone());
+                    rlog!("WARN emulate_dark_and_rescan failed: {e} (+{:.1?})", t0.elapsed());
+                }
             }
         }
 
@@ -311,6 +375,7 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
                 out["darkWarning"] = json!(w);
             }
         }
+        rlog!("render_collect success (+{:.1?})", t0.elapsed());
         Ok::<Value, String>(out)
     }
     .await;
@@ -320,6 +385,7 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
     //   否则 handler 循环永不结束，await 死锁。launch 模式正常 close 并等待。</lang>
     // <lang en>Skip close in connect mode (would kill external Chrome), and must abort the handler task—
     //   otherwise the handler loop never ends and await deadlocks. Launch mode closes and waits normally.</lang>
+    rlog!("teardown connect_mode={is_connect_mode}");
     if is_connect_mode {
         browser_handle.abort();
     } else {
@@ -358,15 +424,34 @@ async fn scan_once(page: &Page, color_scheme: Option<&str>) -> Result<Value, Str
         h = VIEWPORT_H,
         scheme = scheme_js
     );
-    let ev_json: String = page
-        .evaluate(scan_js)
-        .await
-        .map_err(|e| format!("注入 scanner 失败：{e}"))?
-        .into_value()
-        .map_err(|e| format!("解析 scanner 结果失败：{e}"))?;
+    // 评估扫描脚本；导航后 CDP 连接可能短暂抖动（receiver is gone），最多重试 2 次。
+    // <lang zh-CN>复杂页面首次 evaluate 偶发连接断开，重试可恢复。</lang>
+    // <lang en>First evaluate may transiently fail on complex pages; retry recovers.</lang>
+    let mut ev_json: String = String::new();
+    let mut last_err: Option<String> = None;
+    for attempt in 0..3 {
+        match page.evaluate(scan_js.clone()).await {
+            Ok(v) => {
+                ev_json = v
+                    .into_value()
+                    .map_err(|e| { rlog!("scan_once into_value failed: {e}"); format!("解析 scanner 结果失败：{e}") })?;
+                last_err = None;
+                break;
+            }
+            Err(e) => {
+                rlog!("scan_once evaluate attempt {attempt} failed: {e}");
+                last_err = Some(format!("注入 scanner 失败：{e}"));
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+        }
+    }
+    if let Some(e) = last_err {
+        return Err(e);
+    }
     let evidence: Value = serde_json::from_str(&ev_json)
-        .map_err(|e| format!("解析 evidence JSON 失败：{e}"))?;
+        .map_err(|e| { rlog!("scan_once parse json failed: {e}"); format!("解析 evidence JSON 失败：{e}") })?;
     if let Some(err) = evidence.get("error") {
+        rlog!("scan_once scanner runtime error: {err}");
         return Err(format!("scanner 执行错误：{err}"));
     }
     Ok(evidence)
@@ -375,6 +460,7 @@ async fn scan_once(page: &Page, color_scheme: Option<&str>) -> Result<Value, Str
 /// @lang zh-CN 强制暗色媒体查询并复采：CDP Emulation.setEmulatedMedia(prefers-color-scheme:dark) → reload → 复采 → 恢复浅色。
 /// @lang en Force dark media query and re-scan: CDP Emulation.setEmulatedMedia(prefers-color-scheme:dark) → reload → rescan → restore light.
 async fn emulate_dark_and_rescan(page: &Page) -> Result<Value, String> {
+    rlog!("dark: setEmulatedMedia(dark) send");
     // 通过 CDP 注入 prefers-color-scheme:dark 媒体特性，覆盖页面 prefers-color-scheme 探测。
     // <lang zh-CN>MediaFeature::new(name, value) 对应 DevTools 的 name/value 媒体特性对。</lang>
     // <lang en>MediaFeature::new(name, value) maps to DevTools name/value media feature pair.</lang>
@@ -385,15 +471,27 @@ async fn emulate_dark_and_rescan(page: &Page) -> Result<Value, String> {
     )
     .await
     .map_err(|e| format!("设置暗色媒体查询失败：{e}"))?;
+    rlog!("dark: setEmulatedMedia(dark) done; reload send");
     // 重载让页面按暗色重新应用样式与配色。
     // <lang zh-CN>reload 后 JS 上下文重置，下一次 scan_once 会重新注入 scanner。</lang>
     // <lang en>After reload the JS context resets; next scan_once re-injects the scanner.</lang>
     page.reload()
         .await
         .map_err(|e| format!("暗色重载失败：{e}"))?;
-    page.wait_for_navigation()
-        .await
-        .map_err(|e| format!("暗色等待导航失败：{e}"))?;
+    // 用 JS 轮询 readyState 等待 reload 完成（与导航一致，绕过 Page.navigate 系列 CDP 兼容问题）。
+    // <lang zh-CN>wait_for_navigation 依赖 Page.navigate 命令，Chrome 148 下不稳定，改用 JS 轮询。</lang>
+    // <lang en>wait_for_navigation relies on Page.navigate (unstable on Chrome 148); use JS polling instead.</lang>
+    let reload_wait = r#"new Promise(res => {
+        const mark = (s) => res(JSON.stringify({ state: s }));
+        const check = () => { if (document.readyState === 'complete') mark('complete'); else setTimeout(check, 200); };
+        check();
+        setTimeout(() => mark('timeout'), 15000);
+    })"#;
+    let rw: String = match page.evaluate(reload_wait).await {
+        Ok(v) => v.into_value().unwrap_or_else(|_| "\"timeout\"".to_string()),
+        Err(e) => return Err(format!("暗色等待导航失败：{e}")),
+    };
+    rlog!("dark: reload readyState={rw}");
     let dark = scan_once(page, Some("dark")).await?;
     // 恢复浅色媒体查询，避免影响后续同进程页面（纵深清理）。
     // <lang zh-CN>失败仅告警，不阻断返回。</lang>
@@ -405,6 +503,7 @@ async fn emulate_dark_and_rescan(page: &Page) -> Result<Value, String> {
                 .build(),
         )
         .await;
+    rlog!("dark: restore light media; done");
     Ok(dark)
 }
 
