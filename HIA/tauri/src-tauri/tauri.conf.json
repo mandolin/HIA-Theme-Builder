@@ -3,7 +3,8 @@
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build:front",
     "devPath": "dist",
-    "distDir": "dist"
+    "distDir": "dist",
+    "withGlobalTauri": true
   },
   "package": {
     "productName": "HIA Theme Builder",
@@ -12,7 +13,8 @@
   "tauri": {
     "allowlist": {
       "all": false,
-      "shell": { "open": true }
+      "shell": { "open": true },
+      "dialog": { "all": true }
     },
     "windows": [
       {
