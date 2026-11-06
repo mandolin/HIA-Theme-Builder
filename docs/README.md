@@ -23,7 +23,7 @@
 
 - **共享 UI 复用**：桌面端不重写 UI，直接复用 web 共享渲染器（三端 UI 单一事实来源）。
 - **网址取色同源**：Electron 注入与 Tauri `include_str!` 复用同一 scanner bundle，保证算法一致与评分可复现。
-- **P5 增强项**：logo 检测、dark 双模式、受限多页面采集、Celebi 对比基准、precision 可选骨架。
+- **取色增强项（原始规格 P5 节）**：logo 检测、dark 双模式、受限多页面采集、Celebi 对比基准、precision 可选骨架。
 
 ## 当前发布状态（2026-08-06）
 

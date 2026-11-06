@@ -30,7 +30,7 @@
 - 跨端一致性核对：web/electron/tauri 三端 `dist` 渲染器 JS 哈希一致（`index-C9wRmIyv.js`）；取色面板按 `platform.explorer` 条件显隐（web 隐藏、桌面端显示）。
 - 三端冒烟复验：core 单测 7/7、web 构建 0 错误、electron `tsc` 0 + SSRF 8/8、tauri 前端 `tsc` 0 + SSRF 6/6。
 
-### 网址取色能力（P0–P4，同周期连续交付）
+### 网址取色能力（原始规格 P0–P4 节，同周期连续交付）
 
 - **P0 Core 修复与 V2 契约**：修复 `rank()` 去重累计 bug（按规范化色建立唯一候选，每候选只计一次聚合分）；新增 `types-v2.ts` V2 契约（`ColorEvidence`/`WebsiteColorSignalsV2`/`WebsiteThemeAnalysisV2`，`schemaVersion:2`）+ `v1-compat.ts` 转换；core 回归测试 14/14 通过。
 - **P1 共享 extractor**：新建 `@hia/theme-url-extractor`，scanner 覆盖 meta/manifest/CSS 变量/computed/四边 border/伪元素/SVG/渐变/open shadow/祖先语义/iframe；确定性 median-cut 量化；纯逻辑 Node 单测 14/14、12 fixture + `EXPECTATIONS.md`；esbuild 打包为 `dist/browser-scanner.bundle.js`（IIFE，Electron/Tauri 两端共用同源）。
@@ -59,7 +59,7 @@
 ## [`W-tb-P4`] 工程化、合规与文档化收尾（2026-08-05）
 
 - CI 矩阵增强：`.github/workflows/pages.yml` 在部署前对 `core`/`web`/`electron`/`tauri` 四端做构建与测试校验（electron/tauri 以 `--ignore-scripts` 跳过重型二进制下载，仅编译 + SSRF 单测）。
-- 三端冒烟证据齐备：core 单测 7/7、web 构建 0 错误、electron `tsc` 0 + SSRF 单测 8/8、tauri 前端 `tsc` 0 + SSRF 单测 6/6（Rust 端到端启动待工具链，符合 P3 限制）。
+- 三端冒烟证据齐备：core 单测 7/7、web 构建 0 错误、electron `tsc` 0 + SSRF 单测 8/8、tauri 前端 `tsc` 0 + SSRF 单测 6/6（Rust 端到端启动待工具链，符合 `W-tb-P3` 限制）。
 - 许可证复核：补齐 `HIA/tauri/LICENSE`（MIT），新增 `work-zone/dev/audits/license-audit-tauri-2026-08-05.md`；混合许可证策略（根 MIT / electron Apache-2.0 / tauri MIT）证据齐备。
 - ROP 文档化：为 `core` 与 `web` 全部源码补全中英双语注释（commit `c43e49c`）。
 
