@@ -1,0 +1,110 @@
+# @lang zh-CN HIA-Theme-Builder 桌面端发布工作流：构建并上传四件产物（electron 便携+NSIS、tauri 便携+MSI）到 GitHub Release，附带 SHA-256 校验和。
+#   触发条件：手动 workflow_dispatch 或版本标签 v*；需要 secrets.WIN_CSC_KEY_PASSWORD（自签名证书密码）。
+# @lang en HIA-Theme-Builder desktop release workflow: build and upload four artifacts (electron portable+NSIS, tauri portable+MSI) to GitHub Release with SHA-256 checksums.
+#   Triggers: manual workflow_dispatch or version tag v*; requires secrets.WIN_CSC_KEY_PASSWORD (self-signed certificate password).
+
+name: Release desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+
+      # 导入自签名证书到 Windows 证书库（Tauri 需要）
+      # <lang zh-CN>将 PFX 导入到 CurrentUser\My，Tauri 通过 certificateThumbprint 引用。</lang>
+      # <lang en>Import PFX to CurrentUser\My; Tauri references it via certificateThumbprint.</lang>
+      - name: Import signing certificate
+        shell: pwsh
+        env:
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          $pfxPath = "certs\hia-theme-builder.pfx"
+          $secPassword = ConvertTo-SecureString -String $env:WIN_CSC_KEY_PASSWORD -Force -AsPlainText
+          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation "Cert:\CurrentUser\My" -Password $secPassword
+
+      # 构建 core + extractor（供 electron 消费）
+      # <lang zh-CN>先构建 core 到 dist，再构建 extractor 产出 scanner bundle。</lang>
+      # <lang en>Build core to dist first, then extractor to produce scanner bundle.</lang>
+      - name: Build core
+        working-directory: HIA/core
+        run: |
+          npm install
+          npm run build
+
+      - name: Build extractor
+        working-directory: HIA/extractor
+        run: |
+          npm install
+          npm run build
+
+      # 构建 web（供桌面端复制）
+      # <lang zh-CN>web 构建产物被 electron/tauri 复制脚本复用。</lang>
+      # <lang en>web build output is reused by electron/tauri copy scripts.</lang>
+      - name: Build web
+        working-directory: HIA/web
+        run: |
+          npm install
+          npm run build
+
+      # 构建 electron（便携+NSIS，签名）
+      # <lang zh-CN>通过 WIN_CSC_KEY_PASSWORD 环境变量传递证书密码；electron-builder 从 certs/hia-theme-builder.pfx 签名。</lang>
+      # <lang en>Pass certificate password via WIN_CSC_KEY_PASSWORD env var; electron-builder signs from certs/hia-theme-builder.pfx.</lang>
+      - name: Build electron
+        working-directory: HIA/electron
+        env:
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          npm install
+          npm run dist
+
+      # 构建 tauri（MSI+便携，签名）
+      # <lang zh-CN>Tauri 从 Windows 证书库读取证书（已通过 Import-PfxCertificate 导入）。</lang>
+      # <lang en>Tauri reads certificate from Windows certificate store (imported via Import-PfxCertificate).</lang>
+      - name: Build tauri
+        working-directory: HIA/tauri
+        run: |
+          npm install
+          npm run build
+
+      # 收集产物并生成 SHA-256
+      # <lang zh-CN>四件产物复制到 artifacts/ 目录，生成 SHA256SUMS.txt。</lang>
+      # <lang en>Copy four artifacts to artifacts/ directory, generate SHA256SUMS.txt.</lang>
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts -Force
+          Copy-Item "HIA\electron\dist\HIA-Theme-Builder-Electron-*-portable.exe" artifacts\
+          Copy-Item "HIA\electron\dist\HIA-Theme-Builder-Electron-*-setup.exe" artifacts\
+          Copy-Item "HIA\tauri\src-tauri\target\release\bundle\msi\HIA Theme Builder_*_x64_en-US.msi" artifacts\
+          Copy-Item "HIA\tauri\src-tauri\target\release\HIA Theme Builder.exe" artifacts\HIA-Theme-Builder-Tauri-portable.exe
+          Set-Location artifacts
+          Get-ChildItem -File | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash + "  " + $_.Name } | Out-File -Encoding utf8 SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+
+      # 创建 GitHub Release
+      # <lang zh-CN>标签推送时自动创建 Release；手动触发时从 GITHUB_REF 提取标签或使用 "manual"。</lang>
+      # <lang en>Auto-create Release on tag push; for manual trigger, extract tag from GITHUB_REF or use "manual".</lang>
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || 'manual' }}
+          name: Release ${{ github.ref_name || 'manual' }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/*.exe
+            artifacts/*.msi
+            artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

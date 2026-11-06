@@ -20,7 +20,10 @@
       "active": true,
       "targets": ["msi"],
       "identifier": "com.hia.theme-builder",
-      "icon": ["icons/icon.ico"]
+      "icon": ["icons/icon.ico"],
+      "windows": {
+        "certificateThumbprint": "E68466AD564223C2B5E9FEA02BBE9166D9A39DA6"
+      }
     },
     "windows": [
       {

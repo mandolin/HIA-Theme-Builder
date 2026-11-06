@@ -45,7 +45,11 @@
       "artifactName": "HIA-Theme-Builder-Electron-${version}-setup.exe"
     },
     "win": {
-      "target": ["portable", "nsis"]
+      "target": ["portable", "nsis"],
+      "signtoolOptions": {
+        "certificateFile": "../../certs/hia-theme-builder.pfx",
+        "signingHashAlgorithms": ["sha256"]
+      }
     }
   }
 }
