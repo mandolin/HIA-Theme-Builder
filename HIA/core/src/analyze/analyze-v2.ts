@@ -39,6 +39,7 @@ const SOURCE_BASE: Record<ColorSource, number> = {
   'computed-background': 2.5,
   'computed-text': 0.8,
   'logo-raster': 9,
+  'image-dominant': 6,
   'screenshot-ui': 3,
   'screenshot-artwork': 0.75
 };

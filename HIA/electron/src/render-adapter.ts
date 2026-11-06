@@ -131,11 +131,16 @@ export interface RenderCollectOptions{
 // <lang en>fetchManifest ships in the bundle; scanDocument stays synchronous with no network wait.</lang>
 function scanDomScript(colorScheme:'light'|'dark'):string{
   const schemePart=colorScheme==='dark'?"colorScheme:'dark',":"";
+  // `W-tb-P8`：scanDocumentDynamic 含 SPA 增量复扫（settle 1.2s，MutationObserver 驱动）。
+  // <lang zh-CN>懒加载/路由切换晚到的主题色不再漏采；manifest 预取逻辑保持不变。</lang>
+  // <lang en>Lazy/route-late theme colors are captured; manifest pre-fetch unchanged.</lang>
   return `(async function(){
     const mf = (window.__hiaScanner.fetchManifest ? await window.__hiaScanner.fetchManifest(document).catch(function(){ return null; }) : null);
     const ctx={ width:${VIEWPORT.width}, height:${VIEWPORT.height}, dpr:${VIEWPORT.dpr}, ${schemePart} };
     if(mf){ ctx.manifest=mf; }
-    const r=window.__hiaScanner.scanDocument(document, ctx);
+    const r = (window.__hiaScanner.scanDocumentDynamic
+      ? await window.__hiaScanner.scanDocumentDynamic(document, ctx, { settleMs: 1200 })
+      : window.__hiaScanner.scanDocument(document, ctx));
     return JSON.stringify({ evidence:r.evidence, warnings:r.warnings });
   })()`;
 }

@@ -8,7 +8,7 @@
 // 页面端 scanner：遍历 DOM 采集并聚合颜色证据。
 // <lang zh-CN>注入前需调用 installScanner 设置运行时解析器；fetchManifest 供适配器预取站点 manifest 颜色。</lang>
 // <lang en>Call installScanner before injection to set the runtime parser; fetchManifest pre-fetches site manifest colors for adapters.</lang>
-export { scanDocument, installScanner, scanner, fetchManifest, manifestColorsFromJson, MAX_ELEMENTS, MAX_EVIDENCE } from './scanner.js';
+export { scanDocument, scanDocumentDynamic, installScanner, scanner, fetchManifest, manifestColorsFromJson, MAX_ELEMENTS, MAX_EVIDENCE } from './scanner.js';
 export type { ScanContext } from './scanner.js';
 
 // 浏览器端颜色归一化：CSS 颜色 → 不透明 sRGB 十六进制。

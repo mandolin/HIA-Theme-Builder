@@ -11,6 +11,7 @@ import type { ColorEvidence, ColorSource, SemanticRole, CaptureWarning } from '@
 import { normalizeBrowserColor, injectParseColor } from './color-normalize-browser.js';
 import { resolveSemanticRole } from './semantic-context.js';
 import { aggregateEvidence, type RawEvidence } from './aggregate.js';
+import { quantizeMedianCut } from '../quantize/median-cut.js';
 
 // 最大扫描节点数与最大证据记录数（指令第十节默认）。
 // <lang zh-CN>达到上限写入 warning，不阻断整体分析。</lang>
@@ -79,6 +80,13 @@ function collectElementColors(el:Element, ctx:ScanContext):RawEvidence[]{
   }
   push(cs.outlineColor,'computed-border',semanticRole);
   push(cs.textDecorationColor,'computed-text',semanticRole);
+  // 字体相关色补采（`W-tb-P8`）：text-fill/caret/column-rule/text-emphasis 常携带主题色。
+  // <lang zh-CN>webkitTextFillColor 需绕过 TS lib 缺失；auto/currentcolor 由 normalize 过滤。</lang>
+  // <lang en>webkitTextFillColor needs a TS-lib bypass; auto/currentcolor filtered by normalize.</lang>
+  push((cs as CSSStyleDeclaration&Record<string,string>).webkitTextFillColor ?? '','computed-text',semanticRole);
+  push(cs.caretColor,'computed-text',semanticRole);
+  push(cs.columnRuleColor,'computed-border',semanticRole);
+  push((cs as CSSStyleDeclaration&Record<string,string>).textEmphasisColor ?? '','computed-text',semanticRole);
   // 渐变：backgroundImage 中的色标。
   // <lang zh-CN>正则抽取 linear/radial/conic 中的颜色函数参数。</lang>
   // <lang en>Regex picks color-function args inside linear/radial/conic gradients.</lang>
@@ -186,7 +194,11 @@ function collectCssTokens(doc:Document, ctx:ScanContext):RawEvidence[]{
   // <lang zh-CN>无法枚举全部自定义属性名，故从样式表收集声明名。</lang>
   // <lang en>Cannot enumerate all custom prop names; collect declared names from stylesheets.</lang>
   const names=new Set<string>();
-  for(const sheet of Array.from(doc.styleSheets)){
+  // adoptedStyleSheets（constructable stylesheet，CSS-in-JS/组件库常用）并入扫描（`W-tb-P8`）。
+  // <lang zh-CN>document.styleSheets 不含 adopted 表；两者合并去引用。</lang>
+  // <lang en>document.styleSheets excludes adopted sheets; merge both.</lang>
+  const adopted=(doc as Document&{adoptedStyleSheets?:CSSStyleSheet[]}).adoptedStyleSheets??[];
+  for(const sheet of [...Array.from(doc.styleSheets),...Array.from(adopted)]){
     let rules:CSSStyleRule[]=[];
     try{ rules=Array.from(sheet.cssRules||[]) as unknown as CSSStyleRule[]; }catch{ continue; }
     for(const r of rules){
@@ -206,6 +218,82 @@ function collectCssTokens(doc:Document, ctx:ScanContext):RawEvidence[]{
     out.push({ authorValue:val, hex, alpha:1, source:'css-token', role, areaRatio:1, aboveFoldRatio:1, tokenName:name, context:name, selector:`:root ${name}` });
   }
   return out;
+}
+
+// 图片主色采集（`W-tb-P8` / ADR-004）：同源或 CORS 允许的视口内图片离屏 canvas 量化。
+// <lang zh-CN>跨域污染 canvas 时 getImageData 抛异常 → 静默跳过并计数，出 image-cors-skip warning；
+//   每图取前 3 个主导色，来源 image-dominant，证据面积用图片视口占比。</lang>
+// <lang en>Dominant colors of same-origin/CORS-enabled in-viewport images via offscreen canvas.
+//   Cross-origin taint throws at getImageData → silent skip counted as an image-cors-skip warning;
+//   top-3 dominant colors per image, source image-dominant, area from the image viewport ratio.</lang>
+function collectImageDominant(doc:Document, ctx:ScanContext):{ evidence:RawEvidence[]; corsSkips:number }{
+  const evidence:RawEvidence[]=[];
+  let corsSkips=0;
+  try{
+    const imgs=Array.from(doc.querySelectorAll('img'))
+      .filter(img=>{ try{ const r=img.getBoundingClientRect(); return r.width>=40&&r.height>=40&&img.complete&&img.naturalWidth>0; }catch{ return false; } })
+      .slice(0,12);
+    for(const img of imgs){
+      try{
+        const rect=img.getBoundingClientRect();
+        const areaRatio=Math.max(0,Math.min(1,(rect.width*rect.height)/(ctx.width*ctx.height||1)));
+        const aboveFold=rect.top<ctx.height&&rect.bottom>0;
+        const w=32,h=Math.max(1,Math.round(32*img.naturalHeight/img.naturalWidth))||1;
+        const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        const cx=canvas.getContext('2d');
+        if(!cx)continue;
+        cx.drawImage(img,0,0,w,h);
+        const data=cx.getImageData(0,0,w,h).data;
+        const pixels:{r:number;g:number;b:number;a:number}[]=[];
+        for(let i=0;i<data.length;i+=4){
+          const a=data[i+3]!;
+          if(a<128)continue;
+          pixels.push({r:data[i]!,g:data[i+1]!,b:data[i+2]!,a});
+        }
+        if(pixels.length<32)continue;
+        const quantized=quantizeMedianCut(pixels,5).slice(0,3);
+        for(const q of quantized){
+          evidence.push({authorValue:q.hex,hex:q.hex,alpha:1,source:'image-dominant',role:'unknown',areaRatio,aboveFoldRatio:aboveFold?areaRatio:0,context:'img dominant',selector:'img'});
+        }
+      }catch{
+        corsSkips++;
+      }
+    }
+  }catch{ /* 查询失败静默 */ }
+  return { evidence, corsSkips };
+}
+
+// SPA 动态内容增量复扫（`W-tb-P8`）：初始扫描后监听 DOM 变化，去抖后增量重扫并合并。
+// <lang zh-CN>适配懒加载/路由切换晚到的主题色；重扫上限 2 次，受 MAX_ELEMENTS/MAX_EVIDENCE 封顶；
+//   调用方（适配器）在稳定化后调用，返回合并后的证据与警告。</lang>
+// <lang en>Post-initial mutation-triggered rescans merge late-loading theme colors; up to 2 rescans,
+//   capped by MAX_ELEMENTS/MAX_EVIDENCE; adapters call after stabilization.</lang>
+export async function scanDocumentDynamic(root:Document|Element, ctx:ScanContext, options?:{ includeFrames?:boolean; settleMs?:number }):Promise<{ evidence:ColorEvidence[]; warnings:CaptureWarning[]; rescans:number }>{
+  const settleMs=Math.max(0,options?.settleMs??1200);
+  const first=scanDocument(root,ctx,options);
+  const evidence=first.evidence;
+  const warnings=[...first.warnings];
+  let rescans=0;
+  // MutationObserver 去抖监听：显著变更（新增节点）才触发重扫。
+  // <lang zh-CN>attribute 微调不触发，避免抖动；settle 窗口后断开。</lang>
+  // <lang en>Only added nodes trigger rescans; observer disconnects after the settle window.</lang>
+  let mutated=false;
+  const target=root instanceof Document?root.documentElement:root;
+  const observer=new MutationObserver(muts=>{ if(muts.some(m=>m.addedNodes.length>0))mutated=true; });
+  if(target&&typeof MutationObserver!=='undefined')observer.observe(target,{childList:true,subtree:true});
+  await new Promise(r=>setTimeout(r,settleMs));
+  observer.disconnect();
+  // 末次扫描为准：settle 后 DOM 已含晚到内容，整体重扫取代初始结果（语义即最终页面取色）。
+  // <lang zh-CN>取代式合并不产生重复计数；若未发生变更则保留初始扫描。</lang>
+  // <lang en>Replace-with-final semantics avoid double counting; keep the initial scan when no mutations.</lang>
+  if(mutated){
+    rescans++;
+    const again=scanDocument(root,ctx,options);
+    evidence.length=0;
+    evidence.push(...again.evidence);
+    warnings.push(...again.warnings);
+  }
+  return { evidence, warnings, rescans };
 }
 
 // 扫描根文档（含 open shadow roots 与同源 frame），受节点上限约束。
@@ -312,4 +400,4 @@ export function installScanner(parseColor:(input:string)=>string|null):void{
 // 默认导出集合，供构建脚本打包为单一 browser bundle。
 // <lang zh-CN>stable 入口，Tauri Rust 端 include_str! 引用其产物；fetchManifest/manifestColorsFromJson 随 C9 加入。</lang>
 // <lang en>Stable entry; Tauri Rust side references its bundle via include_str!; fetchManifest/manifestColorsFromJson added with C9.</lang>
-export const scanner={ scanDocument, detectLogos, installScanner, fetchManifest, manifestColorsFromJson, MAX_ELEMENTS, MAX_EVIDENCE };
+export const scanner={ scanDocument, scanDocumentDynamic, detectLogos, installScanner, fetchManifest, manifestColorsFromJson, MAX_ELEMENTS, MAX_EVIDENCE };

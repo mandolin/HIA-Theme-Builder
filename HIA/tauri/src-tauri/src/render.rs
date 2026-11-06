@@ -186,6 +186,53 @@ fn blocked_request_url(raw: &str) -> bool {
     }
 }
 
+/// @lang zh-CN launch 模式启动无头 chromium（`W-tb-P8` 自 connect 多端点回退逻辑抽取）：
+///   --no-sandbox 等受限环境参数、可选 HIA_CHROME_PATH 指向系统浏览器、继承 HTTPS_PROXY/HTTP_PROXY
+///   代理（HIA_CHROME_NO_PROXY=1 关闭）。
+/// @lang en Launch-mode headless chromium (extracted for the multi-endpoint connect fallback):
+///   sandbox-off args for restricted environments, optional HIA_CHROME_PATH system browser,
+///   inherits HTTPS_PROXY/HTTP_PROXY unless HIA_CHROME_NO_PROXY=1.
+async fn launch_browser() -> Result<(Browser, chromiumoxide::Handler), String> {
+    // 返回 (Browser, Handler)：handler 事件循环由调用方驱动（与 connect 分支对称）。
+    // <lang zh-CN>chromiumoxide 的 launch 与 connect 同构返回元组。</lang>
+    // <lang en>chromiumoxide launch and connect both return the tuple symmetrically.</lang>
+    let mut args: Vec<String> = vec![
+        "--no-sandbox".into(),
+        "--disable-gpu".into(),
+        "--disable-dev-shm-usage".into(),
+        format!("--window-size={VIEWPORT_W},{VIEWPORT_H}"),
+    ];
+    let no_proxy = env::var("HIA_CHROME_NO_PROXY").map(|v| v == "1").unwrap_or(false);
+    if !no_proxy {
+        let proxy = env::var("HTTPS_PROXY")
+            .or_else(|_| env::var("HTTP_PROXY"))
+            .ok()
+            .filter(|p| !p.trim().is_empty());
+        if let Some(p) = proxy {
+            rlog!("launch mode: applying proxy {p}");
+            args.push(format!("--proxy-server={p}"));
+        } else {
+            rlog!("launch mode: no proxy env found, direct connect");
+        }
+    } else {
+        rlog!("launch mode: proxy disabled by HIA_CHROME_NO_PROXY");
+    }
+    let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    let mut builder = BrowserConfig::builder().args(arg_refs);
+    if let Ok(p) = env::var("HIA_CHROME_PATH") {
+        if !p.trim().is_empty() {
+            builder = builder.chrome_executable(p);
+        }
+    }
+    let config = builder
+        .build()
+        .map_err(|e| format!("构建 chromium 配置失败：{e}"))?;
+    rlog!("launch mode: launching chromium");
+    Browser::launch(config)
+        .await
+        .map_err(|e| format!("启动 chromium 失败：{e}"))
+}
+
 /// @lang zh-CN 单页真实渲染采集：启动无头 chromium → 导航 → 注入 scanner 采集 DOM 证据 → 截图返回 PNG base64。
 ///   emulate_dark（默认 true）时额外以 prefers-color-scheme:dark 复采一次，对称 Electron 的双模式深色证据。
 /// @lang en Per-page real render: launch headless chromium → navigate → inject scanner for DOM evidence → screenshot to PNG base64.
@@ -209,64 +256,48 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
     // launch 模式由 Tauri 启动子进程，结束时需 close 释放资源。
     // <lang zh-CN>connect 模式下 close() 会关闭用户 Chrome，必须跳过。</lang>
     // <lang en>In connect mode close() kills the user's Chrome; must skip.</lang>
-    let is_connect_mode = env::var("HIA_CHROME_WS")
-        .map(|v| !v.trim().is_empty())
-        .unwrap_or(false);
-    rlog!("render_collect start url={url} connect_mode={is_connect_mode} emulate_dark={emulate_dark}");
+    // `W-tb-P8` 多端点：HIA_CHROME_WS 支持逗号分隔（如 ws://a:9222,http://b:9222），按序尝试、全败回退 launch。
+    // <lang zh-CN>远程 CDP 端点天然支持（chromiumoxide 自动从 http(s) /json/version 取 ws 地址）。</lang>
+    // <lang en>Remote CDP endpoints work natively (chromiumoxide resolves ws from http(s) /json/version).</lang>
+    let endpoints: Vec<String> = env::var("HIA_CHROME_WS")
+        .ok()
+        .map(|v| v.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
+        .unwrap_or_default();
+    let is_connect_mode = !endpoints.is_empty();
+    rlog!("render_collect start url={url} connect_mode={is_connect_mode} endpoints={endpoints:?} emulate_dark={emulate_dark}");
 
-    let (mut browser, mut handler) = match env::var("HIA_CHROME_WS") {
-        Ok(ws) if !ws.trim().is_empty() => {
-            // connect 模式：复用外部已启动的 --remote-debugging-port Chrome。
-            // <lang zh-CN>http(s) URL 时 chromiumoxide 会自动从 /json/version 取 ws 地址。</lang>
-            // <lang en>For http(s) URL chromiumoxide auto-fetches ws from /json/version.</lang>
-            rlog!("connect mode: connecting to {ws}");
-            Browser::connect(ws.trim())
-                .await
-                .map_err(|e| format!("连接 chromium 失败：{e}"))?
-        }
-        _ => {
-            // launch 模式：--no-sandbox 等参数在受限/容器环境必需；--window-size 对齐 1440×900 契约。
-            // <lang zh-CN>若 HIA_CHROME_PATH 指向系统浏览器则复用，避免受限网络下下载失败。</lang>
-            // <lang en>If HIA_CHROME_PATH points to a system browser, reuse it to avoid download failures.</lang>
-            // 代理：默认继承系统/环境变量代理（HTTP_PROXY/HTTPS_PROXY），用户可用 HIA_CHROME_NO_PROXY=1 关闭。
-            // <lang zh-CN>baidu 等站点对直连/代理敏感，未走代理易超时或重置。</lang>
-            // <lang en>baidu etc. are proxy-sensitive; without proxy they may time out or reset.</lang>
-            let mut args: Vec<String> = vec![
-                "--no-sandbox".into(),
-                "--disable-gpu".into(),
-                "--disable-dev-shm-usage".into(),
-                format!("--window-size={VIEWPORT_W},{VIEWPORT_H}"),
-            ];
-            let no_proxy = env::var("HIA_CHROME_NO_PROXY").map(|v| v == "1").unwrap_or(false);
-            if !no_proxy {
-                let proxy = env::var("HTTPS_PROXY")
-                    .or_else(|_| env::var("HTTP_PROXY"))
-                    .ok()
-                    .filter(|p| !p.trim().is_empty());
-                if let Some(p) = proxy {
-                    rlog!("launch mode: applying proxy {p}");
-                    args.push(format!("--proxy-server={p}"));
-                } else {
-                    rlog!("launch mode: no proxy env found, direct connect");
+    let (mut browser, mut handler) = if !endpoints.is_empty() {
+        // connect 模式：逐端点尝试，全部失败回退 launch（多实例/远程 CDP 场景）。
+        // <lang zh-CN>复用外部已启动的 --remote-debugging-port Chrome；连接成功的端点由先到先得。</lang>
+        // <lang en>Tries each endpoint in order; falls back to launch when all fail.</lang>
+        let mut connected: Option<(Browser, chromiumoxide::Handler)> = None;
+        let mut last_err = String::new();
+        for ep in &endpoints {
+            rlog!("connect mode: attempting {ep}");
+            match Browser::connect(ep).await {
+                Ok(b) => {
+                    rlog!("connect mode: connected to {ep}");
+                    connected = Some(b);
+                    break;
                 }
-            } else {
-                rlog!("launch mode: proxy disabled by HIA_CHROME_NO_PROXY");
-            }
-            let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            let mut builder = BrowserConfig::builder().args(arg_refs);
-            if let Ok(p) = env::var("HIA_CHROME_PATH") {
-                if !p.trim().is_empty() {
-                    builder = builder.chrome_executable(p);
+                Err(e) => {
+                    last_err = format!("{e}");
+                    rlog!("WARN connect {ep} failed: {e}");
                 }
             }
-            let config = builder
-                .build()
-                .map_err(|e| format!("构建 chromium 配置失败：{e}"))?;
-            rlog!("launch mode: launching chromium");
-            Browser::launch(config)
-                .await
-                .map_err(|e| format!("启动 chromium 失败：{e}"))?
         }
+        match connected {
+            Some(b) => b,
+            None => {
+                rlog!("all {} endpoints failed (last: {last_err}); falling back to launch", endpoints.len());
+                launch_browser().await?
+            }
+        }
+    } else {
+        // launch 模式：无端点配置时自主启动。
+        // <lang zh-CN>参数与代理继承详见 launch_browser。</lang>
+        // <lang en>Args and proxy inheritance detailed in launch_browser.</lang>
+        launch_browser().await?
     };
     rlog!("browser ready");
 
@@ -554,8 +585,13 @@ async fn scan_once(page: &Page, color_scheme: Option<&str>) -> Result<Value, Str
     const mf = (window.__hiaScanner.fetchManifest ? await window.__hiaScanner.fetchManifest(document).catch(function(){{ return null; }}) : null);
     const ctx = {{ width: {w}, height: {h}, dpr: 1, {scheme} }};
     if (mf) {{ ctx.manifest = mf; }}
-    const {{ evidence }} = window.__hiaScanner.scanDocument(document, ctx);
-    return JSON.stringify(evidence);
+    // `W-tb-P8`：scanDocumentDynamic 含 SPA 增量复扫（settle 1.2s）。
+    // <lang zh-CN>与 Electron 同口径；无该函数时回退同步 scanDocument。</lang>
+    // <lang en>Same bar as Electron; falls back to sync scanDocument when absent.</lang>
+    const scanResult = (window.__hiaScanner.scanDocumentDynamic
+      ? await window.__hiaScanner.scanDocumentDynamic(document, ctx, {{ settleMs: 1200 }})
+      : window.__hiaScanner.scanDocument(document, ctx));
+    return JSON.stringify(scanResult.evidence);
   }} catch(e) {{ return JSON.stringify({{ error: String(e) }}); }}
 }})()"#,
         scanner = SCANNER_SRC,

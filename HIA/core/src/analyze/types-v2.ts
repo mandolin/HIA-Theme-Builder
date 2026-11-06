@@ -19,6 +19,7 @@ export type ColorSource =
   | 'svg-stroke'
   | 'gradient-stop'
   | 'logo-raster'
+  | 'image-dominant'
   | 'screenshot-ui'
   | 'screenshot-artwork';
 
