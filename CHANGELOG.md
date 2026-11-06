@@ -21,7 +21,7 @@
 - **GitHub Release**：`v0.1.0-desktop` 已创建并上传两个桌面便携版产物；Web 版经 Pages 分发。
 - **chromiumoxide 0.5 → 0.9 升级（关键修复）**：`tauri/src-tauri` 的 `chromiumoxide` 由 `0.5.7` 升级到 `0.9.1`，修复 Chrome 148 下的 CDP 兼容问题（`new_page` 的 `oneshot canceled`、导航后 `receiver is gone` 连接断开），使 baidu 等含跨域重定向的站点能正常取色；`render.rs` 同步改用 Rust 侧独立短 `evaluate` 轮询 `readyState`（接受 `interactive`/`complete`，5 秒上限）替代会随导航销毁的长 Promise，并为关键错误路径补 `rlog` 日志。
 
-## [P5] 桌面端跑通与跨端一致性（2026-08-06）
+## [`W-tb-P5`] 桌面端跑通与跨端一致性（2026-08-06）
 
 - 桌面端复用 web 共享渲染器（ADR-001）：`HIA/electron/scripts/copy-renderer.js` 与 `HIA/tauri/scripts/copy-front.js` 改为复制 `HIA/web/dist`（`index.html` + `assets`），使 Electron/Tauri 启动即为与 web 版相同的主题操作台 + PC/小程序预览 + 8 渐变角色 + Token 导出，呈现与操作三端一致。
 - 删除桌面端旧独立简化 UI（`electron/src/renderer/*`、`tauri/src/front/*`、`tauri/src/fetch-signals.ts`）；仅保留桌面端专属桥与 SSRF 参考（`electron/src/{main,preload,fetch-signals,ssrf}`、`tauri/src/ssrf.ts`）。
@@ -56,24 +56,24 @@
 - **限制**：Electron `onBeforeRedirect` 仅观察不可取消，重定向链各 hop 经 `onBeforeRequest` 重校验覆盖；Tauri 的 redirect/子请求级 CDP Fetch 拦截因 chromiumoxide 集成成本较高未做，域名型 host 的 rebinding 由导航前解析兜底（同源页内 DNS 通常已缓存，二次解析一致），列为后续增强。
 - **验证**：electron `ssrf` 单测 15/15（含 IPv6 私网、解析 fail-closed、guardUrlDeep SSRF 前缀）；tauri `is_private_ip` 单测 1 passed。
 
-## [P4] 工程化、合规与文档化收尾（2026-08-05）
+## [`W-tb-P4`] 工程化、合规与文档化收尾（2026-08-05）
 
 - CI 矩阵增强：`.github/workflows/pages.yml` 在部署前对 `core`/`web`/`electron`/`tauri` 四端做构建与测试校验（electron/tauri 以 `--ignore-scripts` 跳过重型二进制下载，仅编译 + SSRF 单测）。
 - 三端冒烟证据齐备：core 单测 7/7、web 构建 0 错误、electron `tsc` 0 + SSRF 单测 8/8、tauri 前端 `tsc` 0 + SSRF 单测 6/6（Rust 端到端启动待工具链，符合 P3 限制）。
 - 许可证复核：补齐 `HIA/tauri/LICENSE`（MIT），新增 `work-zone/dev/audits/license-audit-tauri-2026-08-05.md`；混合许可证策略（根 MIT / electron Apache-2.0 / tauri MIT）证据齐备。
 - ROP 文档化：为 `core` 与 `web` 全部源码补全中英双语注释（commit `c43e49c`）。
 
-## [P3] 三端具象：web 发布 + electron/tauri 骨架与网址取色（2026-08-05）
+## [`W-tb-P3`] 三端具象：web 发布 + electron/tauri 骨架与网址取色（2026-08-05）
 
 - web 在线主题构建 + GitHub Pages 发布；操作台/PC/小程序预览/8 渐变角色/Token 导出可交互。
 - electron/tauri 桌面骨架 + 从指定网址获取颜色集（SSRF 校验 + `core.analyze` 多信号加权）。
 - core 抽离为公共核心（`HIA/core`），被各端以 `file:` 链接复用。
 
-## [P2] 公共核心 core（基线）
+## [`W-tb-P2`] 公共核心 core（基线）
 
 - 建立 `HIA/core` 公共主题模型、颜色算法、Token 导出，供各端复用。
 
-## [P1] 项目初始化（基线）
+## [`W-tb-P1`] 项目初始化（基线）
 
 - 建立 mono-repo 容器结构与双仓库边界（公开主库 + 私有 WorkZone）。
 - 落地 `README.md`、`AGENTS.md`、`LICENSE`、`work-zone/` 私有工作区基线。
