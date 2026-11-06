@@ -60,11 +60,9 @@ const APP_DYNAMIC = make({
   '向上': 'Upward',
   '右下对角': 'Diagonal to bottom-right',
   '左上对角': 'Diagonal to top-left',
-  // ---- 占比标签（与 app.ts biasLabels 精确一致） ----
-  '前色占 75%': 'First color 75%',
-  '前色占 65%': 'First color 65%',
-  '后色占 65%': 'Second color 65%',
-  '后色占 75%': 'Second color 75%',
+  // ---- 占比标签（`W-tb-P8` 组合框：模板插值支持任意 N） ----
+  '前色占 {n}%': 'First color {n}%',
+  '后色占 {n}%': 'Second color {n}%',
   // ---- 预设卡片 ----
   '应用': 'Apply',
   '载入操作台': 'Load to Console',

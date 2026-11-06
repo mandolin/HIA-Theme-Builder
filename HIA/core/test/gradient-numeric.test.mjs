@@ -43,6 +43,22 @@ test('swap: 前缀翻转保留百分比（prefix flip keeps N）', () => {
   assert.equal(swapGradientBias('front75'), 'end75');
 });
 
+test('解析校验: end 前缀数值 bias 全长合法（end-prefix bias accepted — slice regression）', () => {
+  // 回归：end40/end60 曾因 slice(5) 误切被拒（ 修复验证）。
+  const parsed = cloneGradientSettings({
+    carousel: { enabled: true, family: 'primary', start: '650', end: '300', direction: '135deg', bias: 'end40' },
+    banner: { enabled: true, family: 'primary', start: '700', end: '300', direction: '120deg', bias: 'end0' }
+  });
+  assert.equal(parsed.carousel.bias, 'end40');
+  assert.equal(parsed.banner.bias, 'end0');
+  // 边界：0 与 100 合法；101/负形态非法回退
+  const edge = cloneGradientSettings({
+    carousel: { enabled: true, family: 'primary', start: '700', end: '300', direction: '135deg', bias: 'end100' },
+    banner: { enabled: true, family: 'primary', start: '700', end: '300', direction: '120deg', bias: 'front101' }
+  });
+  assert.equal(edge.carousel.bias, 'end100');
+  assert.equal(edge.banner.bias, 'front65');
+});
 test('解析校验: 非法 bias/shade 回退角色默认（invalid falls back to defaults）', () => {
   const parsed = cloneGradientSettings({
     carousel: { enabled: true, family: 'primary', start: '650', end: '999999', direction: '135deg', bias: 'front55' },

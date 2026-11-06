@@ -48,7 +48,11 @@ export function cloneGradientSettings(value?:GradientSettings):GradientSettings{
     // <lang zh-CN>旧 4 枚举与 10 档值天然合法（向后兼容）；非法值回退该角色默认，保证渲染分支完备。</lang>
     // <lang en>Legacy 4 enums and 10 steps are naturally valid (backward compatible); invalid values
     //   fall back to the role default so render branches stay exhaustive.</lang>
-    if(!/^(front|end)\d{1,3}$/.test(merged.bias)||!(parseInt(merged.bias.slice(5),10)>=0&&parseInt(merged.bias.slice(5),10)<=100))merged.bias=GRADIENT_DEFAULTS[def.key]!.bias;
+    const biasMatch=/^(front|end)(\d{1,3})$/.exec(merged.bias as string);
+    // 校验须捕获组取数：slice(5) 会错切 end 前缀（3 字符）——`W-tb-P8` 修复。
+    // <lang zh-CN>end40.slice(5)='' 曾被误判非法并回退默认；改为按捕获组解析。</lang>
+    // <lang en>end40.slice(5)='' was misjudged invalid; parse via capture groups instead.</lang>
+    if(!biasMatch||!(parseInt(biasMatch[2]!,10)>=0&&parseInt(biasMatch[2]!,10)<=100))merged.bias=GRADIENT_DEFAULTS[def.key]!.bias;
     for(const field of['start','end'] as const){
       const v=merged[field] as string;
       if(!/^\d{1,4}$/.test(v)||parseInt(v,10)>1000)merged[field]=GRADIENT_DEFAULTS[def.key]![field];

@@ -133,3 +133,8 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .phone-frame.dark .wx-grid-item{background:#0F172A;border-color:#253347;color:#E5EEF7}
 .phone-frame.dark .wx-tab-item{color:#9EB1C4}
 .phone-frame.dark .wx-tab-item.active{background:color-mix(in srgb,var(--primary) 25%,#0F172A);color:#fff}
+/* W-tb-P8 渐变组合框（ADR-004）：组合框输入与标准下拉同观感；色阶行内联实时色块。
+   W-tb-P8 gradient combobox (ADR-004): inputs match select styling; inline shade swatches. */
+.gradient-input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--text);font-size:12px}
+.gradient-shade-row{display:flex;gap:6px;align-items:center}
+.gradient-shade-swatch{width:16px;height:16px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);flex:none}

@@ -10,7 +10,7 @@ import{
   exportThemeCss,exportThemeJson,filterPresets,findMatchingPrimaryCandidate,generateSecondarySet,
   gradientCss,isBuiltinPresetId,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,
-  upsertPreset,validHex,type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
+  swapGradientBias,tonalScaleAt,upsertPreset,validHex,type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type WebsiteThemeAnalysisV2
 }from'@hia/theme-core';
 import{all,byId,inputValue,setInputValue,setText}from'./dom.js';
@@ -34,29 +34,50 @@ const GRADIENT_STORAGE='hia-gradient-settings-v1';
 // <lang zh-CN>与 SHADE_KEYS 同值，仅顺序不同（UI 偏好深→浅）。</lang>
 // <lang en>Same values as SHADE_KEYS but ordered dark→light for UI preference.</lang>
 const shadeValues:ShadeKey[]=['900','800','700','600','500','400','300','200','100','50'];
-// 渐变方向选项（CSS 角度）。
-// <lang zh-CN>覆盖常用对角线与水平/垂直方向。</lang>
-// <lang en>Covers common diagonal and horizontal/vertical directions.</lang>
+// 渐变方向建议项（CSS 角度，组合框 datalist；自由填写合法 CSS 角度/关键字亦接受）。
+// <lang zh-CN>覆盖常用对角线与水平/垂直方向（`W-tb-P8` 组合框化）。</lang>
+// <lang en>Covers common diagonal and horizontal/vertical directions (`W-tb-P8` combobox).</lang>
 const directions=['45deg','90deg','110deg','120deg','135deg','160deg','180deg'] as const;
-// 方向的中文标签（带箭头示意）。
-// <lang zh-CN>提升下拉可读性，避免纯角度难以理解。</lang>
-// <lang en>Improves dropdown readability versus bare angles.</lang>
+// 方向建议的箭头标签（datalist 展示用）。
+// <lang zh-CN>提升 datalist 可读性，避免纯角度难以理解。</lang>
+// <lang en>Improves datalist readability versus bare angles.</lang>
 const directionLabels:Record<string,string>={'45deg':'↗ 45°','90deg':'→ 90°','110deg':'↘ 110°','120deg':'↘ 120°','135deg':'↘ 135°','160deg':'↘ 160°','180deg':'↓ 180°'};
-// 渐变占比选项。
-// <lang zh-CN>对应 GradientBias 四种策略。</lang>
-// <lang en>Maps to the four GradientBias strategies.</lang>
+// 渐变占比建议项（`W-tb-P8` 组合框 datalist；自由百分比经 parseBiasInput 解析）。
+// <lang zh-CN>对应四种常用策略；数值化后任意 0-100 均合法。</lang>
+// <lang en>Four common strategies; any 0-100 is valid after numeric generalization.</lang>
 const biasValues:GradientBias[]=['front75','front65','end65','end75'];
-// 占比的中文标签。
-// <lang zh-CN>解释前/后色在渐变中的主导比例。</lang>
-// <lang en>Explains how much the start/end color dominates the gradient.</lang>
-// 占比标签：渲染时经 t() 现算（键=中文原文），保证语言切换后立即生效。
+// 占比 → 可读标签（渲染时经 t() 现算，模板插值支持任意 N）。
 // <lang zh-CN>不能在模块加载时固化——那会锁定初始语言。</lang>
 // <lang en>Must not be fixed at module load — that would freeze the initial locale.</lang>
-function biasLabelsNow():Record<GradientBias,string>{return{front75:t('前色占 75%'),front65:t('前色占 65%'),end65:t('后色占 65%'),end75:t('后色占 75%')};}
-// 交换起止色时对应的占比翻转映射。
-// <lang zh-CN>前色主导翻为后色主导，保持视觉权重一致。</lang>
-// <lang en>Front-dominant flips to end-dominant, keeping visual weight consistent.</lang>
-const swappedBias:Record<GradientBias,GradientBias>={front75:'end75',front65:'end65',end65:'front65',end75:'front75'};
+function biasLabel(bias:GradientBias):string{
+  const m=/^(front|end)(\d{1,3})$/.exec(bias);
+  return m?t(m[1]!=='front'?'后色占 {n}%':'前色占 {n}%',{n:m[2]!}):bias;
+}
+// 占比输入解析（`W-tb-P8`）：接受 front/end 原始值、纯数字/百分比、中文标签三种形态。
+// <lang zh-CN>'75'/'75%'/‘前色占 75%’/‘front75’ 均解析为 front75；裸数字默认按前色占比处理；
+//   无法解析返回 null，由调用方回退原值。</lang>
+// <lang en>'75'/'75%'/‘前色占 75%’/'front75' all parse to front75; a bare number defaults to the
+//   start color; unparseable input returns null for the caller to revert.</lang>
+function parseBiasInput(raw:string):GradientBias|null{
+  const text=raw.trim();
+  if(!text)return null;
+  // 1) 原始值形态：front75 / end30（0-100）。
+  // <lang zh-CN>与 core 的 BIAS_RE 同口径。</lang>
+  // <lang en>Same bar as core's BIAS_RE.</lang>
+  let m=/^(front|end)(\d{1,3})$/.exec(text);
+  if(m){const n=parseInt(m[2]!,10);if(n>=0&&n<=100)return text as GradientBias;}
+  // 2) 中文标签形态：前色占 N% / 后色占 N%。
+  // <lang zh-CN>组合框预填标签的回显解析。</lang>
+  // <lang en>Parses the prefilled label back into a value.</lang>
+  m=/^(前|后)色占\s*(\d{1,3})\s*%?$/.exec(text);
+  if(m){const n=parseInt(m[2]!,10);if(n>=0&&n<=100)return(m[1]==='前'?`front${n}`:`end${n}`)as GradientBias;}
+  // 3) 数字/百分比形态：[front|end ]?N%?（裸数字默认按前色占比）。
+  // <lang zh-CN>覆盖 '75'、'75%'、'end 60%'。</lang>
+  // <lang en>Covers '75', '75%', 'end 60%'.</lang>
+  m=/^(front|end)?\s*(\d{1,3})\s*%?$/.exec(text);
+  if(m){const n=parseInt(m[2]!,10);if(n>=0&&n<=100)return((m[1]==='end'?'end':'front')+n)as GradientBias;}
+  return null;
+}
 
 // 转义 HTML 特殊字符，防止插入用户/候选文本时产生 XSS。
 // <lang zh-CN>用于所有动态拼入 innerHTML 的字符串。</lang>
@@ -310,7 +331,19 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 逐角色生成卡片 HTML：标题+启用、说明、预览、五个下拉、底部说明与交换/重置。
     // <lang zh-CN>预览用 runtime 模式 var()，下拉用 options() 复用标签映射。</lang>
     // <lang en>Preview uses runtime vars; dropdowns reuse options() with label maps.</lang>
-    wrap.innerHTML=GRADIENT_DEFS.map(def=>{const cfg=draft.gradients[def.key];return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${t(def.label)}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>${t('启用')}</label></div><div class="gradient-config-desc">${t(def.desc)}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>${t('色系')}</span><select class="gradient-select" data-gradient-field="family">${options(['primary','secondary'],cfg.family,{primary:t('主色系'),secondary:t('副色系')})}</select></label><label class="gradient-field"><span>${t('方向')}</span><select class="gradient-select" data-gradient-field="direction">${options(directions,cfg.direction,directionLabels)}</select></label><label class="gradient-field"><span>${t('起始色阶')}</span><select class="gradient-select" data-gradient-field="start">${options(shadeValues,cfg.start)}</select></label><label class="gradient-field"><span>${t('结束色阶')}</span><select class="gradient-select" data-gradient-field="end">${options(shadeValues,cfg.end)}</select></label><label class="gradient-field" style="grid-column:1/-1"><span>${t('渐变占比')}</span><select class="gradient-select" data-gradient-field="bias">${options(biasValues,cfg.bias,biasLabelsNow())}</select></label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${cfg.family==='primary'?t('主色'):t('副色')} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>${t('交换')}</button><button class="gradient-mini-btn" data-gradient-reset>${t('重置')}</button></div></div></div>`;}).join('');
+    // 共享 datalist：方向建议 / 标准色阶建议 / 占比建议（组合框数据源，面板级一份）。
+    // <lang zh-CN>`W-tb-P8` 组合框化：input list + datalist 原生实现，零依赖。</lang>
+    // <lang en>`W-tb-P8` combobox: native input list + datalist, zero dependencies.</lang>
+    const datalists=`<datalist id="gDirOptions">${directions.map(d=>`<option value="${d}">${directionLabels[d]??''}</option>`).join('')}</datalist><datalist id="gShadeOptions">${shadeValues.map(s=>`<option value="${s}"></option>`).join('')}</datalist><datalist id="gBiasOptions">${biasValues.map(b=>`<option value="${biasLabel(b)}"></option>`).join('')}</datalist>`;
+    // 单卡片模板：色系仍为 select；方向/色阶/占比为组合框（可填可选）；色阶带实时色块。
+    // <lang zh-CN>色块经 tonalScaleAt 实时插值，任意色阶立即见效（ADR-004）。</lang>
+    // <lang en>Swatches interpolate via tonalScaleAt so arbitrary shades show instantly (ADR-004).</lang>
+    const card=(def:typeof GRADIENT_DEFS[number])=>{
+      const cfg=draft.gradients[def.key];
+      const base=theme()[cfg.family].value;
+      const swatch=(shade:string)=>{const n=parseInt(shade,10);return Number.isFinite(n)?tonalScaleAt(base,n):'transparent';};
+      return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${t(def.label)}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>${t('启用')}</label></div><div class="gradient-config-desc">${t(def.desc)}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>${t('色系')}</span><select class="gradient-select" data-gradient-field="family">${options(['primary','secondary'],cfg.family,{primary:t('主色系'),secondary:t('副色系')})}</select></label><label class="gradient-field"><span>${t('方向')}</span><input class="gradient-input" data-gradient-field="direction" list="gDirOptions" value="${escapeHtml(cfg.direction)}"></label><label class="gradient-field"><span>${t('起始色阶')}</span><div class="gradient-shade-row"><input class="gradient-input" data-gradient-field="start" list="gShadeOptions" inputmode="numeric" value="${escapeHtml(cfg.start)}"><i class="gradient-shade-swatch" style="background:${swatch(cfg.start)}"></i></div></label><label class="gradient-field"><span>${t('结束色阶')}</span><div class="gradient-shade-row"><input class="gradient-input" data-gradient-field="end" list="gShadeOptions" inputmode="numeric" value="${escapeHtml(cfg.end)}"><i class="gradient-shade-swatch" style="background:${swatch(cfg.end)}"></i></div></label><label class="gradient-field" style="grid-column:1/-1"><span>${t('渐变占比')}</span><input class="gradient-input" data-gradient-field="bias" list="gBiasOptions" value="${escapeHtml(biasLabel(cfg.bias))}"></label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${cfg.family==='primary'?t('主色'):t('副色')} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>${t('交换')}</button><button class="gradient-mini-btn" data-gradient-reset>${t('重置')}</button></div></div></div>`;};
+    wrap.innerHTML=datalists+GRADIENT_DEFS.map(def=>card(def)).join('');
     // 绑定字段变更：根据 data-gradient-field 写入对应配置项并刷新。
     // <lang zh-CN>非法值直接 return 不改草稿，保证类型安全。</lang>
     // <lang en>Invalid values return early without mutating the draft, keeping types safe.</lang>
@@ -328,27 +361,42 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         // <lang zh-CN>其他值忽略，避免污染 family 类型。</lang>
         // <lang en>Other values ignored to protect the family type.</lang>
         case'family':if(el.value==='primary'||el.value==='secondary')cfg.family=el.value;else return;break;
-        // 起始色阶：仅接受合法 ShadeKey。
-        // <lang zh-CN>非法阶名忽略。</lang>
-        // <lang en>Illegal step names ignored.</lang>
-        case'start':if(shadeValues.includes(el.value as ShadeKey))cfg.start=el.value as ShadeKey;else return;break;
-        // 结束色阶：同起始色阶校验。
-        // <lang zh-CN>对称处理。</lang>
-        // <lang en>Symmetric handling.</lang>
-        case'end':if(shadeValues.includes(el.value as ShadeKey))cfg.end=el.value as ShadeKey;else return;break;
-        // 方向：接受任意字符串（CSS 角度）。
-        // <lang zh-CN>用于 linear-gradient 的方向参数。</lang>
-        // <lang en>Feeds the linear-gradient direction argument.</lang>
-        case'direction':cfg.direction=el.value;break;
-        // 占比：仅接受四种合法 GradientBias。
-        // <lang zh-CN>非法忽略，保持渲染分支完备。</lang>
-        // <lang en>Illegal ignored so the render switch stays exhaustive.</lang>
-        case'bias':if(biasValues.includes(el.value as GradientBias))cfg.bias=el.value as GradientBias;else return;break;
+        // 起始/结束色阶（`W-tb-P8` 组合框）：任意整数 0-1000 直接生效（真实插值，无吸附）；
+        //   非法输入重渲染面板以回退显示。
+        // <lang zh-CN>ADR-004：自由值经 tonalScaleAt 插值，CSS 变量按引用生成。</lang>
+        // <lang en>ADR-004: free values interpolate via tonalScaleAt; vars emitted per reference.</lang>
+        case'start':case'end':{
+          const v=el.value.trim();
+          // 校验通过（整数 0-1000）后赋值；ShadeValue 为数值字符串模板类型，断言仅为收窄。
+          // <lang zh-CN>正则已保证形态。</lang>
+          // <lang en>The regex guarantees the shape.</lang>
+          if(/^\d{1,4}$/.test(v)&&parseInt(v,10)<=1000)cfg[field as 'start'|'end']=v as typeof cfg['start'];
+          else{renderGradients();return;}
+          break;
+        }
+        // 方向（`W-tb-P8` 组合框）：接受合法 CSS 角度/关键字；非法回退。
+        // <lang zh-CN>校验 deg/grad/rad/turn 与 to <side> 两种形态，大小写不敏感。</lang>
+        // <lang en>Accepts deg/grad/rad/turn and to <side> forms, case-insensitive.</lang>
+        case'direction':{
+          const v=el.value.trim();
+          if(/^(to\s+(top|right|bottom|left)(\s+(top|right|bottom|left))?|[+-]?\d+(\.\d+)?(deg|grad|rad|turn))$/i.test(v))cfg.direction=v;
+          else{renderGradients();return;}
+          break;
+        }
+        // 占比（`W-tb-P8` 组合框）：parseBiasInput 解析四种输入形态；非法回退。
+        // <lang zh-CN>front/end + 0-100；解析失败重渲染以回退显示。</lang>
+        // <lang en>front/end + 0-100; unparseable input re-renders to revert.</lang>
+        case'bias':{
+          const parsed=parseBiasInput(el.value);
+          if(parsed)cfg.bias=parsed;
+          else{renderGradients();return;}
+          break;
+        }
         default:return;
       }
       // 变更后刷新预览、持久化、令牌与面板自身。
-      // <lang zh-CN>重渲染本面板以同步预览与说明文字。</lang>
-      // <lang en>Re-renders the panel to sync preview and captions.</lang>
+      // <lang zh-CN>重渲染本面板以同步预览、色块与说明文字。</lang>
+      // <lang en>Re-renders the panel to sync preview, swatches and captions.</lang>
       applyRuntimeTheme();saveGradients();updateTokenOutputs();renderGradients();
     }));
     // 交换按钮：起止色阶互换，并翻转占比（保持视觉权重一致）。
@@ -358,7 +406,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const key=btn.closest<HTMLElement>('[data-gradient-key]')?.dataset.gradientKey;if(!key)return;
       const cfg=draft.gradients[key];if(!cfg)return;
       [cfg.start,cfg.end]=[cfg.end,cfg.start];
-      cfg.bias=swappedBias[cfg.bias];
+      cfg.bias=swapGradientBias(cfg.bias);
       applyRuntimeTheme();saveGradients();updateTokenOutputs();renderGradients();
     }));
     // 重置按钮：将该角色恢复为出厂默认配置。
