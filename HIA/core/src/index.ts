@@ -18,7 +18,7 @@ export{clamp,normalizeHex,validHex,hexToRgb,rgbToHex,rgbToOklab,oklabToRgb,hexTo
 // 由基色生成 10 级色阶。
 // <lang zh-CN>主题色阶的唯一来源，输出已做色域校正。</lang>
 // <lang en>Single source of tonal scales; output is gamut-corrected.</lang>
-export{tonalScale}from'./color/scale.js';
+export{tonalScale,tonalScaleAt}from'./color/scale.js';
 // 和谐配色定义与副色生成。
 // <lang zh-CN>副色候选的理论依据与生成入口；SecondaryCandidate 为类型。</lang>
 // <lang en>Harmony definitions and secondary generation; SecondaryCandidate is the type.</lang>
@@ -39,7 +39,7 @@ export{GRADIENT_DEFS,GRADIENT_DEFAULTS,cloneGradientSettings}from'./data/gradien
 // 渐变渲染：起止色停靠点、CSS 生成、运行时变量与导出变量行。
 // <lang zh-CN>GradientRenderMode 区分运行时 var()、导出 var() 与字面量三种渲染。</lang>
 // <lang en>GradientRenderMode switches between runtime var(), export var() and literal rendering.</lang>
-export{gradientStops,gradientCss,gradientDominantColor,createRuntimeCssVariables,exportGradientVariableLines}from'./gradient/render.js';
+export{gradientStops,gradientCss,gradientDominantColor,createRuntimeCssVariables,exportGradientVariableLines,swapGradientBias,collectCustomShades}from'./gradient/render.js';
 export type{GradientRenderMode}from'./gradient/render.js';
 // 由主题输入构建完整主题。
 // <lang zh-CN>连接 color/scale 与 studio 的顶层主题工厂。</lang>

@@ -21,7 +21,14 @@ export type ColorFamily='primary'|'secondary';
 // 渐变占比策略：前色/后色主导的四种常用分段。
 // <lang zh-CN>控制渐变起止色在视觉上的占比，影响卡片氛围是偏主色还是偏副色。</lang>
 // <lang en>Controls the visual weight of gradient start/end colors, biasing cards toward primary or secondary.</lang>
-export type GradientBias='front75'|'front65'|'end65'|'end75';
+// 渐变占比：front/end 前缀 + 0-100 整数百分比（ADR-004 数值化）。
+// <lang zh-CN>front N 表示前色（start）占 N%；end N 表示后色（end）占 N%；旧 4 枚举值为数值形式的实例。</lang>
+// <lang en>'front N' means the start color holds N%; 'end N' the end color; legacy 4 enums are numeric instances.</lang>
+export type GradientBias=`front${number}`|`end${number}`;
+// 色阶引用：标准 10 档键（ShadeKey）或任意数值位置（ADR-004 任意色阶，整数 0-1000，端点截断）。
+// <lang zh-CN>自定义值（如 '650'）经 tonalScaleAt 插值解析，CSS 变量按引用生成。</lang>
+// <lang en>Custom values (e.g. '650') resolve via tonalScaleAt interpolation; CSS vars are generated per reference.</lang>
+export type ShadeValue=ShadeKey|`${number}`;
 // 色阶映射：每个色阶键对应一个已校正的 HEX 色值。
 // <lang zh-CN>由主色或副色基色生成的同色系 10 级亮度梯度，键为 ShadeKey。</lang>
 // <lang en>Monochrome 10-step lightness ramp generated from a base color, keyed by ShadeKey.</lang>
@@ -34,7 +41,7 @@ export interface RoleColor{name:string;value:string;scale:ColorScale;on:string;}
 // 单条渐变配置：是否启用、色族、起止色阶、方向与占比。
 // <lang zh-CN>描述一个具名渐变角色（如轮播/Banner）的渲染参数。</lang>
 // <lang en>Describes render parameters of one named gradient role (e.g. carousel / banner).</lang>
-export interface GradientConfig{enabled:boolean;family:ColorFamily;start:ShadeKey;end:ShadeKey;direction:string;bias:GradientBias;}
+export interface GradientConfig{enabled:boolean;family:ColorFamily;start:ShadeValue;end:ShadeValue;direction:string;bias:GradientBias;}
 // 渐变配置集合：以渐变角色键索引。
 // <lang zh-CN>所有渐变角色的聚合配置，键为 GRADIENT_DEFS 中定义的固定角色。</lang>
 // <lang en>Aggregated gradient configs keyed by the fixed roles defined in GRADIENT_DEFS.</lang>

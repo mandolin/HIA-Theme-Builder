@@ -44,6 +44,15 @@ export function cloneGradientSettings(value?:GradientSettings):GradientSettings{
     // <lang zh-CN>防止无效 bias 进入渲染分支。</lang>
     // <lang en>Prevents an invalid bias from reaching the render switch.</lang>
     if((merged.bias as string)==='balanced')merged.bias='front65';
+    // ADR-004 数值化校验：bias 须为 front/end + 0-100 整数；shade 须为 0-1000 整数。
+    // <lang zh-CN>旧 4 枚举与 10 档值天然合法（向后兼容）；非法值回退该角色默认，保证渲染分支完备。</lang>
+    // <lang en>Legacy 4 enums and 10 steps are naturally valid (backward compatible); invalid values
+    //   fall back to the role default so render branches stay exhaustive.</lang>
+    if(!/^(front|end)\d{1,3}$/.test(merged.bias)||!(parseInt(merged.bias.slice(5),10)>=0&&parseInt(merged.bias.slice(5),10)<=100))merged.bias=GRADIENT_DEFAULTS[def.key]!.bias;
+    for(const field of['start','end'] as const){
+      const v=merged[field] as string;
+      if(!/^\d{1,4}$/.test(v)||parseInt(v,10)>1000)merged[field]=GRADIENT_DEFAULTS[def.key]![field];
+    }
     result[def.key]=merged;
   }
   return result;
