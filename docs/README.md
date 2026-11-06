@@ -17,12 +17,13 @@
 | Tauri 版 | [`HIA/tauri/README.md`](../HIA/tauri/README.md)（Rust + WebView，便携版打包） |
 | 公共核心 | [`HIA/core/README.md`](../HIA/core/README.md) |
 
-## 架构决策（ADR，私有库摘要）
+## 架构决策摘要
 
-关键架构决策（共享 UI 复用、网址取色同源、P5 增强项）记录在私有 `work-zone/docs/adr/`：
-- `ADR-001-shared-ui-reuse.md`：桌面端复用 web 共享渲染器（三端 UI 单一事实来源）。
-- `ADR-002-url-color-extraction.md`：网址取色同源约束（Electron 注入与 Tauri `include_str!` 复用同一 scanner bundle）。
-- `ADR-003-p5-enhancements.md`：P5 增强项（logo/dark 双模式/受限多页/Celebi 基准/precision 骨架）。
+关键架构决策的完整记录位于私有 WorkZone 的架构决策记录（ADR），公开侧仅保留结论：
+
+- **共享 UI 复用**：桌面端不重写 UI，直接复用 web 共享渲染器（三端 UI 单一事实来源）。
+- **网址取色同源**：Electron 注入与 Tauri `include_str!` 复用同一 scanner bundle，保证算法一致与评分可复现。
+- **P5 增强项**：logo 检测、dark 双模式、受限多页面采集、Celebi 对比基准、precision 可选骨架。
 
 ## 当前发布状态（2026-08-06）
 

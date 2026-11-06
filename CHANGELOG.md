@@ -30,7 +30,7 @@
 - **P4 Tauri 真实渲染**：`chromiumoxide` 0.5.7 + CDP 无头渲染 + `include_str!` 嵌入同源 scanner bundle + 截图 PNG base64 回传前端 `analyzeThemeV2` 量化评分；`render.rs` 抽离 `render_collect` 与集成测试（真实渲染 `example.com` 1 passed）；采用 connect 优先模式（`HIA_CHROME_WS` 复用已运行 Chrome CDP，避开 chromiumoxide launch 与新版 Chrome 的 CDP 兼容问题），launch 作离线/CI 回退。
 - **跨端同源约束**：Electron 注入与 Tauri `include_str!` 必须复用同一份 `extractor/dist/browser-scanner.bundle.js`；提供 `HIA/extractor/scripts/verify-bundle-consistency.mjs` 校验两端引用为同一文件（hash 一致），保证算法一致与评分可复现。
 
-### P5 增强项（5 项，完整交付 ChatGPT 原始规格 P5 节）
+### P5 增强项（5 项，完整交付原始规格 P5 节）
 
 - **① logo 检测与裁剪**：`scanner.detectLogos` 识别 favicon / brand-image / 内联 SVG 包围盒；命中证据标记 `ColorEvidence.isLogo`，报告层新增 `logoHexes`（去重）。Electron `captureAndQuantize` 对 logo 包围盒 `capturePage(rect)` 裁剪并量化，web/electron 候选标注 logo 标签。
 - **② dark 双模式**：`ColorEvidence.colorScheme` 维度贯穿 scanner/aggregate（`colorScheme` 进入聚合五元组键）；Electron `setEmulatedMedia({prefersColorScheme:'dark'})` + reload 复采，Tauri 经 CDP `Emulation.setEmulatedMedia(prefers-color-scheme:dark)` + reload 复采（复采后恢复 light），两端产出 `darkMode.evidence`（`colorScheme:'dark'`）；core `analyzeThemeV2` 复用 `analyzeColors` 产出 `darkPrimary` / `darkSecondary`；web 色板区新增"深色模式主色"卡片。

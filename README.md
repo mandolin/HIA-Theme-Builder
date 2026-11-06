@@ -9,9 +9,9 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 | Tauri 版 (`HIA/tauri`) | 桌面版（更轻量），复用 web 共享渲染器，启动即为一致操作台/预览/渐变/导出，并具备从指定网址获取颜色集等额外能力。 |
 | 公共核心 (`HIA/core`) | 供以上各端调用的公共主题模型、颜色算法、Token 导出与预览组件。 |
 
-> 跨端一致性：桌面端不重写 UI，直接复用 `HIA/web` 的 Vite 构建产物（`index.html` + `assets`），因此三端呈现与操作一致；桌面端专属能力（从网址取色）通过各自平台桥（`window.hia.extractFromUrl` / `__TAURI_INVOKE__('extract_signals')`）由 `createAdaptivePlatform` 的回退链自动接入。详见 `work-zone/docs/adr/ADR-001-shared-ui-reuse.md`。
+> 跨端一致性：桌面端不重写 UI，直接复用 `HIA/web` 的 Vite 构建产物（`index.html` + `assets`），因此三端呈现与操作一致；桌面端专属能力（从网址取色）通过各自平台桥（`window.hia.extractFromUrl` / `__TAURI_INVOKE__('extract_signals')`）由 `createAdaptivePlatform` 的回退链自动接入。
 >
-> 取色算法同源：Electron 注入与 Tauri 编译期 `include_str!` 嵌入的 scanner bundle 均来自同一份 `HIA/extractor/dist/browser-scanner.bundle.js`（IIFE 自包含），且 Electron 运行期读取 `node_modules/@hia/theme-url-extractor/dist/` 副本须与其内容一致。可用 `HIA/extractor/scripts/verify-bundle-consistency.mjs` 校验三端 bundle 内容 hash 一致，保证评分可复现。详见 `work-zone/docs/adr/ADR-002-url-color-extraction.md`。
+> 取色算法同源：Electron 注入与 Tauri 编译期 `include_str!` 嵌入的 scanner bundle 均来自同一份 `HIA/extractor/dist/browser-scanner.bundle.js`（IIFE 自包含），且 Electron 运行期读取 `node_modules/@hia/theme-url-extractor/dist/` 副本须与其内容一致。可用 `HIA/extractor/scripts/verify-bundle-consistency.mjs` 校验三端 bundle 内容 hash 一致，保证评分可复现。
 
 ## 仓库与边界
 
@@ -31,7 +31,7 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 
 ## 原始工具
 
-重构起点为内部文档库中的 `I:\HIA_SYS_DOC\工具\主题管理器\HIA_theme_manager.html`：一个以主/副色操作台、预设主题库、渐变设置、PC/小程序预览和 CSS/JSON Token 导出为核心的单文件工作台。本项目在保留其设计语言与能力边界的前提下，进行组件化拆分与多端派生。
+重构起点为内部单文件工具 `HIA_theme_manager.html`：一个以主/副色操作台、预设主题库、渐变设置、PC/小程序预览和 CSS/JSON Token 导出为核心的单文件工作台。本项目在保留其设计语言与能力边界的前提下，进行组件化拆分与多端派生。
 
 ## 规划与里程碑
 
@@ -45,7 +45,7 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 
 ## 中英双语代码文档
 
-自首份源码起，所有代码语义节点均执行 ROP（面向阅读的编程），具备紧邻的中英双语文档化注释；JS/TS 当前使用 `@lang zh-CN`、`@lang en` 与 inline `<lang>`。详见 `AGENTS.md` 与 `work-zone/docs/standards/bilingual-code-documentation-policy.md`。
+自首份源码起，所有代码语义节点均执行 ROP（面向阅读的编程），具备紧邻的中英双语文档化注释；JS/TS 当前使用 `@lang zh-CN`、`@lang en` 与 inline `<lang>`。详见 `AGENTS.md`。
 
 ## 字体策略
 
@@ -66,7 +66,7 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 本项目采用**混合许可证**策略：
 
 - 根文档及 `HIA/core`、`HIA/web`、`HIA/tauri` 默认按 **MIT License** 授权。
-- `HIA/electron/` 目录采用 **Apache License 2.0**（子包自决；因其“从指定网址获取颜色集”等额外能力可能引入 Apache-2.0 依赖，且专利授权对企业分发更友好）。具体见根 `LICENSE` 与 `dev/audits/license-audit-electron-2026-08-05.md`。
+- `HIA/electron/` 目录采用 **Apache License 2.0**（子包自决；因其“从指定网址获取颜色集”等额外能力可能引入 Apache-2.0 依赖，且专利授权对企业分发更友好）。具体见根 `LICENSE`；许可证审计记录位于私有 WorkZone。
 - `work-zone/` 为独立私有仓库，不随公开主库授权分发。
 
 所有第三方依赖、字体、图标与二进制资产进入发布路径前须记录来源、版本与许可证，优先 MIT、Apache-2.0、BSD、ISC、OFL、CC0 等宽松许可。
