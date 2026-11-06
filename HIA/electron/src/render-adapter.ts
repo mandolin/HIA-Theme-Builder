@@ -1,9 +1,9 @@
 /**
  * @lang zh-CN Electron 真实渲染采集适配器（P2）：用隐藏隔离 BrowserWindow 加载网址，
- *   页面稳定化后注入与 Tauri 同源的 scanner bundle，采集 DOM/CSS/SVG 证据并截图量化，
+ *   页面稳定化后注入与 Tauri 同源的 scanner bundle，采集 DOM/CSS/SVG/manifest 证据并截图量化，
  *   组装为 V2 信号契约。失败时回退 fetch-signals 静态降级（degraded-static）。V2 评分（P3）由调用方 analyzeThemeV2 完成。
  * @lang en Electron real-render adapter (P2): hidden isolated BrowserWindow loads URL, stabilizes the page,
- *   injects the same scanner bundle as Tauri, collects DOM/CSS/SVG evidence and quantizes screenshots into V2 signals.
+ *   injects the same scanner bundle as Tauri, collects DOM/CSS/SVG/manifest evidence and quantizes screenshots into V2 signals.
  *   On failure falls back to fetch-signals static degraded mode (degraded-static). V2 scoring (P3) done by caller via analyzeThemeV2.
  */
 
@@ -125,11 +125,28 @@ export interface RenderCollectOptions{
   captureLogo?:boolean;
 }
 
+// 页面端 DOM 采集脚本：注入 scanner 后预取 manifest 颜色（fetchManifest，遗留问题清理 C9），
+//   再以同步 scanDocument 采集；manifest 预取失败静默降级为无 manifest 证据。
+// <lang zh-CN>fetchManifest 由 bundle 提供；scanDocument 保持同步无网络等待。</lang>
+// <lang en>fetchManifest ships in the bundle; scanDocument stays synchronous with no network wait.</lang>
+function scanDomScript(colorScheme:'light'|'dark'):string{
+  const schemePart=colorScheme==='dark'?"colorScheme:'dark',":"";
+  return `(async function(){
+    const mf = (window.__hiaScanner.fetchManifest ? await window.__hiaScanner.fetchManifest(document).catch(function(){ return null; }) : null);
+    const ctx={ width:${VIEWPORT.width}, height:${VIEWPORT.height}, dpr:${VIEWPORT.dpr}, ${schemePart} };
+    if(mf){ ctx.manifest=mf; }
+    const r=window.__hiaScanner.scanDocument(document, ctx);
+    return JSON.stringify({ evidence:r.evidence, warnings:r.warnings });
+  })()`;
+}
+
 /**
  * @lang zh-CN 真实渲染采集主入口：隐藏窗口加载 URL，稳定化后注入 scanner 采集 DOM 证据 + 截图量化，
- *   返回 V2 信号（mode:'render'）。默认开启 dark 双模式与 logo crop（P5 增强）。任何失败抛错，由调用方决定回退静态采集。
+ *   返回 V2 信号（mode:'render'）。默认开启 dark 双模式、logo crop 与 manifest 颜色预取（P5 增强 + C9）。
+ *   任何失败抛错，由调用方决定回退静态采集。
  * @lang en Real-render collection entry: hidden window loads URL, stabilizes, injects scanner for DOM evidence + screenshot quantize,
- *   returns V2 signals (mode:'render'). Dark dual-mode and logo crop on by default (P5). Any failure throws; caller decides static fallback.
+ *   returns V2 signals (mode:'render'). Dark dual-mode, logo crop and manifest pre-fetch on by default (P5 + C9).
+ *   Any failure throws; caller decides static fallback.
  */
 export async function renderCollect(rawUrl:string, opts?:RenderCollectOptions):Promise<WebsiteColorSignalsV2>{
   // 深度 SSRF 校验：同步字面量关卡 + 运行时 DNS 解析二次校验（防 DNS rebinding 把公开域名跳私网）。
@@ -163,18 +180,19 @@ export async function renderCollect(rawUrl:string, opts?:RenderCollectOptions):P
   try{
     // 安全策略：deny 权限/下载/外部协议/弹窗。
     // <lang zh-CN>阻止一切副作用与未知导航请求。electron 与 DOM lib 全局类型存在已知冲突，
-    //   这两处方法在运行时存在，用最小 any 规避声明合并解析问题。</lang>
+    //   session 级下载 deny 的回调参数用最小 any 规避声明合并解析问题。</lang>
     // <lang en>Block all side effects and unknown navigations. electron vs DOM lib global types conflict;
-    //   these methods exist at runtime; minimal any bypasses the declaration-merge resolution gap.</lang>
+    //   the session-level download-deny callback params use minimal any to bypass the declaration-merge gap.</lang>
     win.webContents.session.setPermissionRequestHandler((_req,_perm,cb)=>cb(false));
-    // 下载拦截：will-download 事件阻止任何下载项（setDownloadBehavior 在某些 electron 版本 session 上不存在）。
+    // 下载拦截：session 级 will-download 阻止任何下载项（现行 API，非遗留问题 C12 指向的旧式 webContents 事件）。
     // <lang zh-CN>deny 所有下载项，避免副作用。</lang>
     // <lang en>Deny all downloads to avoid side effects.</lang>
     win.webContents.session.on('will-download',(_evt,item)=>{ item.cancel(); });
-    // 弹窗拦截：new-window 事件阻止未知窗口打开（setWindowOpenHandler 在部分构建上不可用）。
-    // <lang zh-CN>阻止一切新窗口/弹窗导航。</lang>
-    // <lang en>Block all new-window/popup navigations.</lang>
-    (win.webContents as unknown as { on:(ev:string,cb:(e:{preventDefault:()=>void})=>void)=>void }).on('new-window',(e)=>{ e.preventDefault(); });
+    // 弹窗拦截：setWindowOpenHandler 阻止一切新窗口（Electron 12+ 现行 API；遗留问题清理 C12，
+    //   替换已废弃的 webContents 'new-window' 事件监听）。
+    // <lang zh-CN>返回 deny 即阻止一切新窗口/弹窗导航。</lang>
+    // <lang en>Returning deny blocks all new-window/popup opens.</lang>
+    win.webContents.setWindowOpenHandler(()=>({ action:'deny' }));
 
     // 请求级 SSRF 重校验（文档十三节第 5/6 条）：每个新请求（含重定向链每一跳与子资源）都过 onBeforeRequest 字面量关卡。
     // <lang zh-CN>域名型 host 的 DNS rebinding 已由导航前 guardUrlDeep 兜底；此处阻断字面量私网/IP 变体与非常规协议，
@@ -192,17 +210,15 @@ export async function renderCollect(rawUrl:string, opts?:RenderCollectOptions):P
     await stabilize(win);
 
     // 注入 scanner 并采集 DOM 证据。
-    // <lang zh-CN>页面端解析器用浏览器原生 getComputedStyle 兜底（复杂格式由真实浏览器解析）。</lang>
-    // <lang en>Page parser uses native getComputedStyle as fallback (browser resolves complex formats).</lang>
+    // <lang zh-CN>页面端解析器用浏览器原生 getComputedStyle 兜底（复杂格式由真实浏览器解析）；
+    //   采集前异步预取 manifest 颜色（C9），失败静默为 null。</lang>
+    // <lang en>Page parser uses native getComputedStyle as fallback (browser resolves complex formats);
+    //   manifest colors pre-fetched async before scanning (C9), silently null on failure.</lang>
     await exec('inject-scanner', scannerSrc);
     // 在页面端完成 JSON 序列化并返回字符串，规避 IPC 结构化克隆对特殊值的限制。
     // <lang zh-CN>主进程收到字符串后 JSON.parse；任何不可序列化字段已在页面端被 JSON 丢弃。</lang>
     // <lang en>Page side serializes to string; main parses. Un-serializable fields dropped at page side.</lang>
-    const domEvJson:string=String(await exec('scan-dom', `(function(){
-      const ctx={ width:${VIEWPORT.width}, height:${VIEWPORT.height}, dpr:${VIEWPORT.dpr} };
-      const r=window.__hiaScanner.scanDocument(document, ctx);
-      return JSON.stringify({ evidence:r.evidence, warnings:r.warnings });
-    })()`));
+    const domEvJson:string=String(await exec('scan-dom', scanDomScript('light')));
     const scanRes=JSON.parse(domEvJson);
     const domEv:ColorEvidence[]=scanRes.evidence||[];
     // 合并 scanner 端 warnings（节点上限/证据上限/同源 frame 跳过等）。
@@ -231,8 +247,8 @@ export async function renderCollect(rawUrl:string, opts?:RenderCollectOptions):P
     const colorScheme=String(await exec('read-scheme',`(function(){ return matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'; })()`).catch(()=> 'light'));
 
     // dark 双模式采集（P5）：强制 prefers-color-scheme:dark 后 reload 复采，得到 dark 套证据。
-    // <lang zh-CN>较短的稳定化窗口（4s/8s）控制额外耗时；reload 后需重新注入 scanner bundle。</lang>
-    // <lang en>Force dark then reload+rescan; shorter stabilize (4s/8s) bounds extra cost; re-inject scanner after reload.</lang>
+    // <lang zh-CN>较短的稳定化窗口（4s/8s）控制额外耗时；reload 后需重新注入 scanner bundle；dark 采集同样预取 manifest（C9）。</lang>
+    // <lang en>Force dark then reload+rescan; shorter stabilize (4s/8s) bounds extra cost; re-inject scanner after reload; dark scan also pre-fetches manifest (C9).</lang>
     let darkMode:WebsiteColorSignalsV2['darkMode'];
     if(opts?.emulateDark!==false){
       try{
@@ -240,11 +256,7 @@ export async function renderCollect(rawUrl:string, opts?:RenderCollectOptions):P
         await win.webContents.reload();
         await stabilize(win,4000,8000);
         await exec('inject-scanner-dark', scannerSrc);
-        const darkJson:string=String(await exec('scan-dom-dark', `(function(){
-          const ctx={ width:${VIEWPORT.width}, height:${VIEWPORT.height}, dpr:${VIEWPORT.dpr}, colorScheme:'dark' };
-          const r=window.__hiaScanner.scanDocument(document, ctx);
-          return JSON.stringify({ evidence:r.evidence, warnings:r.warnings });
-        })()`));
+        const darkJson:string=String(await exec('scan-dom-dark', scanDomScript('dark')));
         const dres=JSON.parse(darkJson);
         darkMode={ evidence:dres.evidence||[], colorScheme:'dark', warnings:dres.warnings||[] };
         await (win.webContents as unknown as { setEmulatedMedia:(o:{prefersColorScheme?:'light'|'dark'})=>void }).setEmulatedMedia({ prefersColorScheme:'light' });
@@ -276,7 +288,9 @@ export async function renderCollect(rawUrl:string, opts?:RenderCollectOptions):P
 
 /**
  * @lang zh-CN 采集入口（带降级）：优先真实渲染，失败回退静态 fetch 并用 toV2Signals 标记 degraded-static。
+ *   静态降级路径现已与渲染路径同口径过 SSRF 深度校验（遗留问题清理 B2）。
  * @lang en Collection entry with fallback: prefer real render; on failure use static fetch tagged degraded-static via toV2Signals.
+ *   The static path now applies the same SSRF deep check as the render path (cleanup B2).
  */
 export async function collectSignalsV2(rawUrl:string):Promise<WebsiteColorSignalsV2>{
   try{

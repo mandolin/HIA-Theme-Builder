@@ -1,18 +1,29 @@
 // @lang zh-CN Tauri P4 真实渲染采集模块：用 chromiumoxide 启动独立无头 chromium 真实加载目标网址，
 //   注入与 Electron 同源的 scanner bundle 采集 DOM 证据，截图返回 PNG base64（前端经 core.analyzeThemeV2 评分并量化截图）。
 //   scanner 由 include_str! 编译期嵌入，保证两端算法一致与 hash 可同步测试。
+//   遗留问题清理：C4（就绪轮询注释与代码一致）、B3（finalUrl 取真实终址）、C11（CDP Fetch 请求级 SSRF 拦截）、
+//   C9（采集前预取站点 manifest 颜色）。
 // @lang en Tauri P4 real-render collection module: uses chromiumoxide to launch a standalone headless chromium that really
 //   loads the URL, injects the same scanner bundle as Electron to collect DOM evidence, screenshots to PNG base64
 //   (front scores via core.analyzeThemeV2 and quantizes). Scanner embedded via include_str! at compile time to keep
 //   both ends algorithmically identical and hash-testable.
+//   Leftover cleanup: C4 (readyState polling comment matches code), B3 (finalUrl from real location), C11 (CDP Fetch
+//   request-level SSRF interception), C9 (site manifest colors pre-fetched before scanning).
 
 use chromiumoxide::browser::{Browser, BrowserConfig};
 use chromiumoxide::cdp::browser_protocol::emulation::{MediaFeature, SetEmulatedMediaParams};
+use chromiumoxide::cdp::browser_protocol::fetch::{
+    ContinueRequestParams, DisableParams, EnableParams, EventRequestPaused, FailRequestParams,
+    RequestPattern, RequestStage,
+};
+use chromiumoxide::cdp::browser_protocol::network::{ErrorReason, ResourceType};
 use chromiumoxide::page::Page;
 use futures::StreamExt;
 use serde_json::{json, Value};
 use std::env;
 use std::net::ToSocketAddrs;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 /// @lang zh-CN 统一日志：打到 stderr，Tauri 运行时捕获到应用日志，便于排查渲染/代理/CDP 问题。
 /// @lang en Unified logging to stderr; Tauri runtime captures it for diagnosing render/proxy/CDP issues.
@@ -155,6 +166,26 @@ pub async fn resolve_host_safe(host: &str) -> Result<bool, String> {
     Ok(blocked)
 }
 
+/// @lang zh-CN 请求级字面量关卡（C11）：仅放行 http/https，host 不得命中私网/保留/元数据/localhost。
+///   覆盖 file:/data:/javascript: 等注入面与 IP 字面量变体；DNS 深检由调用方对主文档请求另行执行。
+/// @lang en Per-request literal gate (C11): only http/https pass, host must not be private/reserved/metadata/localhost.
+///   Covers file:/data:/javascript: injection and IP-literal variants; DNS deep-check is caller's job for document requests.
+fn blocked_request_url(raw: &str) -> bool {
+    match url::Url::parse(raw) {
+        Ok(u) => {
+            let s = u.scheme();
+            if s != "http" && s != "https" {
+                return true; // <lang zh-CN>阻断非 http(s) 协议注入面</lang> // <lang en>block non-http(s) scheme injection</lang>
+            }
+            match u.host_str() {
+                Some(h) => is_blocked_host(h) || is_private_ip(h),
+                None => true, // <lang zh-CN>http(s) 但无 host 属畸形，阻断</lang> // <lang en>http(s) without host is malformed; block</lang>
+            }
+        }
+        Err(_) => true, // <lang zh-CN>解析失败一律阻断</lang> // <lang en>parse failure always blocked</lang>
+    }
+}
+
 /// @lang zh-CN 单页真实渲染采集：启动无头 chromium → 导航 → 注入 scanner 采集 DOM 证据 → 截图返回 PNG base64。
 ///   emulate_dark（默认 true）时额外以 prefers-color-scheme:dark 复采一次，对称 Electron 的双模式深色证据。
 /// @lang en Per-page real render: launch headless chromium → navigate → inject scanner for DOM evidence → screenshot to PNG base64.
@@ -246,6 +277,13 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
         while let Some(Ok(_)) = handler.next().await {}
     });
 
+    // C11 裁决任务句柄与停止标记：result 块内赋值，成功/失败路径均要清理（见 cleanup 段与 teardown）。
+    // <lang zh-CN>connect 模式复用页面，若裁决任务被杀而 Fetch 拦截未关，后续导航会挂起，故两者必须成对清理。</lang>
+    // <lang en>C11 responder handle + stop flag: assigned in the result block; cleaned on both success/error paths.
+    //   In connect mode the page is reused; killing the responder while Fetch stays enabled would hang later navigations.</lang>
+    let fetch_done = Arc::new(AtomicBool::new(false));
+    let mut fetch_task_slot: Option<tokio::task::JoinHandle<()>> = None;
+
     let result = async {
         let t0 = std::time::Instant::now();
         // 创建/复用页面：优先 new_page；connect 模式下若 new_page 因 CDP 兼容失败（oneshot canceled），
@@ -271,8 +309,10 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
         };
         rlog!("page acquired (+{:.1?})", t0.elapsed());
         // 导航前 DNS 解析二次校验（防 DNS rebinding）：解析 host 全部 A/AAAA，命中私网/元数据即阻断。
-        // <lang zh-CN>字面量关卡由 main.rs 的 is_blocked_host 完成；此处补连接级解析校验，fail-closed。</lang>
-        // <lang en>Literal gate done by main.rs is_blocked_host; this adds connect-time resolution check, fail-closed.</lang>
+        // <lang zh-CN>字面量关卡由 main.rs 的 is_blocked_host 完成；此处补连接级解析校验，fail-closed。
+        //   此时尚未开启 Fetch 拦截，失败无需清理。</lang>
+        // <lang en>Literal gate done by main.rs is_blocked_host; this adds connect-time resolution check, fail-closed.
+        //   Fetch interception not enabled yet, so no cleanup needed on failure.</lang>
         if let Ok(parsed) = url::Url::parse(url) {
             let host = parsed.host_str().unwrap_or("").to_string();
             if !host.is_empty() {
@@ -284,108 +324,203 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
                 }
             }
         }
-        // 导航到目标网址（真实渲染）。
-        // Chrome 148 与 chromiumoxide 0.5.7 的 Page.navigate（page.goto）在复杂/重定向页面下不稳定，
-        // 统一用 Runtime.evaluate 设置 location.href 触发导航（connect 模式 new_page 可用，此路径已验证）。
-        // <lang zh-CN>用 JS 导航 + 轮询 readyState；缩短轮询以减少复杂页面下的 CDP 连接窗口。</lang>
-        // <lang en>JS navigation + readyState polling; shorter poll to reduce CDP window on complex pages.</lang>
-        let nav_js = format!(
-            r#"window.location.href = {}; "navigating""#,
-            serde_json::to_string(url).map_err(|e| format!("URL 序列化失败：{e}"))?
-        );
-        rlog!("nav evaluate send (+{:.1?})", t0.elapsed());
-        page.evaluate(nav_js)
+
+        // C11 请求级 SSRF 拦截（补齐 ADR-003 登记的 redirect/子请求级缺口）：
+        //   开启 CDP Fetch 域，仅拦截请求发出阶段（RequestStage::Request）；每个请求先暂停再裁决。
+        // <lang zh-CN>字面量关卡（blocked_request_url）覆盖所有请求；DNS 深检仅对主文档导航/重定向做——
+        //   子资源海量逐个解析代价过高，且初始 host 已在导航前深检。命中即以 BlockedByClient 失败该请求。</lang>
+        // <lang en>C11 per-request SSRF interception (closes the redirect/sub-request gap logged in ADR-003):
+        //   enable CDP Fetch domain at RequestStage::Request; every request pauses then gets adjudicated.
+        //   Literal gate on all requests; DNS deep-check only for main-document navigations/redirects —
+        //   per-subresource DNS is too costly, and the initial host was deep-checked pre-navigation. Blocked → BlockedByClient.</lang>
+        let pattern = RequestPattern::builder()
+            .request_stage(RequestStage::Request)
+            .build();
+        page.execute(EnableParams::builder().patterns(vec![pattern]).build())
             .await
-            .map_err(|e| { rlog!("nav evaluate failed: {e} (+{:.1?})", t0.elapsed()); format!("导航注入失败：{e}") })?;
-        rlog!("nav evaluate done, waiting readyState (+{:.1?})", t0.elapsed());
-        // 轮询等待页面加载完成。注意：不能用“单条 evaluate 内长 Promise 等 readyState”——
-        // baidu 等跨域重定向会销毁原 JS 上下文，导致该 Promise 被 Chrome 中断（oneshot canceled）。
-        // 改为 Rust 侧循环、每次独立短 evaluate 查 document.readyState；上下文切换瞬间命令可能失败，短暂重试。
-        // <lang zh-CN>最多等 15 秒，每 500ms 查一次；complete 即继续，超时仅记警告继续采集。</lang>
-        // <lang en>Poll up to 15s, checking every 500ms via independent short evaluate; timeout is a warning, not fatal.</lang>
-        let mut ready_ok = false;
-        for _ in 0..10 {
-            match page.evaluate("document.readyState").await {
-                Ok(v) => {
-                    let s = v.into_value().unwrap_or_else(|_| "\"loading\"".to_string());
-                    // baidu 等 SPA 有持续后台轮询，readyState 可能停在 interactive；DOM 已就绪即可采集。
-                    // <lang zh-CN>接受 interactive/complete 两种就绪态，缩短等待（最多 5 秒）。</lang>
-                    // <lang en>Accept interactive/complete; DOM ready suffices. Cap at 5s.</lang>
-                    if s.contains("complete") || s.contains("interactive") {
-                        ready_ok = true;
-                        break;
+            .map_err(|e| format!("启用请求级拦截失败：{e}"))?;
+        let mut paused_rx = page
+            .event_listener::<EventRequestPaused>()
+            .await
+            .map_err(|e| format!("订阅请求拦截事件失败：{e}"))?;
+        let fetch_page = page.clone();
+        let fetch_done_task = fetch_done.clone();
+        let responder = tokio::task::spawn(async move {
+            while let Some(ev) = paused_rx.next().await {
+                if fetch_done_task.load(Ordering::Relaxed) {
+                    break; // <lang zh-CN>停止标记置位后不再裁决新请求</lang> // <lang en>stop flag set; stop adjudicating new requests</lang>
+                }
+                let req_url = ev.request.url.clone();
+                // 第一关：字面量关卡（协议白名单 + 私网/保留 IP 字面量）。
+                // <lang zh-CN>所有请求都过；命中即阻断，不再做 DNS。</lang>
+                // <lang en>Applied to every request; on hit, block without DNS.</lang>
+                let mut blocked = blocked_request_url(&req_url);
+                // 第二关：主文档请求的 DNS 深检（重定向每一跳的 resource_type 均为 Document）。
+                // <lang zh-CN>解析异常 fail-closed；子资源仅字面量关卡（与 Electron webRequest 口径一致）。</lang>
+                // <lang en>Deep-check for document requests (redirect hops included); resolution errors fail-closed;
+                //   subresources get the literal gate only, matching the Electron webRequest bar.</lang>
+                if !blocked && ev.resource_type == ResourceType::Document {
+                    if let Ok(parsed) = url::Url::parse(&req_url) {
+                        if let Some(host) = parsed.host_str() {
+                            match resolve_host_safe(host).await {
+                                Ok(b) => blocked = b,
+                                Err(_) => blocked = true,
+                            }
+                        }
                     }
                 }
-                Err(_) => { /* 上下文切换瞬间失败，下一轮重试 */ }
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        }
-        if ready_ok {
-            rlog!("readyState ready (+{:.1?})", t0.elapsed());
-        } else {
-            rlog!("WARN readyState polling timed out (continue anyway) (+{:.1?})", t0.elapsed());
-        }
-        // 浅色主采集：注入同源 scanner bundle，返回 evidence JSON。
-        // <lang zh-CN>scanner 每次 evaluate 重新注入，故 reload 后仍可复用。</lang>
-        // <lang en>Scanner re-injected on each evaluate, so it survives reload.</lang>
-        rlog!("scan_once(light) start (+{:.1?})", t0.elapsed());
-        let light_evidence = scan_once(&page, None)
-            .await
-            .map_err(|e| format!("浅色采集失败：{e}"))?;
-        rlog!("scan_once(light) done (+{:.1?})", t0.elapsed());
-        // 截图（PNG bytes）转 base64，供前端量化。
-        // <lang zh-CN>截图仅内存短暂存在；base64 回传前端做 median-cut 量化。</lang>
-        // <lang en>Screenshot lives briefly in memory; base64 back to front for median-cut.</lang>
-        rlog!("screenshot start (+{:.1?})", t0.elapsed());
-        let shot: Vec<u8> = page
-            .screenshot(chromiumoxide::page::ScreenshotParams::default())
-            .await
-            .map_err(|e| format!("截图失败：{e}"))?;
-        let screenshot_b64 = base64_encode(&shot);
-        rlog!("screenshot done bytes={} (+{:.1?})", shot.len(), t0.elapsed());
-
-        // 深色双模式复采（P5 对称 Electron）：用 CDP Emulation.setEmulatedMedia 强制暗色，
-        // reload 后重新注入 scanner 复采，最后恢复浅色媒体查询避免影响后续。
-        // <lang zh-CN>失败不致命：仅记录警告，浅色证据仍可用。</lang>
-        // <lang en>Non-fatal: on failure keep a warning; light evidence still usable.</lang>
-        let mut dark_evidence: Value = Value::Null;
-        let mut dark_warning: Option<String> = None;
-        if emulate_dark {
-            rlog!("emulate_dark_and_rescan start (+{:.1?})", t0.elapsed());
-            match emulate_dark_and_rescan(&page).await {
-                Ok(dark) => {
-                    dark_evidence = dark;
-                    rlog!("emulate_dark_and_rescan done (+{:.1?})", t0.elapsed());
-                }
-                Err(e) => {
-                    dark_warning = Some(e.clone());
-                    rlog!("WARN emulate_dark_and_rescan failed: {e} (+{:.1?})", t0.elapsed());
+                if blocked {
+                    let _ = fetch_page
+                        .execute(FailRequestParams::new(
+                            ev.request_id.clone(),
+                            ErrorReason::BlockedByClient,
+                        ))
+                        .await;
+                } else {
+                    let _ = fetch_page
+                        .execute(ContinueRequestParams::new(ev.request_id.clone()))
+                        .await;
                 }
             }
-        }
-
-        let mut out = json!({
-            "evidence": light_evidence,
-            "screenshot": screenshot_b64,
-            "finalUrl": url
         });
-        if emulate_dark {
-            out["darkEvidence"] = dark_evidence;
-            if let Some(w) = dark_warning {
-                out["darkWarning"] = json!(w);
+        fetch_task_slot.replace(responder);
+
+        // 主采集流程（导航 → 采集 → 深色复采 → 终址）。错误经 work_res 返回，cleanup 在其后必然执行。
+        // <lang zh-CN>Fetch 拦截开启后任何失败都必须走到 cleanup，否则 connect 模式复用的页面会挂起。</lang>
+        // <lang en>Once Fetch interception is on, every failure must reach the cleanup step, or the reused page in connect mode hangs.</lang>
+        let work_res: Result<Value, String> = async {
+            // 导航到目标网址（真实渲染）。
+            // Chrome 148 与 chromiumoxide 0.5.7 的 Page.navigate（page.goto）在复杂/重定向页面下不稳定，
+            // 统一用 Runtime.evaluate 设置 location.href 触发导航（connect 模式 new_page 可用，此路径已验证）。
+            // <lang zh-CN>用 JS 导航 + 轮询 readyState；缩短轮询以减少复杂页面下的 CDP 连接窗口。</lang>
+            // <lang en>JS navigation + readyState polling; shorter poll to reduce CDP window on complex pages.</lang>
+            let nav_js = format!(
+                r#"window.location.href = {}; "navigating""#,
+                serde_json::to_string(url).map_err(|e| format!("URL 序列化失败：{e}"))?
+            );
+            rlog!("nav evaluate send (+{:.1?})", t0.elapsed());
+            page.evaluate(nav_js)
+                .await
+                .map_err(|e| { rlog!("nav evaluate failed: {e} (+{:.1?})", t0.elapsed()); format!("导航注入失败：{e}") })?;
+            rlog!("nav evaluate done, waiting readyState (+{:.1?})", t0.elapsed());
+            // 轮询等待页面加载完成。注意：不能用“单条 evaluate 内长 Promise 等 readyState”——
+            // baidu 等跨域重定向会销毁原 JS 上下文，导致该 Promise 被 Chrome 中断（oneshot canceled）。
+            // 改为 Rust 侧循环、每次独立短 evaluate 查 document.readyState；上下文切换瞬间命令可能失败，短暂重试。
+            // <lang zh-CN>最多等 5 秒（10 次 × 500ms），每 500ms 查一次；complete/interactive 即继续，超时仅记警告继续采集（C4：注释与代码对齐）。</lang>
+            // <lang en>Poll up to 5s (10 × 500ms) via independent short evaluate; timeout is a warning, not fatal (C4: comment matches code).</lang>
+            let mut ready_ok = false;
+            for _ in 0..10 {
+                match page.evaluate("document.readyState").await {
+                    Ok(v) => {
+                        let s = v.into_value().unwrap_or_else(|_| "\"loading\"".to_string());
+                        // baidu 等 SPA 有持续后台轮询，readyState 可能停在 interactive；DOM 已就绪即可采集。
+                        // <lang zh-CN>接受 interactive/complete 两种就绪态。</lang>
+                        // <lang en>Accept interactive/complete.</lang>
+                        if s.contains("complete") || s.contains("interactive") {
+                            ready_ok = true;
+                            break;
+                        }
+                    }
+                    Err(_) => { /* 上下文切换瞬间失败，下一轮重试 */ }
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             }
+            if ready_ok {
+                rlog!("readyState ready (+{:.1?})", t0.elapsed());
+            } else {
+                rlog!("WARN readyState polling timed out (continue anyway) (+{:.1?})", t0.elapsed());
+            }
+            // 浅色主采集：注入同源 scanner bundle，返回 evidence JSON。
+            // <lang zh-CN>scanner 每次 evaluate 重新注入，故 reload 后仍可复用；采集前预取 manifest 颜色（C9）。</lang>
+            // <lang en>Scanner re-injected on each evaluate, so it survives reload; manifest colors pre-fetched before scanning (C9).</lang>
+            rlog!("scan_once(light) start (+{:.1?})", t0.elapsed());
+            let light_evidence = scan_once(&page, None)
+                .await
+                .map_err(|e| format!("浅色采集失败：{e}"))?;
+            rlog!("scan_once(light) done (+{:.1?})", t0.elapsed());
+            // 截图（PNG bytes）转 base64，供前端量化。
+            // <lang zh-CN>截图仅内存短暂存在；base64 回传前端做 median-cut 量化。</lang>
+            // <lang en>Screenshot lives briefly in memory; base64 back to front for median-cut.</lang>
+            rlog!("screenshot start (+{:.1?})", t0.elapsed());
+            let shot: Vec<u8> = page
+                .screenshot(chromiumoxide::page::ScreenshotParams::default())
+                .await
+                .map_err(|e| format!("截图失败：{e}"))?;
+            let screenshot_b64 = base64_encode(&shot);
+            rlog!("screenshot done bytes={} (+{:.1?})", shot.len(), t0.elapsed());
+
+            // 深色双模式复采（P5 对称 Electron）：用 CDP Emulation.setEmulatedMedia 强制暗色，
+            // reload 后重新注入 scanner 复采，最后恢复浅色媒体查询避免影响后续。
+            // <lang zh-CN>失败不致命：仅记录警告，浅色证据仍可用。</lang>
+            // <lang en>Non-fatal: on failure keep a warning; light evidence still usable.</lang>
+            let mut dark_evidence: Value = Value::Null;
+            let mut dark_warning: Option<String> = None;
+            if emulate_dark {
+                rlog!("emulate_dark_and_rescan start (+{:.1?})", t0.elapsed());
+                match emulate_dark_and_rescan(&page).await {
+                    Ok(dark) => {
+                        dark_evidence = dark;
+                        rlog!("emulate_dark_and_rescan done (+{:.1?})", t0.elapsed());
+                    }
+                    Err(e) => {
+                        dark_warning = Some(e.clone());
+                        rlog!("WARN emulate_dark_and_rescan failed: {e} (+{:.1?})", t0.elapsed());
+                    }
+                }
+            }
+
+            // 真实终址（遗留问题清理 B3）：导航/深色复采完成后读 location.href，替换此前直接回填请求 URL 的做法。
+            // <lang zh-CN>重定向站点（如 baidu）由此得到真实终址；读取失败或非 http(s) 时回退请求 URL。</lang>
+            // <lang en>Real final URL (cleanup B3): read location.href after navigation/dark rescan instead of echoing the request URL;
+            //   fall back to the requested URL when unavailable or non-http(s).</lang>
+            let final_url: String = match page.evaluate("window.location.href").await {
+                Ok(v) => v.into_value().unwrap_or_else(|_| url.to_string()),
+                Err(_) => url.to_string(),
+            };
+            let final_url = if final_url.starts_with("http") { final_url } else { url.to_string() };
+
+            let mut out = json!({
+                "evidence": light_evidence,
+                "screenshot": screenshot_b64,
+                "finalUrl": final_url
+            });
+            if emulate_dark {
+                out["darkEvidence"] = dark_evidence;
+                if let Some(w) = dark_warning {
+                    out["darkWarning"] = json!(w);
+                }
+            }
+            rlog!("render_collect success (+{:.1?})", t0.elapsed());
+            Ok::<Value, String>(out)
         }
-        rlog!("render_collect success (+{:.1?})", t0.elapsed());
-        Ok::<Value, String>(out)
+        .await;
+
+        // cleanup（成功与失败路径都执行）：关闭 Fetch 拦截并停掉裁决任务。
+        // <lang zh-CN>顺序敏感：先 disable（Chrome 停止暂停新请求），再置停止标记并 abort 任务，
+        //   使仍在裁决中的请求尽快落地；best-effort，页面可能已销毁。</lang>
+        // <lang en>Order matters: disable first (Chrome stops pausing new requests), then set the stop flag and abort
+        //   the responder so in-flight adjudications settle; best-effort, the page may already be gone.</lang>
+        let _ = page.execute(DisableParams::default()).await;
+        fetch_done.store(true, Ordering::Relaxed);
+        if let Some(t) = fetch_task_slot.take() {
+            t.abort();
+        }
+        work_res
     }
     .await;
 
     // 关闭浏览器并等待 handler 结束（释放 chromium 进程）。
     // <lang zh-CN>connect 模式下跳过 close（否则关闭外部 Chrome），且必须 abort handler 任务——
-    //   否则 handler 循环永不结束，await 死锁。launch 模式正常 close 并等待。</lang>
+    //   否则 handler 循环永不结束，await 死锁。launch 模式正常 close 并等待。
+    //   兜底清理：若 result 块在 cleanup 前提前失败（理论不可达，防御性保留），此处再次 best-effort 关拦截。</lang>
     // <lang en>Skip close in connect mode (would kill external Chrome), and must abort the handler task—
-    //   otherwise the handler loop never ends and await deadlocks. Launch mode closes and waits normally.</lang>
+    //   otherwise the handler loop never ends and await deadlocks. Launch mode closes and waits normally.
+    //   Safety net: re-run the best-effort fetch cleanup in case the result block failed before its cleanup.</lang>
     rlog!("teardown connect_mode={is_connect_mode}");
+    fetch_done.store(true, Ordering::Relaxed);
+    if let Some(t) = fetch_task_slot.take() {
+        t.abort();
+    }
     if is_connect_mode {
         browser_handle.abort();
     } else {
@@ -398,12 +533,14 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
 
 /// @lang zh-CN 单次 DOM 采集：构造与 Electron 同源的 scanner 注入脚本并执行，返回 evidence JSON（含错误透传）。
 ///   color_scheme 为 None 表示浅色主采集；Some("dark") 用于深色双模式复采，标记证据配色方案。
+///   采集前异步预取站点 manifest 颜色（C9，与 Electron 同口径），失败静默降级。
 /// @lang en One DOM scan: build the same scanner injection as Electron, run it, return evidence JSON (errors surfaced).
 ///   color_scheme None = light primary scan; Some("dark") = dark dual-mode rescan, tags evidence scheme.
+///   Site manifest colors are pre-fetched async first (C9, same bar as Electron); silent degrade on failure.
 async fn scan_once(page: &Page, color_scheme: Option<&str>) -> Result<Value, String> {
-    // 注入脚本包裹 IIFE：先展开 SCANNER_SRC（自带 true; 收尾），再用 __hiaScanner.scanDocument 采集。
-    // <lang zh-CN>每次 evaluate 重建 scanner 全局，故 reload 后仍能复采。</lang>
-    // <lang en>Rebuilds the scanner global each evaluate, so it re-scans after reload.</lang>
+    // 注入脚本包裹 async IIFE：先展开 SCANNER_SRC（自带 true; 收尾），预取 manifest，再用 __hiaScanner.scanDocument 采集。
+    // <lang zh-CN>每次 evaluate 重建 scanner 全局，故 reload 后仍能复采；page.evaluate 会等待 Promise 解析。</lang>
+    // <lang en>Rebuilds the scanner global each evaluate, so it re-scans after reload; page.evaluate awaits the promise.</lang>
     // <lang zh-CN>colorScheme 仅当深色复采时传入，与 Electron 双模式一致。</lang>
     // <lang en>colorScheme passed only on dark rescan, mirroring Electron dual-mode.</lang>
     let scheme_js = match color_scheme {
@@ -411,10 +548,12 @@ async fn scan_once(page: &Page, color_scheme: Option<&str>) -> Result<Value, Str
         None => String::new(),
     };
     let scan_js = format!(
-        r#"(function(){{
+        r#"(async function(){{
   {scanner}
   try {{
+    const mf = (window.__hiaScanner.fetchManifest ? await window.__hiaScanner.fetchManifest(document).catch(function(){{ return null; }}) : null);
     const ctx = {{ width: {w}, height: {h}, dpr: 1, {scheme} }};
+    if (mf) {{ ctx.manifest = mf; }}
     const {{ evidence }} = window.__hiaScanner.scanDocument(document, ctx);
     return JSON.stringify(evidence);
   }} catch(e) {{ return JSON.stringify({{ error: String(e) }}); }}
@@ -559,7 +698,18 @@ mod tests {
             .and_then(|s| s.as_str())
             .expect("应含 screenshot base64");
         assert!(screenshot.len() > 1000, "screenshot base64 应足够长");
-        assert_eq!(v.get("finalUrl").and_then(|s| s.as_str()), Some(url));
+        // finalUrl 应为真实终址（B3）：location.href 可能带尾斜杠或经历协议升级（http→https），
+        // 故断言为 http(s) 且指向同一主机，而非与请求 URL 全等。
+        // <lang zh-CN>旧实现回填请求 URL 会掩盖协议升级/重定向；此断言保证报告的是真实 location.href。</lang>
+        // <lang en>The old impl echoed the request URL, hiding upgrades/redirects; assert the real location.href instead.</lang>
+        let final_url = v
+            .get("finalUrl")
+            .and_then(|s| s.as_str())
+            .expect("应含 finalUrl 字段");
+        assert!(
+            final_url.starts_with("http") && final_url.contains("example.com"),
+            "finalUrl 应为真实终址：{final_url}"
+        );
     }
 
     /// @lang zh-CN 单元：统一私网判定覆盖 IPv4/IPv6 私网段与公网放行。
@@ -584,5 +734,29 @@ mod tests {
         assert!(is_private_ip("::ffff:169.254.169.254"));
         // IPv6 公网放行
         assert!(!is_private_ip("2606:2800:220:1:248:1893:25c8:1946"));
+    }
+
+    /// @lang zh-CN 单元：请求级字面量关卡（C11）——阻断非 http(s)、私网/保留 IP 字面量与元数据，放行公网 http(s)。
+    /// @lang en Unit: per-request literal gate (C11) — blocks non-http(s), private/reserved IP literals and metadata; passes public http(s).
+    #[test]
+    fn blocked_request_url_covers_schemes_and_hosts() {
+        // 非 http(s) 协议阻断
+        assert!(blocked_request_url("file:///C:/Windows/system32/config"));
+        assert!(blocked_request_url("javascript:alert(1)"));
+        assert!(blocked_request_url("data:text/html,<h1>x</h1>"));
+        // 私网/保留/元数据 IP 字面量阻断
+        assert!(blocked_request_url("http://127.0.0.1/x"));
+        assert!(blocked_request_url("http://10.1.2.3/x"));
+        assert!(blocked_request_url("http://192.168.1.1/x"));
+        assert!(blocked_request_url("http://172.16.0.9/x"));
+        assert!(blocked_request_url("http://169.254.169.254/latest/meta-data/"));
+        assert!(blocked_request_url("http://[::1]/x"));
+        // localhost 命名阻断
+        assert!(blocked_request_url("http://localhost:8080/x"));
+        // 公网 http(s) 放行
+        assert!(!blocked_request_url("http://example.com/"));
+        assert!(!blocked_request_url("https://www.baidu.com/s?wd=x"));
+        // 畸形 URL 阻断
+        assert!(blocked_request_url("not a url"));
     }
 }

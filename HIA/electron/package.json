@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.json && node scripts/fix-preload-cjs.js && node scripts/copy-renderer.js",
     "start": "npm run build && electron dist/main.js",
     "test": "vitest run",
-    "dist": "npm run build && electron-builder --win portable"
+    "dist": "npm run build && electron-builder --win portable nsis"
   },
   "dependencies": {
     "@hia/theme-core": "file:../core",
@@ -39,8 +39,13 @@
     "portable": {
       "artifactName": "HIA-Theme-Builder-Electron-${version}-portable.exe"
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "HIA-Theme-Builder-Electron-${version}-setup.exe"
+    },
     "win": {
-      "target": ["portable"]
+      "target": ["portable", "nsis"]
     }
   }
 }

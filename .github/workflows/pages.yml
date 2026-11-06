@@ -1,6 +1,8 @@
 # @lang zh-CN HIA/web 发布到 GitHub Pages 的工作流：构建前先对 core/web/electron/tauri 四端做构建与测试校验，
-#   任一端校验失败则阻断部署；通过后部署 web 的 dist 到 Pages。
-# @lang en GitHub Pages workflow for HIA/web: verify build+test for core/web/electron/tauri before deploy;
+#   并对 tauri 的 Rust 后端做 cargo check（遗留问题清理 C7：此前 CI 不编译 Rust 侧）；
+#   任一校验失败则阻断部署；通过后部署 web 的 dist 到 Pages。
+# @lang en GitHub Pages workflow for HIA/web: verify build+test for core/web/electron/tauri before deploy,
+#   plus cargo check for the tauri Rust backend (cleanup C7: CI previously never compiled the Rust side);
 #   any failure blocks deploy; then deploy web dist to Pages.
 
 name: Deploy web to GitHub Pages
@@ -73,9 +75,9 @@ jobs:
           npm run build
           npm test
 
-      # ----- tauri：前端编译 + SSRF 单测（Rust 后端编译待工具链，仅前端证据）-----
-      # <lang zh-CN>tauri 前端以 copy-front 编译；Rust 端到端启动在目标环境复验，CI 仅前端证据。</lang>
-      # <lang en>tauri front-end compiled via copy-front; Rust end-to-end launch is re-verified in target env, CI holds front-end evidence only.</lang>
+      # ----- tauri：前端编译 + SSRF 单测（Rust 端到端启动在目标环境复验）-----
+      # <lang zh-CN>tauri 前端以 copy-front 编译；Rust 侧编译由独立的 tauri-rust-check job 覆盖。</lang>
+      # <lang en>tauri front-end compiled via copy-front; the Rust side is covered by the dedicated tauri-rust-check job.</lang>
       - name: Verify tauri
         working-directory: HIA/tauri
         run: |
@@ -88,8 +90,25 @@ jobs:
         with:
           path: HIA/web/dist
 
+  # ----- tauri Rust 静态检查（C7）：windows runner 无需 webkit2gtk 系统依赖，cargo check 覆盖编译正确性 -----
+  # <lang zh-CN>不运行需要系统 Chrome 的集成测试（目标环境复验）；仅 cargo check 保证 Rust 侧随每次改动可编译。
+  #   Cargo.lock 已入库，--locked 保证依赖解析与本地一致；Swatinem/rust-cache 缓存 target 加速。</lang>
+  # <lang en>No Chrome-dependent integration tests here (target env re-verifies); cargo check only keeps the Rust
+  #   side compiling on every change. Cargo.lock is committed (--locked pins resolution); rust-cache speeds up builds.</lang>
+  tauri-rust-check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: HIA/tauri/src-tauri
+      - name: Cargo check (tauri src-tauri)
+        working-directory: HIA/tauri/src-tauri
+        run: cargo check --locked
+
   deploy:
-    needs: build
+    needs: [build, tauri-rust-check]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

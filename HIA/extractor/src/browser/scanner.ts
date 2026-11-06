@@ -19,8 +19,10 @@ export const MAX_ELEMENTS=10000;
 export const MAX_EVIDENCE=1000;
 
 // 采集上下文：由适配器在注入前设置运行时解析器与 viewport 信息。
-// <lang zh-CN>真实环境应注入利用浏览器原生 CSS 解析能力的解析器；colorScheme 标记当前采集的配色方案（dark mode 双模式）。</lang>
-// <lang en>Real environments inject a native-CSS parser; colorScheme tags the active scheme (dark-mode dual capture).</lang>
+// <lang zh-CN>真实环境应注入利用浏览器原生 CSS 解析能力的解析器；colorScheme 标记当前采集的配色方案（dark mode 双模式）；
+//   manifest 为适配器通过 fetchManifest 预取的站点清单颜色（遗留问题清理 C9）。</lang>
+// <lang en>Real environments inject a native-CSS parser; colorScheme tags the active scheme (dark-mode dual capture);
+//   manifest carries site-manifest colors pre-fetched by the adapter via fetchManifest (cleanup C9).</lang>
 export interface ScanContext{
   width:number;
   height:number;
@@ -28,6 +30,8 @@ export interface ScanContext{
   /** 当前采集的配色方案；dark mode 双模式时第二次采集为 'dark'。 */
   colorScheme?:'light'|'dark';
   parseColor?:(input:string)=>string|null;
+  /** 站点 manifest 颜色（可选）：由 fetchManifest 预取后传入，scanDocument 据此产出 manifest-theme 证据。 */
+  manifest?:{ themeColor?:string; backgroundColor?:string };
 }
 
 // 单元素属性采集：读取 computed style 的关键颜色属性并归一化。
@@ -104,8 +108,10 @@ function collectElementColors(el:Element, ctx:ScanContext):RawEvidence[]{
 }
 
 // 采集 <meta name="theme-color"> 与 manifest 的 theme/background color。
-// <lang zh-CN>meta 支持带 media 的 light/dark 变体；manifest 仅当链接可访问时采集。</lang>
-// <lang en>meta supports media-based light/dark variants; manifest collected only when link is reachable.</lang>
+// <lang zh-CN>meta 支持带 media 的 light/dark 变体；manifest 颜色由适配器经 fetchManifest 预取后放入 ctx.manifest，
+//   scanDocument 保持同步、无网络等待。</lang>
+// <lang en>meta supports media-based light/dark variants; manifest colors are pre-fetched by the adapter via fetchManifest
+//   and passed in ctx.manifest, keeping scanDocument synchronous with no network wait.</lang>
 function collectMetaAndManifest(doc:Document, ctx:ScanContext):RawEvidence[]{
   const out:RawEvidence[]=[];
   const pushMeta=(authorValue:string,role:SemanticRole)=>{
@@ -116,10 +122,57 @@ function collectMetaAndManifest(doc:Document, ctx:ScanContext):RawEvidence[]{
   for(const m of Array.from(doc.querySelectorAll('meta[name="theme-color"]'))){
     pushMeta(m.getAttribute('content')||'','brand');
   }
-  // manifest theme_color/background_color：fetch 解析，失败静默（跨域/不可达）。
-  // <lang zh-CN>异步不便在此同步等待，适配器可单独传入；此处尝试同步 best-effort 已不可行，交给适配器层。</lang>
-  // <lang en>Async fetch is impractical here; adapter layer supplies manifest separately.</lang>
+  // manifest theme_color/background_color：ctx.manifest 预取数据解析为 manifest-theme 证据。
+  // <lang zh-CN>theme_color 计 brand、background_color 计 surface；无效色静默跳过（与 meta 行为一致）。</lang>
+  // <lang en>theme_color as brand, background_color as surface; invalid colors silently skipped (same as meta).</lang>
+  if(ctx.manifest){
+    const pushManifest=(authorValue:string|undefined,role:SemanticRole,label:string)=>{
+      if(!authorValue)return;
+      const hex=normalizeBrowserColor(authorValue);
+      if(!hex)return;
+      out.push({ authorValue, hex, alpha:1, source:'manifest-theme', role, areaRatio:1, aboveFoldRatio:1, context:`web app manifest ${label}`, selector:'link[rel=manifest]' });
+    };
+    pushManifest(ctx.manifest.themeColor,'brand','theme_color');
+    pushManifest(ctx.manifest.backgroundColor,'surface','background_color');
+  }
   return out;
+}
+
+// 从 manifest JSON 文本提取主题/背景颜色（纯函数，可在 Node 单测）。
+// <lang zh-CN>只接受字符串字段的 theme_color/background_color；解析失败或均缺失返回 null。</lang>
+// <lang en>Accepts only string theme_color/background_color; returns null on parse failure or when both missing.</lang>
+export function manifestColorsFromJson(jsonText:string):{ themeColor?:string; backgroundColor?:string }|null{
+  try{
+    const data=JSON.parse(jsonText) as { theme_color?:unknown; background_color?:unknown };
+    const out:{ themeColor?:string; backgroundColor?:string }={};
+    if(typeof data.theme_color==='string'&&data.theme_color.trim())out.themeColor=data.theme_color.trim();
+    if(typeof data.background_color==='string'&&data.background_color.trim())out.backgroundColor=data.background_color.trim();
+    return (out.themeColor||out.backgroundColor)?out:null;
+  }catch{
+    return null;
+  }
+}
+
+// 预取站点 manifest 颜色：解析 link[rel=manifest] 并 fetch（页面端异步，适配器在 scanDocument 前调用）。
+// <lang zh-CN>任何失败（无链接/跨域 CORS/超时/格式错误）返回 null，由调用方静默降级为无 manifest 证据。</lang>
+// <lang en>Any failure (no link/CORS/timeout/bad format) returns null; caller degrades silently to no-manifest evidence.</lang>
+export async function fetchManifest(doc:Document, timeoutMs=3000):Promise<{ themeColor?:string; backgroundColor?:string }|null>{
+  try{
+    const link=doc.querySelector('link[rel="manifest"]') as HTMLLinkElement|null;
+    if(!link||!link.href)return null;
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),timeoutMs);
+    try{
+      const res=await fetch(link.href,{ signal:ctrl.signal });
+      if(!res.ok)return null;
+      const text=await res.text();
+      return manifestColorsFromJson(text);
+    }finally{
+      clearTimeout(timer);
+    }
+  }catch{
+    return null;
+  }
 }
 
 // 采集根元素 :root 的 CSS 自定义属性中的颜色值。
@@ -257,6 +310,6 @@ export function installScanner(parseColor:(input:string)=>string|null):void{
 }
 
 // 默认导出集合，供构建脚本打包为单一 browser bundle。
-// <lang zh-CN>stable 入口，Tauri Rust 端 include_str! 引用其产物。</lang>
-// <lang en>Stable entry; Tauri Rust side references its bundle via include_str!.</lang>
-export const scanner={ scanDocument, detectLogos, installScanner, MAX_ELEMENTS, MAX_EVIDENCE };
+// <lang zh-CN>stable 入口，Tauri Rust 端 include_str! 引用其产物；fetchManifest/manifestColorsFromJson 随 C9 加入。</lang>
+// <lang en>Stable entry; Tauri Rust side references its bundle via include_str!; fetchManifest/manifestColorsFromJson added with C9.</lang>
+export const scanner={ scanDocument, detectLogos, installScanner, fetchManifest, manifestColorsFromJson, MAX_ELEMENTS, MAX_EVIDENCE };

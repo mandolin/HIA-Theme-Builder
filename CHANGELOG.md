@@ -2,6 +2,15 @@
 
 本项目遵循阶段化发布。以下记录公开可验证的发布与里程碑节点。
 
+## 遗留问题清理与安装器（2026-11-06）
+
+- **安全修复**：Electron 生产包不再无条件打开 DevTools（改为 `HIA_OPEN_DEVTOOLS=1` 显式开启）；静态降级取色路径补齐 SSRF DNS 深度校验（与真实渲染路径同口径，消除 DNS rebinding 残留风险）；Tauri 报告的 `finalUrl` 改为真实 `location.href`（重定向/协议升级后不再是回填的请求 URL，如 `http://example.com` 现如实报告 `https://example.com/`）。
+- **Tauri 请求级 SSRF 拦截**：经 CDP Fetch 域实现逐请求拦截——所有请求过协议白名单 + 私网/保留 IP 字面量关卡，主文档请求（含重定向每跳）追加 DNS 深度校验，命中即以 `BlockedByClient` 阻断；采集完成后自动解除拦截并停止裁决任务。
+- **manifest 颜色采集**：scanner 新增 `fetchManifest`（页面端预取站点 web app manifest）与 `manifestColorsFromJson`（纯函数）；`theme_color`/`background_color` 以 `manifest-theme` 来源进入证据聚合，Electron/Tauri 同一份 bundle 同步支持。
+- **质量项**：Tauri WebView 启用 CSP（`default-src 'self'` 等，含 `ipc:` 与 `data:` 抓取放行）；Electron 弹窗拦截改用现行 `setWindowOpenHandler`；`fix-preload-cjs` 不再硬编码 IPC 通道名（从编译产物提取，漂移即构建失败）；移除 Tauri 过期 `dist-front` 产物与 core 遗留 vitest 旧测试；CI 新增 `tauri-rust-check` job（windows `cargo check --locked`），Rust 侧编译纳入部署门禁。
+- **安装器**：Electron 新增 NSIS 安装器（`...-setup.exe`，可选择安装目录）与便携版并存；Tauri 开启 MSI bundle（`HIA Theme Builder_0.1.0_x64_en-US.msi`，WiX 自动下载）。全部未签名（证书待采购），哈希与产物清单随发布登记。
+- **验证**：extractor 23/23（新增 4 个 manifest 用例）、core 22/22、electron `tsc` 0 错 + SSRF 15/15、tauri `cargo check` 0 错 + 单测 2/2 + 真实渲染集成测试 1/1（无头 Chrome connect 模式、拦截激活状态）、web 构建 0 错、三端 scanner bundle 哈希一致。
+
 ## 桌面端三端发布（2026-08-06）
 
 - **Web 版 → GitHub Pages**：`pages.yml` 工作流在 `main` 推送时自动构建四端并部署 `web/dist`；修复了 CI 失败根因——`web` 依赖 `@hia/theme-url-extractor` 但工作流此前未先构建 extractor，导致 `tsc` 报 `TS2307`；并在 `web/src/platform.ts` 显式标注 `quantizeMedianCut` 回调参数类型以消除隐式 any。

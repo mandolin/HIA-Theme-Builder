@@ -29,9 +29,11 @@ function createWindow(): void {
     }
   });
   win.loadFile(join(__dirname, 'renderer', 'index.html'));
-  // <lang zh-CN>开发阶段打开 DevTools 便于诊断渲染器桥接与 explorer 检测。</lang>
-  // <lang en>Open DevTools during dev for diagnosing renderer bridge and explorer detection.</lang>
-  win.webContents.openDevTools();
+  // <lang zh-CN>DevTools 仅在显式设置 HIA_OPEN_DEVTOOLS=1 时打开：生产包默认不暴露调试面（遗留问题清理 B1）。</lang>
+  // <lang en>Open DevTools only when HIA_OPEN_DEVTOOLS=1; production builds no longer expose the debug surface (cleanup B1).</lang>
+  if (process.env.HIA_OPEN_DEVTOOLS === '1') {
+    win.webContents.openDevTools();
+  }
 }
 
 /**
