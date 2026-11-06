@@ -209,8 +209,14 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>覆盖操作台右侧与预览区多处只读文本。</lang>
   // <lang en>Updates read-only texts across the studio sidebar and preview regions.</lang>
   function updatePreviewMeta(){
-    setText('activePresetName',draft.name);
-    setText('activePresetMeta',`${draft.category} · ${draft.industry||'未指定行业'}`);
+    // 名称/分类/行业经 t() 翻译：内置数据命中字典，用户自定义内容按键缺失静默原样返回。
+    // <lang zh-CN>category 为选项键时用 category.* 语义键；为中文标签时按中文原文键回退。</lang>
+    // <lang en>Names/categories/industries go through t(): built-in data hits the dictionary;
+    //   custom content passes through silently on missing keys.</lang>
+    const catKnown=['default','business','industry','award','creative','dark','custom'];
+    const catLabel=catKnown.includes(draft.category)?t(`category.${draft.category}`):t(draft.category);
+    setText('activePresetName',t(draft.name));
+    setText('activePresetMeta',`${catLabel} · ${draft.industry?t(draft.industry):t('未指定行业')}`);
     setText('activePresetColors',`${draft.primary} / ${draft.secondary}`);
     setText('wxThemeBadge',draft.name);
     setText('wxDetailThemeName',draft.name);
@@ -378,7 +384,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 逐预设生成卡片：头部（名/分类/行业 + 当前徽标）、双色板、名称、说明、操作按钮。
     // <lang zh-CN>动态文本经 escapeHtml；删除按钮仅自定义预设显示。</lang>
     // <lang en>Dynamic text escaped; delete button only for custom presets.</lang>
-    wrap.innerHTML=list.map(p=>`<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(p.name)}</div><div class="small">${escapeHtml(p.category)} · ${escapeHtml(p.industry||'未分类')}</div></div>${selectedPresetId===p.id?'<span class="badge">当前</span>':''}</div><div class="preset-swatch"><i style="background:${p.primary}"></i><i style="background:${p.secondary}"></i></div><div class="small" style="margin-top:8px">${escapeHtml(p.primaryName)} / ${escapeHtml(p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(p.note||'')}</div><div class="preset-actions"><button class="btn primary" data-apply-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('应用')}</button><button class="btn outline" data-load-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('载入操作台')}</button>${!isBuiltinPresetId(p.id)?`<button class="btn ghost" data-delete-preset="${escapeHtml(p.id)}" style="padding:8px 10px;color:var(--danger)">${t('删除')}</button>`:''}</div></div>`).join('');
+    wrap.innerHTML=list.map(p=>{const bi=isBuiltinPresetId(p.id);const nm=bi?t(p.name):p.name;const ct=bi?t(p.category):p.category;const ind=bi&&p.industry?t(p.industry):p.industry;return `<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(nm)}</div><div class="small">${escapeHtml(ct)} · ${escapeHtml(ind||t('未分类'))}</div></div>${selectedPresetId===p.id?`<span class="badge">${t('当前')}</span>`:''}</div><div class="preset-swatch"><i style="background:${p.primary}"></i><i style="background:${p.secondary}"></i></div><div class="small" style="margin-top:8px">${escapeHtml(bi?t(p.primaryName):p.primaryName)} / ${escapeHtml(bi?t(p.secondaryName):p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(bi&&p.note?t(p.note):(p.note||''))}</div><div class="preset-actions"><button class="btn primary" data-apply-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('应用')}</button><button class="btn outline" data-load-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('载入操作台')}</button>${!bi?`<button class="btn ghost" data-delete-preset="${escapeHtml(p.id)}" style="padding:8px 10px;color:var(--danger)">${t('删除')}</button>`:''}</div></div>`;}).join('');
     // 应用按钮：直接套用预设到当前主题。
     // <lang zh-CN>改变界面与草稿，但不保存为新预设。</lang>
     // <lang en>Changes UI and draft but does not save a new preset.</lang>

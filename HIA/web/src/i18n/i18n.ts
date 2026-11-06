@@ -109,7 +109,10 @@ export function t(key: string, params?: Record<string, string | number>): string
     const hit = strings[key];
     out = hit ? hit[fieldFor(currentLocale)] : key;
   } else {
-    console.warn(`[i18n] missing key: ${key}`);
+    // 仅对"语义键形态"（含点号）的缺失告警；用户数据（如自定义预设名）静默原样返回。
+    // <lang zh-CN>避免把用户输入误报为漏翻。</lang>
+    // <lang en>Avoid flagging user-entered text as missing translations.</lang>
+    if (key.includes('.')) console.warn(`[i18n] missing key: ${key}`);
     out = key;
   }
   // 参数插值：{name} 形式。
@@ -174,7 +177,11 @@ export function translateTextNodes(root: Document | Element = document): void {
     const entry = strings[trimmed];
     if (!entry) continue;
     const target = entry[fieldFor(currentLocale)];
-    if (target === trimmed) continue;
+    // 与"当前节点值"比较（而非字典键）：否则 zh→en→zh 往返时，
+    // zh 目标与键相同会被误判为无需翻译，节点停留在英文。
+    // <lang zh-CN>修复 W-tb-P7 验证中发现的往返还原 bug。</lang>
+    // <lang en>Fixes the round-trip restore bug found during W-tb-P7 verification.</lang>
+    if ((textNode.nodeValue ?? '').trim() === target) continue;
     textNode.nodeValue = original.replace(trimmed, target);
   }
 }
@@ -187,5 +194,11 @@ export function translateTextNodes(root: Document | Element = document): void {
 export function applyAll(root: Document | Element = document): void {
   applyDomTranslations(root);
   translateTextNodes(root);
-  if (root === document) document.documentElement.lang = currentLocale;
+  if (root === document) {
+    document.documentElement.lang = currentLocale;
+    // 页面标题同步翻译（字典键 'hero.title' 与 <title> 共用文案）。
+    // <lang zh-CN>title 与 h1 使用同一词条，保持一致性。</lang>
+    // <lang en>The title shares the h1 entry for consistency.</lang>
+    document.title = t('hero.title');
+  }
 }
