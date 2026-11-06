@@ -106,9 +106,14 @@ jobs:
           }
           # 生成 SHA-256
           Set-Location artifacts
-          $files = Get-ChildItem -File -Exclude "SHA256SUMS.txt"
+          $files = Get-ChildItem -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" }
+          if ($files.Count -eq 0) {
+            Write-Error "No artifact files found in artifacts directory"
+            exit 1
+          }
           $hashes = $files | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash + "  " + $_.Name }
           $hashes | Out-File -FilePath SHA256SUMS.txt -Encoding utf8
+          Write-Host "SHA256SUMS.txt content:"
           Get-Content SHA256SUMS.txt
 
       # 创建 GitHub Release
