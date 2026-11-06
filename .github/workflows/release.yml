@@ -89,7 +89,12 @@ jobs:
           Copy-Item "HIA\tauri\src-tauri\target\release\bundle\msi\HIA Theme Builder_*_x64_en-US.msi" artifacts\
           Copy-Item "HIA\tauri\src-tauri\target\release\HIA Theme Builder.exe" artifacts\HIA-Theme-Builder-Tauri-portable.exe
           Set-Location artifacts
-          Get-ChildItem -File | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash + "  " + $_.Name } | Out-File -Encoding utf8 SHA256SUMS.txt
+          # 先收集文件列表（排除 SHA256SUMS.txt 自身），再计算哈希
+          # <lang zh-CN>避免管道中文件锁冲突。</lang>
+          # <lang en>Avoid file lock conflict in pipeline.</lang>
+          $files = Get-ChildItem -File -Exclude "SHA256SUMS.txt"
+          $hashes = $files | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash + "  " + $_.Name }
+          $hashes | Out-File -FilePath SHA256SUMS.txt -Encoding utf8
           Get-Content SHA256SUMS.txt
 
       # 创建 GitHub Release
