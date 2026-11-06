@@ -14,6 +14,7 @@ import{
   type WebsiteThemeAnalysisV2
 }from'@hia/theme-core';
 import{all,byId,inputValue,setInputValue,setText}from'./dom.js';
+import{t,setLocale,getLocale,applyAll}from'./i18n/index.js';
 import type{ThemeManagerPlatform}from'./platform.js';
 
 // 操作台对宿主暴露的控制句柄：读取草稿/主题、应用外部草稿、销毁。
@@ -48,7 +49,10 @@ const biasValues:GradientBias[]=['front75','front65','end65','end75'];
 // 占比的中文标签。
 // <lang zh-CN>解释前/后色在渐变中的主导比例。</lang>
 // <lang en>Explains how much the start/end color dominates the gradient.</lang>
-const biasLabels:Record<GradientBias,string>={front75:'前色占 75%',front65:'前色占 65%',end65:'后色占 65%',end75:'后色占 75%'};
+// 占比标签：渲染时经 t() 现算（键=中文原文），保证语言切换后立即生效。
+// <lang zh-CN>不能在模块加载时固化——那会锁定初始语言。</lang>
+// <lang en>Must not be fixed at module load — that would freeze the initial locale.</lang>
+function biasLabelsNow():Record<GradientBias,string>{return{front75:t('前色占 75%'),front65:t('前色占 65%'),end65:t('后色占 65%'),end75:t('后色占 75%')};}
 // 交换起止色时对应的占比翻转映射。
 // <lang zh-CN>前色主导翻为后色主导，保持视觉权重一致。</lang>
 // <lang en>Front-dominant flips to end-dominant, keeping visual weight consistent.</lang>
@@ -217,7 +221,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 布局/外观文案随模式切换更新。
     // <lang zh-CN>把枚举映射为中文标签。</lang>
     // <lang en>Maps enums to Chinese labels.</lang>
-    setText('settingsLayout',layoutMode==='sidebar'?'左右结构':layoutMode==='top'?'上下结构':'混合工作台');
+    setText('settingsLayout',layoutMode==='sidebar'?t('左右结构'):layoutMode==='top'?t('上下结构'):t('混合工作台'));
     setText('settingsAppearance',appearanceMode==='light'?'浅色':'深色');
   }
 
@@ -300,7 +304,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 逐角色生成卡片 HTML：标题+启用、说明、预览、五个下拉、底部说明与交换/重置。
     // <lang zh-CN>预览用 runtime 模式 var()，下拉用 options() 复用标签映射。</lang>
     // <lang en>Preview uses runtime vars; dropdowns reuse options() with label maps.</lang>
-    wrap.innerHTML=GRADIENT_DEFS.map(def=>{const cfg=draft.gradients[def.key];return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${def.label}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>启用</label></div><div class="gradient-config-desc">${def.desc}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>色系</span><select class="gradient-select" data-gradient-field="family">${options(['primary','secondary'],cfg.family,{primary:'主色系',secondary:'副色系'})}</select></label><label class="gradient-field"><span>方向</span><select class="gradient-select" data-gradient-field="direction">${options(directions,cfg.direction,directionLabels)}</select></label><label class="gradient-field"><span>起始色阶</span><select class="gradient-select" data-gradient-field="start">${options(shadeValues,cfg.start)}</select></label><label class="gradient-field"><span>结束色阶</span><select class="gradient-select" data-gradient-field="end">${options(shadeValues,cfg.end)}</select></label><label class="gradient-field" style="grid-column:1/-1"><span>渐变占比</span><select class="gradient-select" data-gradient-field="bias">${options(biasValues,cfg.bias,biasLabels)}</select></label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${cfg.family==='primary'?'主色':'副色'} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>交换</button><button class="gradient-mini-btn" data-gradient-reset>重置</button></div></div></div>`;}).join('');
+    wrap.innerHTML=GRADIENT_DEFS.map(def=>{const cfg=draft.gradients[def.key];return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${t(def.label)}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>${t('启用')}</label></div><div class="gradient-config-desc">${t(def.desc)}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>${t('色系')}</span><select class="gradient-select" data-gradient-field="family">${options(['primary','secondary'],cfg.family,{primary:t('主色系'),secondary:t('副色系')})}</select></label><label class="gradient-field"><span>${t('方向')}</span><select class="gradient-select" data-gradient-field="direction">${options(directions,cfg.direction,directionLabels)}</select></label><label class="gradient-field"><span>${t('起始色阶')}</span><select class="gradient-select" data-gradient-field="start">${options(shadeValues,cfg.start)}</select></label><label class="gradient-field"><span>${t('结束色阶')}</span><select class="gradient-select" data-gradient-field="end">${options(shadeValues,cfg.end)}</select></label><label class="gradient-field" style="grid-column:1/-1"><span>${t('渐变占比')}</span><select class="gradient-select" data-gradient-field="bias">${options(biasValues,cfg.bias,biasLabelsNow())}</select></label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${cfg.family==='primary'?t('主色'):t('副色')} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>${t('交换')}</button><button class="gradient-mini-btn" data-gradient-reset>${t('重置')}</button></div></div></div>`;}).join('');
     // 绑定字段变更：根据 data-gradient-field 写入对应配置项并刷新。
     // <lang zh-CN>非法值直接 return 不改草稿，保证类型安全。</lang>
     // <lang en>Invalid values return early without mutating the draft, keeping types safe.</lang>
@@ -374,7 +378,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 逐预设生成卡片：头部（名/分类/行业 + 当前徽标）、双色板、名称、说明、操作按钮。
     // <lang zh-CN>动态文本经 escapeHtml；删除按钮仅自定义预设显示。</lang>
     // <lang en>Dynamic text escaped; delete button only for custom presets.</lang>
-    wrap.innerHTML=list.map(p=>`<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(p.name)}</div><div class="small">${escapeHtml(p.category)} · ${escapeHtml(p.industry||'未分类')}</div></div>${selectedPresetId===p.id?'<span class="badge">当前</span>':''}</div><div class="preset-swatch"><i style="background:${p.primary}"></i><i style="background:${p.secondary}"></i></div><div class="small" style="margin-top:8px">${escapeHtml(p.primaryName)} / ${escapeHtml(p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(p.note||'')}</div><div class="preset-actions"><button class="btn primary" data-apply-preset="${escapeHtml(p.id)}" style="padding:8px 10px">应用</button><button class="btn outline" data-load-preset="${escapeHtml(p.id)}" style="padding:8px 10px">载入操作台</button>${!isBuiltinPresetId(p.id)?`<button class="btn ghost" data-delete-preset="${escapeHtml(p.id)}" style="padding:8px 10px;color:var(--danger)">删除</button>`:''}</div></div>`).join('');
+    wrap.innerHTML=list.map(p=>`<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(p.name)}</div><div class="small">${escapeHtml(p.category)} · ${escapeHtml(p.industry||'未分类')}</div></div>${selectedPresetId===p.id?'<span class="badge">当前</span>':''}</div><div class="preset-swatch"><i style="background:${p.primary}"></i><i style="background:${p.secondary}"></i></div><div class="small" style="margin-top:8px">${escapeHtml(p.primaryName)} / ${escapeHtml(p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(p.note||'')}</div><div class="preset-actions"><button class="btn primary" data-apply-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('应用')}</button><button class="btn outline" data-load-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('载入操作台')}</button>${!isBuiltinPresetId(p.id)?`<button class="btn ghost" data-delete-preset="${escapeHtml(p.id)}" style="padding:8px 10px;color:var(--danger)">${t('删除')}</button>`:''}</div></div>`).join('');
     // 应用按钮：直接套用预设到当前主题。
     // <lang zh-CN>改变界面与草稿，但不保存为新预设。</lang>
     // <lang en>Changes UI and draft but does not save a new preset.</lang>
@@ -430,7 +434,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     if(!platform.explorer){wrap.style.display='none';return;}
     wrap.style.display='block';
     const status=byId<HTMLElement>('exploreStatus');
-    const stageText={idle:'等待输入网址',exploring:'正在渲染并分析…',done:'已生成推荐主题',degraded:'已生成（静态降级，置信度受限）',error:'探索失败'} as const;
+    const stageText={idle:t('等待输入网址'),exploring:t('正在渲染与分析…'),done:t('已生成推荐主题'),degraded:t('已生成（静态降级，置信度受限）'),error:t('探索失败')} as const;
     status.textContent=stageText[exploreStage];
     status.dataset.stage=exploreStage;
     const body=byId<HTMLElement>('exploreBody');
@@ -468,11 +472,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Dark card shown only when a dark result exists.</lang>
     const dColor=a.darkPrimary?a.darkPrimary.hex:'—';
     const dConf=a.darkPrimary?Math.round(a.darkPrimary.confidence*100):0;
-    const darkHtml=a.darkPrimary?`<div class="explore-color-card"><div class="explore-swatch-lg" style="background:${dColor}"></div><div class="explore-color-meta"><div class="explore-label">深色模式主色</div><div class="explore-hex">${dColor}</div><div class="explore-conf">置信度 ${dConf}%</div></div></div>`:'';
+    const darkHtml=a.darkPrimary?`<div class="explore-color-card"><div class="explore-swatch-lg" style="background:${dColor}"></div><div class="explore-color-meta"><div class="explore-label">${t('深色模式主色')}</div><div class="explore-hex">${dColor}</div><div class="explore-conf">${t('置信度')} ${dConf}%</div></div></div>`:'';
     body.innerHTML=`
       <div class="explore-colors">
-        <div class="explore-color-card"><div class="explore-swatch-lg" style="background:${pColor}"></div><div class="explore-color-meta"><div class="explore-label">推荐主色（浅色）</div><div class="explore-hex">${pColor}</div><div class="explore-conf">置信度 ${pConf}%</div></div></div>
-        <div class="explore-color-card"><div class="explore-swatch-lg" style="background:${sColor}"></div><div class="explore-color-meta"><div class="explore-label">推荐副色 ${sDerived} ${sTag}</div><div class="explore-hex">${sColor}</div><div class="explore-conf">置信度 ${sConf}%</div></div></div>
+        <div class="explore-color-card"><div class="explore-swatch-lg" style="background:${pColor}"></div><div class="explore-color-meta"><div class="explore-label">推荐主色（浅色）</div><div class="explore-hex">${pColor}</div><div class="explore-conf">${t('置信度')} ${pConf}%</div></div></div>
+        <div class="explore-color-card"><div class="explore-swatch-lg" style="background:${sColor}"></div><div class="explore-color-meta"><div class="explore-label">推荐副色 ${sDerived} ${sTag}</div><div class="explore-hex">${sColor}</div><div class="explore-conf">${t('置信度')} ${sConf}%</div></div></div>
         ${darkHtml}
       </div>
       <div class="explore-block"><div class="explore-sub">推荐理由（前 ${reasons.length} 条）</div><ul class="explore-reasons">${reasonHtml}</ul></div>
@@ -534,7 +538,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     byId<HTMLElement>('pcSidebar').style.display=mode==='sidebar'?'block':'none';
     byId<HTMLElement>('pcRail').style.display=mode==='mixed'?'grid':'none';
     byId<HTMLElement>('pcTopNav').style.display=mode==='top'?'flex':'none';
-    setText('layoutModeLabel',mode==='sidebar'?'左右结构':mode==='top'?'上下结构':'混合工作台');
+    setText('layoutModeLabel',mode==='sidebar'?t('左右结构'):mode==='top'?t('上下结构'):t('混合工作台'));
     updatePreviewMeta();
   }
   // 切换 PC/小程序外观浅深：更新状态、高亮、pcShell/wxFrame 的 dark 类与开关。
@@ -545,7 +549,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     all<HTMLButtonElement>('#appearanceSwitch .seg').forEach(btn=>btn.classList.toggle('active',btn.dataset.appearance===mode));
     byId<HTMLElement>('pcShell').classList.toggle('dark',mode==='dark');
     byId<HTMLElement>('wxFrame').classList.toggle('dark',mode==='dark');
-    setText('appearanceModeLabel',mode==='light'?'浅色模式':'深色模式');
+    setText('appearanceModeLabel',mode==='light'?t('浅色模式'):t('深色模式'));
     byId<HTMLInputElement>('settingsDarkToggle').checked=mode==='dark';
     updatePreviewMeta();
   }
@@ -580,6 +584,20 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>在 boot 末尾调用一次，集中注册监听器。</lang>
   // <lang en>Registered once at the end of boot; centralizes all listeners.</lang>
   function bind(){
+    // 语言切换（`W-tb-P7`）：切换 → 持久化 → 静态 DOM/演示内容翻译 → 动态区域全量重渲染。
+    // <lang zh-CN>按钮文案始终显示"目标语言"（中文界面显示 EN，英文界面显示 中文）。</lang>
+    // <lang en>The button always shows the target language ("EN" on zh UI, "中文" on en UI).</lang>
+    byId<HTMLButtonElement>('langToggleBtn').addEventListener('click',()=>{
+      const next=getLocale()==='zh-CN'?'en':'zh-CN';
+      if(!setLocale(next))return;
+      applyAll();
+      // 动态区域重渲染：与 boot() 的渲染序列保持一致。
+      // <lang zh-CN>复用同一渲染链，保证语言切换后所有面板与翻译同步。</lang>
+      // <lang en>Reuses the same render chain so every panel re-renders in the new locale.</lang>
+      syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();
+      byId<HTMLButtonElement>('langToggleBtn').textContent=t('lang.switch');
+      document.documentElement.lang=next;
+    });
     // 生成副色：以当前主色（若有匹配候选则用其推荐副色置顶）生成候选集并刷新。
     // <lang zh-CN>点击“生成副色”按钮触发，不改动草稿基色。</lang>
     // <lang en>Triggered by "生成副色"; does not mutate draft base colors.</lang>
