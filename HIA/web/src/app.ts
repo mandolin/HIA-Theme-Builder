@@ -82,6 +82,47 @@ function parseBiasInput(raw:string):GradientBias|null{
 // 转义 HTML 特殊字符，防止插入用户/候选文本时产生 XSS。
 // <lang zh-CN>用于所有动态拼入 innerHTML 的字符串。</lang>
 // <lang en>Used for every dynamic string injected into innerHTML.</lang>
+
+// 自研组合框交互（`W-tb-P8` v2）：点开常显全部预设、输入即过滤、键盘可达、外点关闭。
+// <lang zh-CN>原生 datalist 按已填值前缀过滤会导致预设消失，故自研；commit 经 change 事件
+//   走既有字段校验链；mousedown preventDefault 防止选项点击前触发输入框 blur 丢焦点。</lang>
+// <lang en>Native datalist prefix-filters away presets, hence custom dropdown; commits go through
+//   the existing field validation via change; mousedown preventDefault keeps input focus.</lang>
+function bindCombos(scope:HTMLElement):void{
+  all<HTMLElement>('.combo',scope).forEach(combo=>{
+    const input=combo.querySelector<HTMLInputElement>('input');
+    const list=combo.querySelector<HTMLElement>('.combo-list');
+    if(!input||!list)return;
+    const options=Array.from(combo.querySelectorAll<HTMLButtonElement>('.combo-option'));
+    let idx=-1;
+    const open=()=>{ list.hidden=false; idx=-1; options.forEach(o=>o.classList.toggle('active',o.dataset.value===input.value)); };
+    const close=()=>{ list.hidden=true; };
+    const commit=(v:string)=>{ input.value=v; close(); input.dispatchEvent(new Event('change',{bubbles:true})); };
+    const visible=()=>options.filter(o=>!o.hidden);
+    // 聚焦/输入：打开并按输入过滤（contains，大小写不敏感）；无匹配则全显。
+    // <lang zh-CN>过滤只是辅助定位，预设项永不因已填值而消失。</lang>
+    // <lang en>Filtering aids discovery; presets never disappear because of the filled value.</lang>
+    input.addEventListener('focus',open);
+    input.addEventListener('input',()=>{
+      open();
+      const q=input.value.trim().toLowerCase();
+      const hits=options.filter(o=>q===''||o.dataset.value!.toLowerCase().includes(q)||o.textContent!.toLowerCase().includes(q));
+      options.forEach(o=>{ o.hidden=!hits.includes(o); });
+      idx=-1;
+    });
+    combo.querySelector<HTMLButtonElement>('.combo-toggle')?.addEventListener('click',()=>{ if(list.hidden){open();}else{close();} input.focus(); });
+    options.forEach(o=>{
+      o.addEventListener('mousedown',e=>e.preventDefault());
+      o.addEventListener('click',()=>commit(o.dataset.value!));
+    });
+    input.addEventListener('keydown',e=>{
+      if(e.key==='ArrowDown'){ e.preventDefault(); if(list.hidden){open();} else { const vis=visible(); if(vis.length){ const base=idx>=0?vis.indexOf(options[idx]!):-1; const next=vis[(base+1)%vis.length]!; idx=options.indexOf(next); options.forEach((o,j)=>o.classList.toggle('cursor',j===idx)); } } }
+      else if(e.key==='ArrowUp'){ e.preventDefault(); const vis=visible(); if(vis.length){ const base=idx>=0?vis.indexOf(options[idx]!):0; const prev=vis[(base+vis.length-1)%vis.length]!; idx=options.indexOf(prev); options.forEach((o,j)=>o.classList.toggle('cursor',j===idx)); } }
+      else if(e.key==='Enter'){ const target=idx>=0?options[idx]!:null; if(target&&!target.hidden){ e.preventDefault(); commit(target.dataset.value!); } else { close(); } }
+      else if(e.key==='Escape'){ close(); }
+    });
+  });
+}
 function escapeHtml(value:unknown):string{return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]??ch));}
 // 生成 <option> 列表字符串，current 项标记 selected，labels 提供可读文案。
 // <lang zh-CN>复用于分类、色系、方向、色阶、占比等所有下拉。</lang>
@@ -331,19 +372,23 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 逐角色生成卡片 HTML：标题+启用、说明、预览、五个下拉、底部说明与交换/重置。
     // <lang zh-CN>预览用 runtime 模式 var()，下拉用 options() 复用标签映射。</lang>
     // <lang en>Preview uses runtime vars; dropdowns reuse options() with label maps.</lang>
-    // 共享 datalist：方向建议 / 标准色阶建议 / 占比建议（组合框数据源，面板级一份）。
-    // <lang zh-CN>`W-tb-P8` 组合框化：input list + datalist 原生实现，零依赖。</lang>
-    // <lang en>`W-tb-P8` combobox: native input list + datalist, zero dependencies.</lang>
-    const datalists=`<datalist id="gDirOptions">${directions.map(d=>`<option value="${d}">${directionLabels[d]??''}</option>`).join('')}</datalist><datalist id="gShadeOptions">${shadeValues.map(s=>`<option value="${s}"></option>`).join('')}</datalist><datalist id="gBiasOptions">${biasValues.map(b=>`<option value="${biasLabel(b)}"></option>`).join('')}</datalist>`;
-    // 单卡片模板：色系仍为 select；方向/色阶/占比为组合框（可填可选）；色阶带实时色块。
+    // 预设选项列表（`W-tb-P8` v2：自研下拉取代 datalist——原生 datalist 会按已填值前缀过滤，
+    //   导致填入完整值后其余预设全部消失，违背可填可选要求；自研下拉点开常显全部预设）。
+    // <lang zh-CN>方向/色阶/占比三组选项；色阶选项内联实时色块。</lang>
+    // <lang en>Three option groups; shade options carry inline live swatches.</lang>
+    const dirOptions=directions.map(d=>`<button type="button" class="combo-option" data-value="${d}">${directionLabels[d]??d}</button>`).join('');
+    const shadeOptions=(family:'primary'|'secondary')=>shadeValues.map(s=>`<button type="button" class="combo-option" data-value="${s}"><i class="combo-swatch" style="background:${tonalScaleAt(theme()[family].value,parseInt(s,10))}"></i>${s}</button>`).join('');
+    const biasOptions=biasValues.map(b=>`<button type="button" class="combo-option" data-value="${b}">${biasLabel(b)}</button>`).join('');
+    // 单卡片模板：色系仍为 select；方向/色阶/占比为自研组合框（可填可选 + 全部预设常显）；色阶带实时色块。
     // <lang zh-CN>色块经 tonalScaleAt 实时插值，任意色阶立即见效（ADR-004）。</lang>
     // <lang en>Swatches interpolate via tonalScaleAt so arbitrary shades show instantly (ADR-004).</lang>
     const card=(def:typeof GRADIENT_DEFS[number])=>{
       const cfg=draft.gradients[def.key];
       const base=theme()[cfg.family].value;
       const swatch=(shade:string)=>{const n=parseInt(shade,10);return Number.isFinite(n)?tonalScaleAt(base,n):'transparent';};
-      return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${t(def.label)}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>${t('启用')}</label></div><div class="gradient-config-desc">${t(def.desc)}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>${t('色系')}</span><select class="gradient-select" data-gradient-field="family">${options(['primary','secondary'],cfg.family,{primary:t('主色系'),secondary:t('副色系')})}</select></label><label class="gradient-field"><span>${t('方向')}</span><input class="gradient-input" data-gradient-field="direction" list="gDirOptions" value="${escapeHtml(cfg.direction)}"></label><label class="gradient-field"><span>${t('起始色阶')}</span><div class="gradient-shade-row"><input class="gradient-input" data-gradient-field="start" list="gShadeOptions" inputmode="numeric" value="${escapeHtml(cfg.start)}"><i class="gradient-shade-swatch" style="background:${swatch(cfg.start)}"></i></div></label><label class="gradient-field"><span>${t('结束色阶')}</span><div class="gradient-shade-row"><input class="gradient-input" data-gradient-field="end" list="gShadeOptions" inputmode="numeric" value="${escapeHtml(cfg.end)}"><i class="gradient-shade-swatch" style="background:${swatch(cfg.end)}"></i></div></label><label class="gradient-field" style="grid-column:1/-1"><span>${t('渐变占比')}</span><input class="gradient-input" data-gradient-field="bias" list="gBiasOptions" value="${escapeHtml(biasLabel(cfg.bias))}"></label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${cfg.family==='primary'?t('主色'):t('副色')} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>${t('交换')}</button><button class="gradient-mini-btn" data-gradient-reset>${t('重置')}</button></div></div></div>`;};
-    wrap.innerHTML=datalists+GRADIENT_DEFS.map(def=>card(def)).join('');
+      const combo=(field:'direction'|'start'|'end'|'bias',value:string,optionsHTML:string)=>`<div class="combo"><input class="gradient-input" data-gradient-field="${field}" value="${escapeHtml(value)}" autocomplete="off" spellcheck="false"><button type="button" class="combo-toggle" tabindex="-1" aria-hidden="true">▾</button><div class="combo-list" hidden>${optionsHTML}</div></div>`;
+      return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${t(def.label)}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>${t('启用')}</label></div><div class="gradient-config-desc">${t(def.desc)}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>${t('色系')}</span><select class="gradient-select" data-gradient-field="family">${options(['primary','secondary'],cfg.family,{primary:t('主色系'),secondary:t('副色系')})}</select></label><label class="gradient-field"><span>${t('方向')}</span>${combo('direction',cfg.direction,dirOptions)}</label><label class="gradient-field"><span>${t('起始色阶')}</span><div class="gradient-shade-row">${combo('start',cfg.start,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.start)}"></i></div></label><label class="gradient-field"><span>${t('结束色阶')}</span><div class="gradient-shade-row">${combo('end',cfg.end,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.end)}"></i></div></label><label class="gradient-field" style="grid-column:1/-1"><span>${t('渐变占比')}</span>${combo('bias',biasLabel(cfg.bias),biasOptions)}</label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${cfg.family==='primary'?t('主色'):t('副色')} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>${t('交换')}</button><button class="gradient-mini-btn" data-gradient-reset>${t('重置')}</button></div></div></div>`;};
+    wrap.innerHTML=GRADIENT_DEFS.map(def=>card(def)).join('');
     // 绑定字段变更：根据 data-gradient-field 写入对应配置项并刷新。
     // <lang zh-CN>非法值直接 return 不改草稿，保证类型安全。</lang>
     // <lang en>Invalid values return early without mutating the draft, keeping types safe.</lang>
@@ -399,6 +444,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       // <lang en>Re-renders the panel to sync preview, swatches and captions.</lang>
       applyRuntimeTheme();saveGradients();updateTokenOutputs();renderGradients();
     }));
+    // 组合框交互绑定（字段 change 绑定后执行，DOM 已就绪；每次重渲染重建并重绑）。
+    // <lang zh-CN>自研下拉点开常显全部预设（修复原生 datalist 前缀过滤缺陷）。</lang>
+    // <lang en>Custom dropdown always shows all presets (fixes native datalist prefix filtering).</lang>
+    bindCombos(wrap);
     // 交换按钮：起止色阶互换，并翻转占比（保持视觉权重一致）。
     // <lang zh-CN>如 front75 ↔ end75，避免交换后占比与方向错位。</lang>
     // <lang en>E.g. front75 ↔ end75, avoiding weight/ direction mismatch after swap.</lang>
