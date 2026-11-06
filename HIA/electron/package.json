@@ -50,6 +50,7 @@
     },
     "win": {
       "target": ["portable", "nsis"],
+      "publisherName": "HIA",
       "signtoolOptions": {
         "certificateFile": "../../certs/hia-theme-builder.pfx",
         "signingHashAlgorithms": ["sha256"]
