@@ -1,4 +1,4 @@
-import type{CssVariableMap,ColorFamily,GradientBias,GradientConfig,GradientSettings,ShadeValue,Theme}from'../types.js';
+import type{CssVariableMap,ColorFamily,GradientBias,GradientConfig,GradientFamily,GradientSettings,ShadeValue,Theme}from'../types.js';
 import{bestOnColor}from'../color/contrast.js';
 import{tonalScaleAt}from'../color/scale.js';
 import{typographySpacingVars}from'../token/typography.js';
@@ -39,8 +39,12 @@ export function swapGradientBias(bias:GradientBias):GradientBias{
 // 解析任意色阶引用为实际色值（ADR-004）：标准 10 档查 scale 表；自定义值 tonalScaleAt 插值。
 // <lang zh-CN>theme[family].value 为基色 HEX；非法数字回退 500 档（基色本色）。</lang>
 // <lang en>theme[family].value is the base HEX; invalid numbers fall back to step 500 (the base).</lang>
-function resolveScaleColor(theme:Theme,family:ColorFamily,shade:ShadeValue):string{
-  const role=theme[family];
+function resolveScaleColor(theme:Theme,family:GradientFamily,shade:ShadeValue):string{
+  // 色族解析：主/副走角色表；third 走第三角色；aux<N> 走对应辅助槽位（ADR-007 v2）。
+  // <lang zh-CN>third/aux 槽位缺失（模式不匹配/槽位未加）时回退主色 500，保证渲染不断。</lang>
+  // <lang en>Missing third/aux slots fall back to primary 500 so rendering never breaks.</lang>
+  const role=family==='third'?theme.thirdColor:family.startsWith('aux')?theme.auxiliary[parseInt(family.slice(3),10)]:theme[family as ColorFamily];
+  if(!role)return theme.primary.scale['500']!;
   if(shade in role.scale)return role.scale[shade as keyof typeof role.scale];
   const n=parseInt(shade,10);
   return Number.isFinite(n)?tonalScaleAt(role.value,n):role.scale['500'];
@@ -53,7 +57,14 @@ function resolveScaleColor(theme:Theme,family:ColorFamily,shade:ShadeValue):stri
 //   createRuntimeCssVariables); export uses --hia-*; literal requires a theme and supports arbitrary
 //   shades via resolveScaleColor.</lang>
 function tokenFor(config:GradientConfig,shade:ShadeValue,mode:GradientRenderMode,theme?:Theme):string{
-  if(mode==='runtime')return`var(--${config.family==='primary'?'p':'s'}${shade})`;
+  // runtime 简写变量：主/副 --p/--s、第三角色 --t、辅助 --a<N>（ADR-007 v2 渐变色源扩充）。
+  // <lang zh-CN>第三角色仅三色模式写入 --t{shade}；辅助槽位写入 --a<N>{shade}（createRuntimeCssVariables）。</lang>
+  // <lang en>Third emits --t{shade}; aux slot N emits --a<N>{shade} via createRuntimeCssVariables.</lang>
+  if(mode==='runtime'){
+    const fam=config.family;
+    const prefix=fam==='primary'?'p':fam==='secondary'?'s':fam==='third'?'t':'a'+fam.slice(3);
+    return`var(--${prefix}${shade})`;
+  }
   if(mode==='export')return`var(--hia-${config.family}-${shade})`;
   // literal 模式无法凭空生成，必须提供已构建主题以取色阶色值。
   // <lang zh-CN>缺 theme 属调用错误，提前抛出便于定位。</lang>
@@ -130,6 +141,14 @@ export function createRuntimeCssVariables(theme:Theme):CssVariableMap{
     vars['--on-third']=theme.thirdColor.on;
     for(const[k,v]of Object.entries(theme.thirdColor.scale))vars[`--t${k}`]=v;
   }
+  // 第三角色运行时变量已在上方写入；辅助槽位变量（ADR-007 v2 渐变色源扩充）：--a<N>{step} / --aux<N> / --on-aux<N>。
+  // <lang zh-CN>有辅助槽位时逐槽写入，供渐变 runtime 引用与预览消费。</lang>
+  // <lang en>Per-slot vars emitted when slots exist, for gradient runtime refs and previews.</lang>
+  theme.auxiliary.forEach((aux,i)=>{
+    vars[`--aux${i}`]=aux.value;
+    vars[`--on-aux${i}`]=aux.on;
+    for(const[k,v]of Object.entries(aux.scale))vars[`--a${i}${k}`]=v;
+  });
   // 字体/间距变量（ADR-006）：--hia-font-* / --hia-fs-* / --hia-space-*，供全部预览类型与导出消费。
   // <lang zh-CN>追加入 :root 内联变量集合。</lang>
   // <lang en>Merged into the :root inline var set.</lang>

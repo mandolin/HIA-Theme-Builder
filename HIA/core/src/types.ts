@@ -14,10 +14,14 @@ export const SHADE_KEYS=['50','100','200','300','400','500','600','700','800','9
 // <lang zh-CN>由 SHADE_KEYS 推导出的联合类型，保证色阶访问的类型安全。</lang>
 // <lang en>Union type derived from SHADE_KEYS, guaranteeing type-safe shade access.</lang>
 export type ShadeKey=typeof SHADE_KEYS[number];
-// 角色色族：主色或副色，用于区分主题中两套生成色系。
-// <lang zh-CN>主题的双色族标记，决定渐变与色阶取自哪一套颜色。</lang>
-// <lang en>Theme dual color families, deciding which palette gradients and scales are drawn from.</lang>
+// 角色色族：主色或副色，用于区分主题中两套生成色系（渐变色族另见 GradientFamily）。
+// <lang zh-CN>主题的双色族标记，决定色阶取自哪一套颜色；渐变色源可扩展至第三角色与辅助槽位（ADR-007 v2）。</lang>
+// <lang en>Theme dual color families; gradient sources can extend to the third role and auxiliary slots (ADR-007 v2).</lang>
 export type ColorFamily='primary'|'secondary';
+// 渐变色族（ADR-007 v2 机制扩充）：主/副之外，三色模式的第三角色与辅助槽位亦可作渐变色源。
+// <lang zh-CN>third=主色系第三角色（仅三色模式）；aux<N>=辅助槽位 N（0..n，独立维度）。</lang>
+// <lang en>third = the triad third role; aux<N> = auxiliary slot N, both usable as gradient sources.</lang>
+export type GradientFamily=ColorFamily|'third'|`aux${number}`;
 // 渐变占比策略：前色/后色主导的四种常用分段。
 // <lang zh-CN>控制渐变起止色在视觉上的占比，影响卡片氛围是偏主色还是偏副色。</lang>
 // <lang en>Controls the visual weight of gradient start/end colors, biasing cards toward primary or secondary.</lang>
@@ -41,7 +45,7 @@ export interface RoleColor{name:string;value:string;scale:ColorScale;on:string;}
 // 单条渐变配置：是否启用、色族、起止色阶、方向与占比。
 // <lang zh-CN>描述一个具名渐变角色（如轮播/Banner）的渲染参数。</lang>
 // <lang en>Describes render parameters of one named gradient role (e.g. carousel / banner).</lang>
-export interface GradientConfig{enabled:boolean;family:ColorFamily;start:ShadeValue;end:ShadeValue;direction:string;bias:GradientBias;}
+export interface GradientConfig{enabled:boolean;family:GradientFamily;start:ShadeValue;end:ShadeValue;direction:string;bias:GradientBias;}
 // 渐变配置集合：以渐变角色键索引。
 // <lang zh-CN>所有渐变角色的聚合配置，键为 GRADIENT_DEFS 中定义的固定角色。</lang>
 // <lang en>Aggregated gradient configs keyed by the fixed roles defined in GRADIENT_DEFS.</lang>
