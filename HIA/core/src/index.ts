@@ -8,7 +8,7 @@
 // 类型与常量导出。
 // <lang zh-CN>类型用 export type 保留编译期隔离；SHADE_KEYS 为运行时常量。</lang>
 // <lang en>Types use `export type` for compile-time isolation; SHADE_KEYS is a runtime constant.</lang>
-export type{ColorScale,RoleColor,GradientConfig,GradientSettings,Theme,ThemeInput,PrimaryCandidate,Preset,HarmonyDef,ThemeDraft,ThemeLibraryDocument,CssVariableMap,ShadeKey,ColorFamily,GradientBias,TypographyTokens,SpacingTokens}from'./types.js';
+export type{ColorScale,RoleColor,GradientConfig,GradientSettings,Theme,ThemeInput,PrimaryCandidate,Preset,HarmonyDef,ThemeDraft,ThemeLibraryDocument,CssVariableMap,ShadeKey,ColorFamily,GradientBias,TypographyTokens,SpacingTokens,HarmonyModeId,AuxiliaryModifier}from'./types.js';
 export{SHADE_KEYS}from'./types.js';
 
 // 颜色转换与数学工具（HEX/RGB/OKLab/OKLCH 互转、色域映射、线性化）。
@@ -24,6 +24,11 @@ export{tonalScale,tonalScaleAt}from'./color/scale.js';
 // <lang en>Harmony definitions and secondary generation; SecondaryCandidate is the type.</lang>
 export{HARMONY_DEFS,harmonyCandidate,generateSecondarySet}from'./color/harmony.js';
 export type{SecondaryCandidate}from'./color/harmony.js';
+// 配色关系模式与辅助色（ADR-007 / `W-tb-P11`）：模式定义表与槽位生成。
+// <lang zh-CN>generateAuxiliarySet 为纯函数（Theme 装配与 UI 重生成共用）。</lang>
+// <lang en>Pure generator shared by Theme assembly and UI regeneration.</lang>
+export{HARMONY_MODE_DEFS,getHarmonyModeDef,generateAuxiliarySet}from'./color/harmony.js';
+export type{HarmonyModeDef,AuxiliaryCandidate}from'./color/harmony.js';
 // 对比度与最佳前景色选择（WCAG 相对亮度）。
 // <lang zh-CN>用于自动决定角色色上的文字用白还是深色。</lang>
 // <lang en>Decides white vs dark foreground on a role color via WCAG relative luminance.</lang>

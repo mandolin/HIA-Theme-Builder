@@ -41,7 +41,14 @@ export function createThemeDraft(value:Partial<ThemeDraft>={}):ThemeDraft{
     // <lang zh-CN>旧数据/旧调用点不携带令牌组时自动获得出厂默认，保证 buildThemeFromDraft 全量可用。</lang>
     // <lang en>Legacy data/call sites without token groups get factory defaults; deep-cloned to isolate references.</lang>
     typography:cloneTypography(value.typography||DEFAULT_TYPOGRAPHY),
-    spacing:cloneSpacing(value.spacing||DEFAULT_SPACING)
+    spacing:cloneSpacing(value.spacing||DEFAULT_SPACING),
+    // 配色关系扩展（ADR-007 / `W-tb-P11`）：harmonyMode 缺省 'auto'；auxiliary 仅在显式传入时携带
+    //   （undefined 让 buildTheme 按模式自动推导——"切模式即出辅助色"主场景）。
+    // <lang zh-CN>显式 [] 经草稿保留（用户清空语义）；条件展开避免写入 undefined 键。</lang>
+    // <lang en>Explicit [] survives the draft (user-cleared semantics); conditional spread avoids undefined keys.</lang>
+    harmonyMode:value.harmonyMode??'auto',
+    ...(value.auxiliary?{auxiliary:[...value.auxiliary]}:{}),
+    ...(value.auxiliaryModifiers?{auxiliaryModifiers:[...value.auxiliaryModifiers]}:{})
   };
 }
 
@@ -56,7 +63,7 @@ export function draftFromPreset(preset:Preset):ThemeDraft{
 // <lang zh-CN>草稿到渲染/导出的桥梁，所有色阶在此计算；typography/spacing 随草稿透传（ADR-006）。</lang>
 // <lang en>Bridge from draft to render/export; all scales are computed here; typography/spacing pass through (ADR-006).</lang>
 export function buildThemeFromDraft(draft:ThemeDraft):Theme{
-  return buildTheme({name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category,industry:draft.industry,primary:draft.primary,secondary:draft.secondary,primaryName:draft.primaryName,secondaryName:draft.secondaryName,note:draft.note,gradients:draft.gradients,typography:draft.typography,spacing:draft.spacing});
+  return buildTheme({name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category,industry:draft.industry,primary:draft.primary,secondary:draft.secondary,primaryName:draft.primaryName,secondaryName:draft.secondaryName,note:draft.note,gradients:draft.gradients,typography:draft.typography,spacing:draft.spacing,harmonyMode:draft.harmonyMode,auxiliary:draft.auxiliary,auxiliaryModifiers:draft.auxiliaryModifiers});
 }
 
 // 由草稿导出为可保存预设，id 缺失时以时间戳生成自定义 id。
