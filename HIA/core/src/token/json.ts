@@ -21,6 +21,8 @@ export function exportThemeJson(theme:Theme):string{
     industry:theme.industry||'',
     primary:{name:theme.primary.name,value:theme.primary.value,scale:primaryScale,on:theme.primary.on},
     secondary:{name:theme.secondary.name,value:theme.secondary.value,scale:secondaryScale,on:theme.secondary.on},
+    typography:theme.typography,
+    spacing:theme.spacing,
     gradients:theme.gradients
   },null,2);
 }

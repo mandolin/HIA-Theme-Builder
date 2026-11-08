@@ -40,6 +40,8 @@ export{GRADIENT_DEFS,GRADIENT_DEFAULTS,cloneGradientSettings}from'./data/gradien
 // <lang zh-CN>GradientRenderMode 区分运行时 var()、导出 var() 与字面量三种渲染。</lang>
 // <lang en>GradientRenderMode switches between runtime var(), export var() and literal rendering.</lang>
 export{gradientStops,gradientCss,gradientDominantColor,createRuntimeCssVariables,exportGradientVariableLines,swapGradientBias,collectCustomShades}from'./gradient/render.js';
+export{DEFAULT_TYPOGRAPHY,DEFAULT_SPACING,fontSizeAt,spacingSequence,typographySpacingVars,FONT_SIZE_STEPS}from'./token/typography.js';
+export type{FontSizeStep}from'./token/typography.js';
 export type{GradientRenderMode}from'./gradient/render.js';
 // 由主题输入构建完整主题。
 // <lang zh-CN>连接 color/scale 与 studio 的顶层主题工厂。</lang>

@@ -1,4 +1,14 @@
-import type{RoleColor,Theme,ThemeInput}from'./types.js';
+import type{RoleColor,Theme,ThemeInput,TypographyTokens,SpacingTokens}from'./types.js';
+import{DEFAULT_TYPOGRAPHY,DEFAULT_SPACING}from'./token/typography.js';
+
+// 字体令牌深拷贝（ADR-006）：阻断外部对象与内部状态的隐含耦合。
+// <lang zh-CN>fontFamily/scale/overrides 逐层复制。</lang>
+// <lang en>Deep-copies fontFamily/scale/overrides.</lang>
+function cloneTypography(t:TypographyTokens):TypographyTokens{const r:TypographyTokens={fontFamily:{...t.fontFamily},fontSizeScale:{...t.fontSizeScale},lineHeightBody:t.lineHeightBody};if(t.fontSizeScale.overrides)r.fontSizeScale.overrides={...t.fontSizeScale.overrides};return r;}
+// 间距令牌深拷贝。
+// <lang zh-CN>overrides 按索引键复制。</lang>
+// <lang en>Copies overrides keyed by level index.</lang>
+function cloneSpacing(s:SpacingTokens):SpacingTokens{const r:SpacingTokens={...s};if(s.overrides)r.overrides={...s.overrides};return r;}
 import{bestOnColor}from'./color/contrast.js';
 import{normalizeHex}from'./color/convert.js';
 import{tonalScale}from'./color/scale.js';
@@ -16,6 +26,11 @@ function buildRoleColor(value:string,name:string):RoleColor{
 // <lang zh-CN>所有色阶/前景色在此计算完毕；名称、分类缺省有回退，渐变做深拷贝避免外部引用共享。</lang>
 // <lang en>Computes all scales/foregrounds; name and category fall back to defaults, gradients are deep-cloned to avoid shared refs.</lang>
 export function buildTheme(input:ThemeInput):Theme{
+  // 字体/间距令牌：缺省补默认（ADR-006 向后兼容）；传入则整体采用（单档覆写在令牌组内部）。
+  // <lang zh-CN>typography/spacing 为可选入参，保证旧调用点不受影响。</lang>
+  // <lang en>typography/spacing are optional inputs so legacy call sites are unaffected.</lang>
+  const typography=input.typography??DEFAULT_TYPOGRAPHY,
+    spacing=input.spacing??DEFAULT_SPACING;
   // 分别构建主色与副色两套角色色。
   // <lang zh-CN>主副色独立生成，保证各自色阶与前景色自洽。</lang>
   // <lang en>Primary and secondary are generated independently so their scales/foregrounds stay self-consistent.</lang>
@@ -31,6 +46,8 @@ export function buildTheme(input:ThemeInput):Theme{
     // <lang zh-CN>克隆可阻断外部对象与内部状态的隐含耦合。</lang>
     // <lang en>Cloning prevents implicit coupling between external objects and internal state.</lang>
     gradients:cloneGradientSettings(input.gradients),
+    typography:cloneTypography(input.typography??typography),
+    spacing:cloneSpacing(input.spacing??spacing),
     note:input.note
   };
 }

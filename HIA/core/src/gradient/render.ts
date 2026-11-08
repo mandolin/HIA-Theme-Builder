@@ -1,6 +1,7 @@
 import type{CssVariableMap,ColorFamily,GradientBias,GradientConfig,GradientSettings,ShadeValue,Theme}from'../types.js';
 import{bestOnColor}from'../color/contrast.js';
 import{tonalScaleAt}from'../color/scale.js';
+import{typographySpacingVars}from'../token/typography.js';
 import{clamp}from'../color/convert.js';
 import{GRADIENT_DEFS}from'../data/gradients.js';
 
@@ -121,6 +122,10 @@ export function createRuntimeCssVariables(theme:Theme):CssVariableMap{
   // <lang zh-CN>与主色对称。</lang>
   // <lang en>Symmetric with the primary.</lang>
   for(const[k,v]of Object.entries(theme.secondary.scale))vars[`--s${k}`]=v;
+  // 字体/间距变量（ADR-006）：--hia-font-* / --hia-fs-* / --hia-space-*，供全部预览类型与导出消费。
+  // <lang zh-CN>追加入 :root 内联变量集合。</lang>
+  // <lang en>Merged into the :root inline var set.</lang>
+  Object.assign(vars,typographySpacingVars(theme));
   // 自定义色阶变量：按渐变引用去重生成 --p650 / --s650 等附加变量（ADR-004）。
   // <lang zh-CN>与标准 10 档同名规则，tokenFor 的 var() 引用无需区分。</lang>
   // <lang en>Same naming as the standard steps, so tokenFor's var() references need no branching.</lang>
