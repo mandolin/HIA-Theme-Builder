@@ -12,7 +12,7 @@ import{
   fontSizeAt,FONT_SIZE_STEPS,generateSecondarySet,getExportTarget,
   gradientCss,isBuiltinPresetId,mergeImportedPresets,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,parseThemePack,
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
-  swapGradientBias,tonalScaleAt,upsertPreset,validHex,
+  swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,generateAuxiliarySet,getHarmonyModeDef,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
   type WebsiteThemeAnalysisV2
@@ -1108,6 +1108,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       draft.primaryName=primary.role==='brand'?'提取主色':'提取主色';
       draft.secondaryName=secondary?'提取副色':'副色';
       draft.name=inputValue('themeNameInput').trim()||autoThemeName(draft.primaryName,draft.secondaryName);
+      // 取色→辅助色推导链（ADR-007 定案 1）：模式非 auto 时按新模式主色自动填充槽位（可覆写）。
+      // <lang zh-CN>RoleColor 组装与 buildTheme 同链路（tonalScale+bestOnColor）；0 槽模式清空旧槽位。</lang>
+      // <lang en>RoleColor assembly mirrors buildTheme (tonalScale+bestOnColor); zero-slot modes clear stale slots.</lang>
+      if(draft.harmonyMode&&draft.harmonyMode!=='auto'){
+        const modeDef=getHarmonyModeDef(draft.harmonyMode);
+        const derived=generateAuxiliarySet(draft.primary,draft.harmonyMode,draft.auxiliaryModifiers);
+        draft.auxiliary=derived.map(c=>({name:c.name,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}));
+        if(modeDef.slots===0)draft.auxiliary=[];
+      }
       syncInputs();applyCurrentTheme(false);
       setText('generateStatus',`已应用网址取色结果（主色 ${draft.primary}${secondary?` / 副色 ${draft.secondary}`:''}）。`);
     });
