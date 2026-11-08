@@ -62,24 +62,26 @@
 <section class="panel" id="previewTypePanel">
   <div class="preview-controls">
     <div><div class="section-title" style="margin:0"><div><h2 data-i18n="p9.preview.title">预览区</h2><p data-i18n="p9.preview.desc">三种预览类型：默认（PC 后台 + 小程序）、经典支持（WordPress / Tailwind 目标场景令牌注入）、自定义支持（TDON 声明式，运行时延后接入）。</p></div><span class="badge">Preview ×3</span></div></div>
-    <div class="toolbar">
-      <div class="segmented" id="previewTypeSwitch">
-        <button class="seg active" data-preview-mode="default" data-i18n="p9.preview.mode.default">默认预览</button>
-        <button class="seg" data-preview-mode="classic" data-i18n="p9.preview.mode.classic">经典支持</button>
-        <button class="seg" data-preview-mode="tdon" data-i18n="p9.preview.mode.tdon">自定义支持</button>
-      </div>
-      <select id="classicTargetSelect" class="select" style="width:210px" hidden data-i18n-aria="aria.p9.classicTarget">
-        <option value="wordpress-child" data-i18n="p9.classic.target.wp">WordPress 子主题场景</option>
-        <option value="tailwind-config" data-i18n="p9.classic.target.tw">Tailwind 落地页场景</option>
-      </select>
-      <select id="tdonSourceSelect" class="select" style="width:150px" hidden data-i18n-aria="aria.p9.tdonSource">
-        <option value="url" data-i18n="p9.tdon.source.url">URL 源</option>
-        <option value="local" data-i18n="p9.tdon.source.local">本地文件</option>
-      </select>
-      <button id="tdonConnectBtn" class="btn soft" hidden disabled data-i18n="p9.tdon.connect">连接 TDON</button>
-    </div>
   </div>
-  <div class="preview-wrap"><div id="previewTypeHint" class="small"></div></div>
+  <!-- 切换器独立成行（2026-11-08 维护者反馈：与标题/徽标同 row 会挤压并在模式切换时跳行）。
+       Switcher on its own row (maintainer feedback: sharing the title row crowded the header and jumped on mode switch). -->
+  <div class="preview-type-toolbar">
+    <div class="segmented" id="previewTypeSwitch">
+      <button class="seg active" data-preview-mode="default" data-i18n="p9.preview.mode.default">默认预览</button>
+      <button class="seg" data-preview-mode="classic" data-i18n="p9.preview.mode.classic">经典支持</button>
+      <button class="seg" data-preview-mode="tdon" data-i18n="p9.preview.mode.tdon">自定义支持</button>
+    </div>
+    <select id="classicTargetSelect" class="select" style="width:210px" hidden data-i18n-aria="aria.p9.classicTarget">
+      <option value="wordpress-child" data-i18n="p9.classic.target.wp">WordPress 子主题场景</option>
+      <option value="tailwind-config" data-i18n="p9.classic.target.tw">Tailwind 落地页场景</option>
+    </select>
+    <select id="tdonSourceSelect" class="select" style="width:150px" hidden data-i18n-aria="aria.p9.tdonSource">
+      <option value="url" data-i18n="p9.tdon.source.url">URL 源</option>
+      <option value="local" data-i18n="p9.tdon.source.local">本地文件</option>
+    </select>
+    <button id="tdonConnectBtn" class="btn soft" hidden disabled data-i18n="p9.tdon.connect">连接 TDON</button>
+    <span class="small preview-type-hint" id="previewTypeHint"></span>
+  </div>
 </section>
 <section class="panel default-preview-panel" id="pcPreviewPanel"><div class="preview-controls"><div><div class="section-title" style="margin:0"><div><h2 data-i18n="pc.title">PC 版企业后台完整预览</h2><p data-i18n="pc.desc">包含仪表盘、列表页、表单页、详情页、分析页、设置页；并可切换左右结构、上下结构与工作台混合结构。</p></div><span class="badge">PC Preview</span></div></div><div class="toolbar"><div class="segmented" id="pcLayoutSwitch"><button class="seg active" data-layout="sidebar" data-i18n="pc.layout.sidebar">左右结构</button><button class="seg" data-layout="top" data-i18n="pc.layout.top">上下结构</button><button class="seg" data-layout="mixed" data-i18n="pc.layout.mixed">混合工作台</button></div><div class="segmented" id="appearanceSwitch"><button class="seg active" data-appearance="light" data-i18n="pc.appearance.light">浅色</button><button class="seg" data-appearance="dark" data-i18n="pc.appearance.dark">深色</button></div></div></div>
 <div class="preview-wrap"><div class="tabbar" id="pcPageTabs"><button class="tab active" data-page="dashboard" data-i18n="仪表盘">仪表盘</button><button class="tab" data-page="list" data-i18n="列表页">列表页</button><button class="tab" data-page="form" data-i18n="表单页">表单页</button><button class="tab" data-page="detail" data-i18n="详情页">详情页</button><button class="tab" data-page="analytics" data-i18n="分析页">分析页</button><button class="tab" data-page="settings" data-i18n="设置页">设置页</button></div>
