@@ -11,7 +11,7 @@
  */
 import type{GradientSettings,ThemeDraft}from'./types.js';
 import{cloneGradientSettings}from'./data/gradients.js';
-import{generateAuxiliarySet,getHarmonyModeDef}from'./color/harmony.js';
+import{deriveThirdByRelation,generateAuxiliaryCandidates,getSeriesRelationDef}from'./color/harmony.js';
 import{normalizeHex,validHex}from'./color/convert.js';
 
 // 载荷格式版本：字段演进时升级并路由解析分支（对齐 TDON specVersion 思想）。
@@ -44,8 +44,10 @@ export interface SharePayload{
   // 配色关系扩展（ADR-007）：模式与辅助槽位（仅 hex+name，色阶解码端重建）。
   // <lang zh-CN>harmonyMode 缺省 'auto'（不写入省长度）；辅助条目逐条校验。</lang>
   // <lang en>harmonyMode defaults to 'auto' (omitted to save length); auxiliary entries validated per-item.</lang>
-  harmonyMode?:string;
-  auxiliary?:{value:string;name:string}[];
+  seriesMode?:string;
+  seriesRelation?:string;
+  thirdColor?:{v:string;n:string}[];
+  auxiliary?:{v:string;n:string}[];
 }
 
 // 字符串净化：截断 + 空白裁剪；非字符串回退空串。
@@ -80,20 +82,23 @@ export function buildSharePayload(draft:ThemeDraft):SharePayload{
   // <lang zh-CN>默认八角色全带（约 400 字符）；若未来体积告警可裁剪禁用角色。</lang>
   // <lang en>All eight roles carried (~400 chars); roles may be trimmed if size ever becomes a concern.</lang>
   payload.gradients=cloneGradientSettings(draft.gradients);
-  // 配色关系（ADR-007）：模式非 auto 或槽位非空时写入（节省链接长度）。
-  // <lang zh-CN>草稿 auxiliary 缺失（undefined=推导语义）时按模式+修饰语现推导；
-  //   auxiliary 仅传 value+name（色阶解码端由 hex 重建）。</lang>
-  // <lang en>When the draft's auxiliary is absent (undefined = derive), derive per mode+modifiers;
-  //   auxiliary carries value+name only; scales rebuild from hex on the decode side.</lang>
-  if(draft.harmonyMode&&draft.harmonyMode!=='auto'){
-    payload.harmonyMode=draft.harmonyMode;
-    // 草稿已有槽位直接取；未传则现推导（AuxiliaryCandidate.hex → value 统一形态）。
-    // <lang zh-CN>两条路径归一为 {value,name}，下游（compact 编码）只认该形态。</lang>
-    // <lang en>Both paths normalize to {value,name}; downstream compact encoding expects that shape.</lang>
-    const auxSource=draft.auxiliary?.length
-      ?draft.auxiliary.map(a=>({value:a.value,name:a.name}))
-      :generateAuxiliarySet(draft.primary,draft.harmonyMode,draft.auxiliaryModifiers).map(c=>({value:c.hex,name:c.name}));
-    if(auxSource.length)payload.auxiliary=auxSource;
+  // 配色关系（ADR-007 v2）：模式非 dual/关系非 manual 时写入（节省链接长度）。
+  // <lang zh-CN>seriesMode 非 dual 或 seriesRelation 非 manual 时写入第三色（草稿缺省按关系现推导）与辅助槽位；
+  //   third/auxiliary 仅传 value+name（色阶解码端由 hex 重建）。</lang>
+  // <lang en>Written when mode ≠ dual or relation ≠ manual: third color (derived when absent) and auxiliary slots;
+  //   third/auxiliary carry value+name only; scales rebuild from hex on the decode side.</lang>
+  if((draft.seriesMode&&draft.seriesMode!=='dual')||(draft.seriesRelation&&draft.seriesRelation!=='manual')){
+    payload.seriesMode=draft.seriesMode??'dual';
+    payload.seriesRelation=draft.seriesRelation??'manual';
+    // 第三色：草稿已有（含色阶）直接取；缺失时按关系规则现推导（hex → v 统一形态）。
+    // <lang zh-CN>manual/pure 规则无推导 → deriveThirdByRelation 返回 null → 段省略。</lang>
+    // <lang en>manual/pure rules derive nothing → null → segment omitted.</lang>
+    const thirdHex=draft.thirdColor?.value??deriveThirdByRelation(draft.primary,draft.secondary,draft.seriesRelation??'manual');
+    if(thirdHex)payload.thirdColor=[{v:thirdHex,n:draft.thirdColor?.name??'第三色'}];
+    // 辅助：仅显式槽位入载荷（v2 语义——无自动推导，手动/规则生成由 UI 写入草稿）。
+    // <lang zh-CN>{v,n} 对象形态（JSON 语义稳定）。</lang>
+    // <lang en>{v,n} object form (stable JSON semantics).</lang>
+    if(draft.auxiliary?.length)payload.auxiliary=draft.auxiliary.map(a=>({v:a.value,n:a.name}));
   }
   return payload;
 }
@@ -123,7 +128,7 @@ function base64UrlDecode(encoded:string):string{
 //   auxiliary as [hex,name][] (scales rebuilt on decode). Bump SHARE_VERSION on breaking changes;
 //   trailing additions stay backward compatible.</lang>
 type CompactGradient=[number,string,string,string,string,string];
-type CompactPayload=[number,string,string,string,string,string,string?,string?,string?,Record<string,CompactGradient>?,string?,[string,string][]?];
+type CompactPayload=[number,string,string,string,string,string,string?,string?,string?,Record<string,CompactGradient>?,string?,string?,{v:string;n:string}[]?,{v:string;n:string}[]?];
 
 // 载荷 → 紧凑形态（内部序列化用；可选字段为空串占位以保持位置对齐）。
 // <lang zh-CN>空可选字段写空串而非 undefined——JSON 数组中 undefined 会丢失导致位次错乱；
@@ -139,8 +144,10 @@ function toCompact(p:SharePayload):CompactPayload{
     p.v,p.name,p.primary,p.secondary,p.primaryName,p.secondaryName,
     p.category??'',p.industry??'',p.note??'',
     Object.keys(gradients).length?gradients:undefined,
-    p.harmonyMode&&p.harmonyMode!=='auto'?p.harmonyMode:undefined,
-    p.auxiliary?.length?p.auxiliary.map(a=>[a.value,a.name]):undefined
+    p.seriesMode&&p.seriesMode!=='dual'?p.seriesMode:undefined,
+    p.seriesRelation&&p.seriesRelation!=='manual'?p.seriesRelation:undefined,
+    p.thirdColor?.length?p.thirdColor.map(t=>({v:t.v,n:t.n})):undefined,
+    p.auxiliary?.length?p.auxiliary.map(a=>({v:a.v,n:a.n})):undefined
   ];
 }
 
@@ -185,19 +192,25 @@ function fromCompact(arr:unknown[]):SharePayload|null{
     }
     if(valid&&Object.keys(rebuilt).length)payload.gradients=cloneGradientSettings(rebuilt);
   }
-  // 配色关系尾段（ADR-007）：位 10=harmonyMode（未登记 id 回退 'auto'）、位 11=辅助 [hex,name][]。
-  // <lang zh-CN>辅助 HEX 逐条校验，非法条目跳过；全部无效则不写入（避免半还原）。</lang>
-  // <lang en>Auxiliary entries with invalid hex are skipped; none valid → segment omitted (avoid half-restore).</lang>
-  const modeRaw=sanitizeText(arr[10],24);
-  if(modeRaw)payload.harmonyMode=getHarmonyModeDef(modeRaw).id;
-  const auxRaw=arr[11] as unknown;
+  // 配色关系尾段（ADR-007 v2）：位 10=seriesMode、位 11=seriesRelation、位 12=第三色 [hex,name]、位 13=辅助 [hex,name][]。
+  // <lang zh-CN>模式/规则未登记 id 回退默认（dual/manual）；第三色与辅助 HEX 逐条校验，非法跳过。</lang>
+  // <lang en>Unknown mode/relation ids fall back to defaults; third/auxiliary hexes validated per-item.</lang>
+  const modeRaw=sanitizeText(arr[10],16);
+  const relRaw=sanitizeText(arr[11],24);
+  if(modeRaw)payload.seriesMode=modeRaw;
+  if(relRaw)payload.seriesRelation=getSeriesRelationDef(relRaw,modeRaw==='single'?'single':modeRaw==='triad'?'triad':'dual').id;
+  const thirdRaw=arr[12] as unknown;
+  if(Array.isArray(thirdRaw)&&thirdRaw.length>=1){
+    const hex=normalizeHex(sanitizeText(thirdRaw[0]?.v,16));
+    if(validHex(hex))payload.thirdColor=[{v:hex,n:sanitizeText(thirdRaw[0]?.n,80)||'第三色'}];
+  }
+  const auxRaw=arr[13] as unknown;
   if(Array.isArray(auxRaw)&&auxRaw.length){
-    const aux:{value:string;name:string}[]=[];
+    const aux:{v:string;n:string}[]=[];
     for(const item of auxRaw){
-      if(!Array.isArray(item)||item.length<1)continue;
-      const hex=normalizeHex(sanitizeText(item[0],16));
+      const hex=normalizeHex(sanitizeText(item?.v,16));
       if(!validHex(hex))continue;
-      aux.push({value:hex,name:sanitizeText(item[1],80)||'辅助色'});
+      aux.push({v:hex,n:sanitizeText(item?.n,80)||'辅助色'});
     }
     if(aux.length)payload.auxiliary=aux;
   }

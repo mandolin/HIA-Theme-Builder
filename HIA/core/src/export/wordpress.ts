@@ -87,7 +87,17 @@ function wordpressChildFiles(theme:Theme,options?:ExportAdapterOptions):VirtualF
     ...theme.auxiliary.flatMap((aux,i)=>[
       {name:aux.name,slug:`hia-aux${i}`,color:aux.value},
       ...SHADE_KEYS.map(k=>({name:`${aux.name} ${k}`,slug:`hia-aux${i}-${k}`,color:aux.scale[k]!}))
-    ])
+    ]),
+    // 第三角色（ADR-007 v2）：仅三色模式存在（thirdColor 缺省 undefined → 不产生条目）。
+    // <lang zh-CN>slug hia-third[-<shade>]，与主副色同构。</lang>
+    // <lang en>Slug hia-third[-<shade>], same shape as primary/secondary.</lang>
+    ...(theme.thirdColor?(()=>{
+      const third=theme.thirdColor;
+      return[
+        {name:third.name,slug:'hia-third',color:third.value},
+        ...SHADE_KEYS.map(k=>({name:`${third.name} ${k}`,slug:`hia-third-${k}`,color:third.scale[k]!}))
+      ];
+    })():[])
   ];
   // 渐变条目：仅启用角色；字面量色值（literal 模式经 resolveScaleColor 支持任意档位）。
   // <lang zh-CN>禁用角色 flatMap 丢弃，避免 WP 端出现死预设；角色键 camelCase（textLarge）转 kebab 保持 slug 全小写惯例。</lang>

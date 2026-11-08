@@ -50,9 +50,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: ${familyColors(theme.primary.scale,custom.primary,theme.primary.value)},
-        secondary: ${familyColors(theme.secondary.scale,custom.secondary,theme.secondary.value)}${theme.auxiliary.map((aux,i)=>`,
-        aux${i}: ${familyColors(aux.scale,{},aux.value)}`).join('')}
+${[
+        `        primary: ${familyColors(theme.primary.scale,custom.primary,theme.primary.value)}`,
+        `        secondary: ${familyColors(theme.secondary.scale,custom.secondary,theme.secondary.value)}`,
+        ...(theme.thirdColor?[`        third: ${familyColors(theme.thirdColor.scale,{},theme.thirdColor.value)}`]:[]),
+        ...theme.auxiliary.map((aux,i)=>`        aux${i}: ${familyColors(aux.scale,{},aux.value)}`)
+      ].join(',\n')}
       },
       fontFamily: {
         body: ${JSON.stringify(theme.typography.fontFamily.body)},

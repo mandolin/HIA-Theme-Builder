@@ -24,7 +24,9 @@ export function exportThemeJson(theme:Theme):string{
     // 配色关系扩展（ADR-007）：模式与辅助槽位全量输出（含色阶，消费方免重建）。
     // <lang zh-CN>auto 模式下 harmonyMode='auto'、auxiliary=[]，旧消费方按未知键容忍。</lang>
     // <lang en>Under 'auto' these are 'auto' and []; legacy consumers tolerate unknown keys.</lang>
-    harmonyMode:theme.harmonyMode,
+    seriesMode:theme.seriesMode,
+    seriesRelation:theme.seriesRelation,
+    ...(theme.thirdColor?{thirdColor:{name:theme.thirdColor.name,value:theme.thirdColor.value,scale:theme.thirdColor.scale,on:theme.thirdColor.on}}:{}),
     auxiliary:theme.auxiliary.map(a=>({name:a.name,value:a.value,scale:a.scale,on:a.on})),
     typography:theme.typography,
     spacing:theme.spacing,

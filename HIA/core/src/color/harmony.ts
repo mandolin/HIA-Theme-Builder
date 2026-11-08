@@ -1,4 +1,4 @@
-import type{AuxiliaryModifier,HarmonyModeId,HarmonyDef}from'../types.js';
+import type{AuxiliaryModifier,SeriesMode,SeriesRelationId,HarmonyDef}from'../types.js';
 import{clamp,gamutMapOklch,hexToOklch,normalizeHex}from'./convert.js';
 
 // 副色和谐方案库：每项为一种由主色推导副色的色彩理论策略。
@@ -66,93 +66,116 @@ export function generateSecondarySet(primaryHex:string,preferred:{hex:string;nam
   return candidates;
 }
 
-// ===== 配色关系模式与辅助色（ADR-007 / `W-tb-P11`） =====
 
-// 模式定义：色数/槽位数/生成规则（角度型=相对主色角差；组合型=固定三色组合取最近者为主位）。
-// <lang zh-CN>对应配色宝典十种基本设计 + 'auto'（现行行为）；槽位数即辅助色默认推导数量。</lang>
-// <lang en>Maps the ten classic designs plus 'auto'; slot count is the default number of derived auxiliary colors.</lang>
-export interface HarmonyModeDef{id:HarmonyModeId;name:string;en:string;slots:number;angles?:number[];combo?:number[];chromaScale?:number;note:string;}
-// 十种基本设计 + auto：角度核对——补色 180°，冲突=补色±30°（默认 150°），分裂补色 150°+210°，
-// 类比 ±30°（连续三色），三元等距 120°/240°；组合型 primary=红黄蓝、secondary=绿橙紫（近似色相）。
-// <lang zh-CN>chromaScale 仅 neutral 使用（补色低饱和化）。</lang>
-// <lang en>chromaScale applies to neutral only (desaturated complement).</lang>
-export const HARMONY_MODE_DEFS:HarmonyModeDef[]=[
-  {id:'auto',name:'自动',en:'Auto',slots:0,note:'现行行为：主副色独立编辑，无辅助槽位。'},
-  {id:'achromatic',name:'无色设计',en:'Achromatic',slots:0,note:'黑、白、灰组合；主色可自选灰系，不生成辅助槽位。'},
-  {id:'monochromatic',name:'单色设计',en:'Monochromatic',slots:0,note:'主色 + 自身全部明暗变体即全部，无辅助色相。'},
-  {id:'analogous',name:'类比设计',en:'Analogous',slots:2,angles:[-30,30],note:'主色相两侧连续色，构成色相环连续三色。'},
-  {id:'clash',name:'冲突设计',en:'Clash',slots:1,angles:[150],note:'主色补色的左/右侧（半冲突，默认 +150°）。'},
-  {id:'complement',name:'互补设计',en:'Complement',slots:1,angles:[180],note:'色相环上全然相反的两色。'},
-  {id:'neutral',name:'中性设计',en:'Neutral',slots:1,angles:[180],chromaScale:.4,note:'补色低饱和化，形成中性过渡色。'},
-  {id:'primary-combo',name:'原色设计',en:'Primary Combo',slots:2,combo:[25,100,250],note:'纯红、黄、蓝组合；主位取与主色相最近者。'},
-  {id:'secondary-combo',name:'二次色设计',en:'Secondary Combo',slots:2,combo:[30,140,290],note:'绿、橙、紫组合；主位取与主色相最近者。'},
-  {id:'tertiary',name:'三次色三色设计',en:'Tertiary Triad',slots:2,angles:[120,240],note:'等距三色（主色相 +120°/+240°）。'},
-  {id:'split-complement',name:'分裂补色设计',en:'Split Complement',slots:2,angles:[150,210],note:'主色补色两侧的色。'}];
+// ===== 主色系关系规则推导（ADR-007 v2 / `W-tb-P11`） =====
 
-// 按模式 id 查找定义；未登记 id 回退 'auto'。
-// <lang zh-CN>外界输入的 mode 不可信，防御性回退。</lang>
-// <lang en>External mode ids are untrusted; fall back defensively.</lang>
-export function getHarmonyModeDef(id:string):HarmonyModeDef{
-  return HARMONY_MODE_DEFS.find(m=>m.id===id)??HARMONY_MODE_DEFS[0]!;
+// 关系规则定义：dual 模式的第二色角度/彩度；triad 模式的第三色推导策略。
+// <lang zh-CN>对应配色宝典十种基本设计在主色系模式下的映射（single 无规则=恒主色系变体）。</lang>
+// <lang en>Maps the ten classic designs onto series modes (single has no rule — always the primary-series variant).</lang>
+export interface SeriesRelationDef{id:SeriesRelationId;name:string;en:string;modes:SeriesMode[];
+  secondAngle?:number;secondChromaScale?:number;
+  thirdFromSecondary?:boolean;thirdAngle?:number;thirdCombo?:number[];thirdChromaScale?:number;note:string;}
+
+// 关系规则表（十种设计全映射）：thirdAngle 为相对主色的角差；thirdCombo 为组合型（绝对色相）。
+// <lang zh-CN>角度核对：补色 180°、冲突 150°（补色±30°）、类比 ±30°、分裂补色 150°/210°、三元 120°/240°、
+//   原色组合[25,100,250]、二次色组合[30,140,290]；pure 无推导（主色系变体）。</lang>
+// <lang en>Angles verified against the color wheel; combo modes carry absolute hues.</lang>
+export const SERIES_RELATION_DEFS:SeriesRelationDef[]=[
+  {id:'manual',name:'手动（现行）',en:'Manual',modes:['dual'],note:'第二色由用户手动选择，不自动推导。'},
+  {id:'complement',name:'互补 complement',en:'Complement',modes:['dual','triad'],secondAngle:180,thirdAngle:180,note:'色相环上全然相反的两色（180°）。'},
+  {id:'clash',name:'冲突 clash',en:'Clash',modes:['dual','triad'],secondAngle:150,thirdAngle:150,note:'主色补色的左/右侧（+150°，半冲突）。'},
+  {id:'neutral',name:'中性 neutral',en:'Neutral',modes:['dual','triad'],secondAngle:180,secondChromaScale:.4,thirdAngle:180,thirdChromaScale:.4,note:'补色低饱和化（彩度 ×0.4），中性过渡。'},
+  {id:'analogous',name:'类比 analogous',en:'Analogous',modes:['triad'],thirdFromSecondary:true,note:'主色相两侧连续色（第二/第三色分居 ±30°，按副色相位取另一侧）。'},
+  {id:'split-complement',name:'分裂补色 split-complement',en:'Split Complement',modes:['triad'],thirdFromSecondary:true,note:'主色补色两侧（150°/210°），副色占一侧时第三色取另一侧。'},
+  {id:'tertiary',name:'三次色三色 tertiary',en:'Tertiary Triad',modes:['triad'],thirdFromSecondary:true,note:'等距三色（120°/240°），副色占一侧时第三色取剩余等距位。'},
+  {id:'primary-combo',name:'原色组合 primary',en:'Primary Combo',modes:['triad'],thirdCombo:[25,100,250],note:'纯红、黄、蓝固定组合；主位取与主色相最近者，副色占次近位。'},
+  {id:'secondary-combo',name:'二次色组合 secondary',en:'Secondary Combo',modes:['triad'],thirdCombo:[30,140,290],note:'绿、橙、紫固定组合；主位/副色位同上。'},
+  {id:'pure',name:'纯色 pure',en:'Pure',modes:['single','dual','triad'],note:'单色系 1-3 色递变（无新色相；成员取主色系明暗变体）。'}];
+
+// 按规则 id 查找定义；未登记/模式不匹配回退 manual。
+// <lang zh-CN>外界输入防御：非法 id 或"规则与模式不匹配"均回退 manual（现行行为）。</lang>
+// <lang en>Defensive fallback to manual for unknown ids or mode/relation mismatches.</lang>
+export function getSeriesRelationDef(id:string,mode:SeriesMode):SeriesRelationDef{
+  const def=SERIES_RELATION_DEFS.find(r=>r.id===id);
+  return def&&def.modes.includes(mode)?def:SERIES_RELATION_DEFS.find(r=>r.id==='manual')!;
 }
 
-// 单个辅助色候选：色值 + 展示名 + 生成参数（供 UI 重生成/修饰语切换）。
-// <lang zh-CN>name 含修饰语（如"辅助 1 · Vivid"）；angle 为相对主色角差（组合型为绝对色相）。</lang>
-// <lang en>name carries the modifier ("Aux 1 · Vivid"); angle is the delta from primary (absolute hue for combo modes).</lang>
-export interface AuxiliaryCandidate{hex:string;name:string;en:string;angle:number;modifier:AuxiliaryModifier;}
+// 环形角差：两色相的最小角距（0..180）。
+// <lang zh-CN>用于"最近组合色/另一侧"判定。</lang>
+// <lang en>Circular distance = min(|Δ|, 360-|Δ|).</lang>
+function hueDistance(a:number,b:number):number{
+  const d=Math.abs(a-b)%360;
+  return Math.min(d,360-d);
+}
 
-// 修饰语 → 明度/彩度调整（ISCC-NBS 词表基础子集，ADR-007）。
-// <lang zh-CN>基线 L=主色+.08（.60..76）、C=主色*.88（.08..16）；各修饰语在其上微调。</lang>
-// <lang en>Baseline L=primary+.08 (.60..76), C=primary*.88 (.08..16); modifiers tweak on top.</lang>
-function applyModifier(L:number,C:number,modifier:AuxiliaryModifier):{L:number;C:number}{
-  switch(modifier){
-    case'vivid':return{L:clamp(L+.06,.5,.85),C:clamp(C*1.15,.08,.2)};
-    case'deep':return{L:clamp(L-.08,.4,.7),C:clamp(C*.95,.07,.17)};
-    case'pale':return{L:clamp(L+.14,.6,.88),C:clamp(C*.6,.05,.13)};
-    case'grayish':return{L:clamp(L+.04,.55,.8),C:clamp(C*.45,.03,.1)};
-    default:return{L:clamp(L,.6,.76),C:clamp(C,.08,.16)};
+// dual 模式：按规则推导第二色 HEX（manual 返回 null=用户手动色）。
+// <lang zh-CN>角度/彩度按规则定义；complement 180°、clash 150°、neutral 180°+彩度×0.4。</lang>
+// <lang en>Derives the secondary hex per rule; manual yields null (user-picked).</lang>
+export function deriveSecondaryByRelation(primaryHex:string,relation:SeriesRelationId):string|null{
+  const def=getSeriesRelationDef(relation,'dual');
+  if(def.id==='manual'||def.secondAngle===undefined)return null;
+  const src=hexToOklch(primaryHex);
+  const L=clamp(src.L+.08,.6,.76),
+    C=clamp(src.C*(def.secondChromaScale??.88),.05,.16),
+    hue=(src.h+def.secondAngle+360)%360;
+  return gamutMapOklch(L,C,hue).hex;
+}
+
+// triad 模式：按规则推导第三色 HEX（manual/pure 返回 null——pure 的第三色走主色系变体路径）。
+// <lang zh-CN>角度型（analogous/split/tertiary）按副色相位取另一侧；组合型按组合占用推导剩余位；
+//   语义：primary 与 secondary 是用户根基，第三色补全组合（补全值可手动覆写）。</lang>
+// <lang en>Angle rules pick the free side relative to the secondary's hue; combo rules pick the remaining slot;
+//   primary/secondary are user roots and the third completes the combo (overridable).</lang>
+export function deriveThirdByRelation(primaryHex:string,secondaryHex:string,relation:SeriesRelationId):string|null{
+  const def=getSeriesRelationDef(relation,'triad');
+  if(def.id==='manual'||def.id==='pure')return null;
+  const src=hexToOklch(primaryHex);
+  const L=clamp(src.L+.06,.6,.76),
+    C=clamp(src.C*(def.thirdChromaScale??.9),.05,.16);
+  // 组合型：组合三色中，主位=最近主色相者，副位=其余中最近副色相者，第三位=最后剩余。
+  // <lang zh-CN>两级"最近"分配保证主/副色语义不冲突；剩余位即第三色。</lang>
+  // <lang en>Two-level nearest-slot assignment keeps primary/secondary semantics intact.</lang>
+  if(def.thirdCombo){
+    const sec=hexToOklch(secondaryHex);
+    const primarySlot=def.thirdCombo.reduce((best,h)=>hueDistance(src.h,h)<hueDistance(src.h,best)?h:best,def.thirdCombo[0]!);
+    const rest=def.thirdCombo.filter(h=>h!==primarySlot);
+    const secondarySlot=rest.reduce((best,h)=>hueDistance(sec.h,h)<hueDistance(sec.h,best)?h:best,rest[0]!);
+    const thirdHue=rest.find(h=>h!==secondarySlot)??rest[0]!;
+    return gamutMapOklch(L,C,thirdHue).hex;
   }
-}
-
-// 单槽生成：oklch 色相 = 主相 + 角度（组合型角度即绝对色相），L/C 按修饰语调整后色域映射。
-// <lang zh-CN>纯函数；gamutMapOklch 保证合法 sRGB 输出。</lang>
-// <lang en>Pure; gamutMapOklch guarantees valid sRGB output.</lang>
-function auxiliaryCandidate(primary:string,index:number,angle:number,modifier:AuxiliaryModifier,modeDef:HarmonyModeDef):AuxiliaryCandidate{
-  const src=hexToOklch(primary);
-  const baseL=clamp(src.L+.08,.6,.76),
-    baseC=clamp(src.C*.88,.08,.16);
-  const adjusted=applyModifier(baseL,baseC,modifier);
-  // 组合型（combo 无 angles 字段）angle 即绝对色相；角度型为主相叠加。
-  // <lang zh-CN>modeDef.angles 存在与否区分两种模式形态。</lang>
-  // <lang en>Presence of modeDef.angles distinguishes the two mode shapes.</lang>
-  const hue=modeDef.angles?((src.h+angle+360)%360):((angle+360)%360);
-  const enLabel=`Aux ${index+1} · ${modifier} · ${modeDef.en}`;
-  return{hex:gamutMapOklch(adjusted.L,adjusted.C,hue).hex,name:`辅助 ${index+1} · ${modifier[0]!.toUpperCase()+modifier.slice(1)} · ${modeDef.name}`,en:enLabel,angle,modifier};
-}
-
-// 按模式生成辅助色候选集：角度型按 angles 展开；组合型取非主位的其余两色。
-// <lang zh-CN>modifiers 缺省每槽 'strong'；槽位数即 modeDef.slots；'auto'/0 槽模式返回 []。</lang>
-// <lang en>modifiers default to 'strong' per slot; zero-slot modes yield [].</lang>
-export function generateAuxiliarySet(primaryHex:string,mode:HarmonyModeId,modifiers?:AuxiliaryModifier[]):AuxiliaryCandidate[]{
-  const modeDef=getHarmonyModeDef(mode);
-  if(modeDef.slots===0)return[];
-  // 组合型：找与主色相最近的组合色为主位，其余位为辅助（主色永不被模式改写）。
-  // <lang zh-CN>主相与组合色相的环形距离取 min(|Δ|,360-|Δ|)。</lang>
-  // <lang en>Circular distance = min(|Δ|, 360-|Δ|).</lang>
-  if(modeDef.combo){
-    const src=hexToOklch(primaryHex);
-    const dist=(a:number,b:number)=>{const d=Math.abs(a-b)%360;return Math.min(d,360-d);};
-    const sorted=[...modeDef.combo].sort((a,b)=>dist(src.h,a)-dist(src.h,b));
-    // 主位=最近者；辅助=其余（保持组合内相对顺序，便于稳定命名）。
-    // <lang zh-CN>auxHues 顺序按 combo 原序过滤主位，保证同输入同输出。</lang>
-    // <lang en>auxHues keeps combo order minus the primary slot for deterministic output.</lang>
-    const primaryHue=sorted[0]!;
-    const auxHues=modeDef.combo.filter(h=>h!==primaryHue);
-    return auxHues.slice(0,modeDef.slots).map((h,i)=>auxiliaryCandidate(primaryHex,i,h,modifiers?.[i]??'strong',modeDef));
+  // 角度型（thirdFromSecondary）：候选两侧取"副色未占用的一侧"。
+  // <lang zh-CN>analogous ±30：副色近 -30 则第三色 +30，反之亦然；split 150/210 与 tertiary 120/240 同理。</lang>
+  // <lang en>For ±30 / 150-210 / 120-240 pairs, the third takes the side the secondary does not occupy.</lang>
+  if(def.thirdFromSecondary){
+    const sec=hexToOklch(secondaryHex);
+    const candidates=def.id==='analogous'?[-30,30]:def.id==='split-complement'?[150,210]:[120,240];
+    const used=candidates.reduce((best,h)=>hueDistance(sec.h,(src.h+h+360)%360)<hueDistance(sec.h,(src.h+best+360)%360)?h:best,candidates[0]!);
+    const thirdHue=candidates.find(h=>h!==used)??candidates[0]!;
+    return gamutMapOklch(L,C,(src.h+thirdHue+360)%360).hex;
   }
-  // 角度型：angles 与槽位数一致，逐角生成。
-  // <lang zh-CN>angles 缺失（定义错误）防御性返回空。</lang>
-  // <lang en>Defensive [] when angles is missing (malformed definition).</lang>
-  const angles=modeDef.angles??[];
-  return angles.slice(0,modeDef.slots).map((a,i)=>auxiliaryCandidate(primaryHex,i,a,modifiers?.[i]??'strong',modeDef));
+  // 固定角差（complement/clash/neutral 的第三色=第二色同款，triad 下无意义）→ null。
+  // <lang zh-CN>triad 下这三规则不该出现，防御返回 null。</lang>
+  // <lang en>Defensive null for rules not meaningful in triad.</lang>
+  return null;
+}
+
+// 辅助色"按规则生成"候选（定案 3：手动为主 + 规则生成按钮）。
+// <lang zh-CN>从主色推导三个强调候选（±60°/150°，比副色更收敛的 L/C），供挑选后手动加入槽位。</lang>
+// <lang en>Derives three accent candidates from the primary for the "generate by rule" action.</lang>
+export function generateAuxiliaryCandidates(primaryHex:string,modifiers?:AuxiliaryModifier[]):{hex:string;name:string;modifier:AuxiliaryModifier}[]{
+  const mods:AuxiliaryModifier[]=modifiers??['strong','vivid','deep'];
+  const angles=[60,150,-90];
+  const src=hexToOklch(primaryHex);
+  return angles.map((angle,i)=>{
+    const modifier=mods[i]??'strong';
+    const L=clamp(src.L+.08,.6,.76),
+      C=clamp(src.C*.88,.08,.16),
+      hue=(src.h+angle+360)%360;
+    const adjusted=modifier==='vivid'?{L:clamp(L+.06,.5,.85),C:clamp(C*1.15,.08,.2)}
+      :modifier==='deep'?{L:clamp(L-.08,.4,.7),C:clamp(C*.95,.07,.17)}
+      :modifier==='pale'?{L:clamp(L+.14,.6,.88),C:clamp(C*.6,.05,.13)}
+      :modifier==='grayish'?{L:clamp(L+.04,.55,.8),C:clamp(C*.45,.03,.1)}
+      :{L,C};
+    return{hex:gamutMapOklch(adjusted.L,adjusted.C,hue).hex,name:`规则强调 ${i+1}`,modifier};
+  });
 }
