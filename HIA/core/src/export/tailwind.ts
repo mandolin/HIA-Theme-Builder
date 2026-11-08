@@ -51,7 +51,8 @@ module.exports = {
     extend: {
       colors: {
         primary: ${familyColors(theme.primary.scale,custom.primary,theme.primary.value)},
-        secondary: ${familyColors(theme.secondary.scale,custom.secondary,theme.secondary.value)}
+        secondary: ${familyColors(theme.secondary.scale,custom.secondary,theme.secondary.value)}${theme.auxiliary.map((aux,i)=>`,
+        aux${i}: ${familyColors(aux.scale,{},aux.value)}`).join('')}
       },
       fontFamily: {
         body: ${JSON.stringify(theme.typography.fontFamily.body)},

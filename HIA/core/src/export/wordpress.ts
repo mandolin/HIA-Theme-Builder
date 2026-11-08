@@ -73,16 +73,21 @@ function wordpressChildFiles(theme:Theme,options?:ExportAdapterOptions):VirtualF
   // <lang zh-CN>与 CSS/JSON 导出同源（collectCustomShades），三处产物一致。</lang>
   // <lang en>Same source as CSS/JSON exports (collectCustomShades), keeping all three artifacts consistent.</lang>
   const custom=collectCustomShades(theme);
-  // 面板条目：基色两条 + 主副各 10 档 + 自定义色阶附加键。
-  // <lang zh-CN>基色 slug 无档位后缀（hia-primary/hia-secondary），便于块编辑器直选主题基色。</lang>
-  // <lang en>Base entries carry no shade suffix (hia-primary/hia-secondary) for direct base selection in the editor.</lang>
+  // 面板条目：基色两条 + 主副各 10 档 + 自定义色阶附加键 + 辅助槽位（ADR-007）。
+  // <lang zh-CN>基色 slug 无档位后缀（hia-primary/hia-secondary），便于块编辑器直选主题基色；
+  //   辅助槽位 slug hia-aux<N>[-<shade>]（N 从 0），auto 模式下不产生条目。</lang>
+  // <lang en>Aux slots use slug hia-aux<N>[-<shade>] (N from 0); none emitted under 'auto'.</lang>
   const palette=[
     {name:`${theme.primary.name}`,slug:'hia-primary',color:theme.primary.value},
     {name:`${theme.secondary.name}`,slug:'hia-secondary',color:theme.secondary.value},
     ...SHADE_KEYS.map(k=>paletteEntry('primary',k,theme.primary.scale[k]!,theme.primary.name)),
     ...SHADE_KEYS.map(k=>paletteEntry('secondary',k,theme.secondary.scale[k]!,theme.secondary.name)),
     ...Object.entries(custom.primary).map(([k,v])=>paletteEntry('primary',k,v,theme.primary.name)),
-    ...Object.entries(custom.secondary).map(([k,v])=>paletteEntry('secondary',k,v,theme.secondary.name))
+    ...Object.entries(custom.secondary).map(([k,v])=>paletteEntry('secondary',k,v,theme.secondary.name)),
+    ...theme.auxiliary.flatMap((aux,i)=>[
+      {name:aux.name,slug:`hia-aux${i}`,color:aux.value},
+      ...SHADE_KEYS.map(k=>({name:`${aux.name} ${k}`,slug:`hia-aux${i}-${k}`,color:aux.scale[k]!}))
+    ])
   ];
   // 渐变条目：仅启用角色；字面量色值（literal 模式经 resolveScaleColor 支持任意档位）。
   // <lang zh-CN>禁用角色 flatMap 丢弃，避免 WP 端出现死预设；角色键 camelCase（textLarge）转 kebab 保持 slug 全小写惯例。</lang>

@@ -123,3 +123,54 @@ test('草稿: createThemeDraft/buildThemeFromDraft 透传配色扩展（draft pa
   const cleared = buildThemeFromDraft(createThemeDraft({ harmonyMode: 'tertiary', auxiliary: [] }));
   assert.deepEqual(cleared.auxiliary, []);
 });
+
+test('下游传导: CSS Token 含 --hia-aux* 变量且 auto 产物与旧版一致（css passthrough）', async () => {
+  const { exportThemeCss, buildSharePayload, encodeShareHash, decodeShareHash, exportThemeJson } = await import('../dist/index.js');
+  // auto 模式：产物不含 aux 键（向后兼容基线）
+  const autoTheme = buildTheme({ name: 'auto', category: 'demo', primary: '#0047AB', secondary: '#00A8D3' });
+  assert.ok(!exportThemeCss(autoTheme).includes('--hia-aux'), 'auto 产物无辅助变量');
+  // tertiary 模式：两槽 10 档齐备
+  const theme = buildTheme({ name: 'tert', category: 'demo', primary: '#0047AB', secondary: '#00A8D3', harmonyMode: 'tertiary' });
+  const css = exportThemeCss(theme);
+  assert.match(css, /--hia-aux0: #[0-9A-F]{6}/i, '槽 0 基色变量');
+  assert.match(css, /--hia-aux1-500: #[0-9A-F]{6}/i, '槽 1 中档变量');
+  assert.match(css, /--hia-on-aux0: /, '槽 0 前景变量');
+  // JSON Token
+  const json = JSON.parse(exportThemeJson(theme));
+  assert.equal(json.harmonyMode, 'tertiary');
+  assert.equal(json.auxiliary.length, 2);
+  assert.ok(json.auxiliary[0].scale['500'], '辅助含完整色阶');
+});
+
+test('下游传导: WP palette/Tailwind colors 含辅助槽位（adapter passthrough）', async () => {
+  const { wordpressChildTarget, tailwindConfigTarget } = await import('../dist/index.js');
+  const theme = buildTheme({ name: 'Demo Theme', category: 'demo', primary: '#0047AB', secondary: '#00A8D3', harmonyMode: 'complement' });
+  const wpJson = JSON.parse(wordpressChildTarget.files(theme).find(f => f.path === 'theme.json').content);
+  const slugs = wpJson.settings.color.palette.map(e => e.slug);
+  assert.ok(slugs.includes('hia-aux0'), 'WP 面板含辅助基色 slug');
+  assert.ok(slugs.includes('hia-aux0-500'), 'WP 面板含辅助中档 slug');
+  // Tailwind：沙箱求值
+  const files = tailwindConfigTarget.files(theme);
+  const config = files.find(f => f.path === 'tailwind.config.js').content;
+  const mod = { exports: {} };
+  const fn = new Function('module', 'exports', config + '\n;return module.exports;');
+  const parsed = fn(mod, mod.exports);
+  assert.ok(parsed.theme.extend.colors.aux0, 'Tailwind 含 aux0 族');
+  assert.ok(parsed.theme.extend.colors.aux0['500'], 'aux0 含中档');
+});
+
+test('下游传导: 分享载荷往返携带模式与辅助槽位（share passthrough）', async () => {
+  const { buildSharePayload, encodeShareHash, decodeShareHash, createThemeDraft } = await import('../dist/index.js');
+  const draft = createThemeDraft({ name: '辅助往返', harmonyMode: 'split-complement' });
+  const hash = encodeShareHash(buildSharePayload(draft));
+  const back = decodeShareHash(hash);
+  assert.ok(back);
+  assert.equal(back.harmonyMode, 'split-complement');
+  assert.equal(back.auxiliary.length, 2);
+  assert.match(back.auxiliary[0].value, /^#[0-9A-F]{6}$/i);
+  // auto 主题不写配色尾段（长度节省）
+  const autoHash = encodeShareHash(buildSharePayload(createThemeDraft({ name: 'auto' })));
+  const autoBack = decodeShareHash(autoHash);
+  assert.equal(autoBack.harmonyMode, undefined);
+  assert.equal(autoBack.auxiliary, undefined);
+});

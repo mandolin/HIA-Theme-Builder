@@ -56,7 +56,7 @@ export function createThemeDraft(value:Partial<ThemeDraft>={}):ThemeDraft{
 // <lang zh-CN>载入操作台时使用，gradients 缺失则回落默认。</lang>
 // <lang en>Used when loading into the studio; falls back to defaults when gradients are absent.</lang>
 export function draftFromPreset(preset:Preset):ThemeDraft{
-  return createThemeDraft({id:preset.id,name:preset.name,category:preset.category,industry:preset.industry,primary:preset.primary,secondary:preset.secondary,primaryName:preset.primaryName,secondaryName:preset.secondaryName,note:preset.note,gradients:preset.gradients});
+  return createThemeDraft({id:preset.id,name:preset.name,category:preset.category,industry:preset.industry,primary:preset.primary,secondary:preset.secondary,primaryName:preset.primaryName,secondaryName:preset.secondaryName,note:preset.note,gradients:preset.gradients,harmonyMode:preset.harmonyMode,auxiliary:preset.auxiliary});
 }
 
 // 将草稿构建为完整主题，名称缺省时按主副色名自动生成。
@@ -70,7 +70,7 @@ export function buildThemeFromDraft(draft:ThemeDraft):Theme{
 // <lang zh-CN>保存/导出时使用，基色再次规范化确保持久化一致。</lang>
 // <lang en>Used for save/export; base colors are re-normalized for consistent persistence.</lang>
 export function presetFromDraft(draft:ThemeDraft,id=`custom-${Date.now()}`):Preset{
-  return{id,name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category||'custom',industry:draft.industry||'',primary:normalizeHex(draft.primary),secondary:normalizeHex(draft.secondary),primaryName:draft.primaryName||'主色',secondaryName:draft.secondaryName||'副色',note:draft.note||'由主副色操作台生成导入。',gradients:cloneGradientSettings(draft.gradients)};
+  return{id,name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category||'custom',industry:draft.industry||'',primary:normalizeHex(draft.primary),secondary:normalizeHex(draft.secondary),primaryName:draft.primaryName||'主色',secondaryName:draft.secondaryName||'副色',note:draft.note||'由主副色操作台生成导入。',gradients:cloneGradientSettings(draft.gradients),...(draft.harmonyMode&&draft.harmonyMode!=='auto'?{harmonyMode:draft.harmonyMode}:{}),...(draft.auxiliary?.length?{auxiliary:draft.auxiliary.map(a=>({...a,scale:{...a.scale}}))}:{})};
 }
 
 // 在候选库中按主副色同时匹配出对应候选（用于回显“当前主色”来源）。

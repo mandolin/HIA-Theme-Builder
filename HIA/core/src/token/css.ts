@@ -15,5 +15,13 @@ export function exportThemeCss(theme:Theme):string{
     .map(([k,v])=>`--hia-${role}-${k}: ${v};`).join('\n  ');
   const primaryCustom=customLines('primary');
   const secondaryCustom=customLines('secondary');
-  return`:root {\n  --hia-primary: ${theme.primary.value};\n  --hia-on-primary: ${theme.primary.on};\n  --hia-secondary: ${theme.secondary.value};\n  --hia-on-secondary: ${theme.secondary.on};\n  ${Object.entries(theme.primary.scale).map(([k,v])=>`--hia-primary-${k}: ${v};`).join('\n  ')}${primaryCustom?`\n  ${primaryCustom}`:''}\n  ${Object.entries(theme.secondary.scale).map(([k,v])=>`--hia-secondary-${k}: ${v};`).join('\n  ')}${secondaryCustom?`\n  ${secondaryCustom}`:''}\n${exportGradientVariableLines(theme.gradients)}\n}`;
+  // 辅助色槽位（ADR-007）：每槽基色/前景 + 10 档，键名 --hia-aux<N>[-<shade>]（N 从 0）。
+  // <lang zh-CN>auto 模式下 auxiliary 为空 → 该段为空串，产物与旧版逐字节一致（向后兼容）。</lang>
+  // <lang en>Under 'auto' auxiliary is empty → this segment is an empty string, keeping output byte-identical to legacy.</lang>
+  const auxLines=theme.auxiliary.map((aux,i)=>[
+    `  --hia-aux${i}: ${aux.value};`,
+    `  --hia-on-aux${i}: ${aux.on};`,
+    ...Object.entries(aux.scale).map(([k,v])=>`--hia-aux${i}-${k}: ${v};`)
+  ].join('\n  ')).join(theme.auxiliary.length?'\n':'');
+  return`:root {\n  --hia-primary: ${theme.primary.value};\n  --hia-on-primary: ${theme.primary.on};\n  --hia-secondary: ${theme.secondary.value};\n  --hia-on-secondary: ${theme.secondary.on};\n  ${Object.entries(theme.primary.scale).map(([k,v])=>`--hia-primary-${k}: ${v};`).join('\n  ')}${primaryCustom?`\n  ${primaryCustom}`:''}\n  ${Object.entries(theme.secondary.scale).map(([k,v])=>`--hia-secondary-${k}: ${v};`).join('\n  ')}${secondaryCustom?`\n  ${secondaryCustom}`:''}${auxLines?`\n  ${auxLines}`:''}\n${exportGradientVariableLines(theme.gradients)}\n}`;
 }

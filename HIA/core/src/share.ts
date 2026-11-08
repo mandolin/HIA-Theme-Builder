@@ -11,6 +11,7 @@
  */
 import type{GradientSettings,ThemeDraft}from'./types.js';
 import{cloneGradientSettings}from'./data/gradients.js';
+import{generateAuxiliarySet,getHarmonyModeDef}from'./color/harmony.js';
 import{normalizeHex,validHex}from'./color/convert.js';
 
 // 载荷格式版本：字段演进时升级并路由解析分支（对齐 TDON specVersion 思想）。
@@ -40,6 +41,11 @@ export interface SharePayload{
   industry?:string;
   note?:string;
   gradients?:GradientSettings;
+  // 配色关系扩展（ADR-007）：模式与辅助槽位（仅 hex+name，色阶解码端重建）。
+  // <lang zh-CN>harmonyMode 缺省 'auto'（不写入省长度）；辅助条目逐条校验。</lang>
+  // <lang en>harmonyMode defaults to 'auto' (omitted to save length); auxiliary entries validated per-item.</lang>
+  harmonyMode?:string;
+  auxiliary?:{value:string;name:string}[];
 }
 
 // 字符串净化：截断 + 空白裁剪；非字符串回退空串。
@@ -74,6 +80,21 @@ export function buildSharePayload(draft:ThemeDraft):SharePayload{
   // <lang zh-CN>默认八角色全带（约 400 字符）；若未来体积告警可裁剪禁用角色。</lang>
   // <lang en>All eight roles carried (~400 chars); roles may be trimmed if size ever becomes a concern.</lang>
   payload.gradients=cloneGradientSettings(draft.gradients);
+  // 配色关系（ADR-007）：模式非 auto 或槽位非空时写入（节省链接长度）。
+  // <lang zh-CN>草稿 auxiliary 缺失（undefined=推导语义）时按模式+修饰语现推导；
+  //   auxiliary 仅传 value+name（色阶解码端由 hex 重建）。</lang>
+  // <lang en>When the draft's auxiliary is absent (undefined = derive), derive per mode+modifiers;
+  //   auxiliary carries value+name only; scales rebuild from hex on the decode side.</lang>
+  if(draft.harmonyMode&&draft.harmonyMode!=='auto'){
+    payload.harmonyMode=draft.harmonyMode;
+    // 草稿已有槽位直接取；未传则现推导（AuxiliaryCandidate.hex → value 统一形态）。
+    // <lang zh-CN>两条路径归一为 {value,name}，下游（compact 编码）只认该形态。</lang>
+    // <lang en>Both paths normalize to {value,name}; downstream compact encoding expects that shape.</lang>
+    const auxSource=draft.auxiliary?.length
+      ?draft.auxiliary.map(a=>({value:a.value,name:a.name}))
+      :generateAuxiliarySet(draft.primary,draft.harmonyMode,draft.auxiliaryModifiers).map(c=>({value:c.hex,name:c.name}));
+    if(auxSource.length)payload.auxiliary=auxSource;
+  }
   return payload;
 }
 
@@ -95,16 +116,20 @@ function base64UrlDecode(encoded:string):string{
 
 // 紧凑编码（Tailwind Play 同思路）：JSON 键名换位置化数组，默认主题 hash 从 ~2600 字符降到 ~1000。
 // <lang zh-CN>CompactPayload 顺序固定：[v,name,primary,secondary,primaryName,secondaryName,
-//   category?,industry?,note?,gradients?]；渐变值数组 [enabled(0/1),family,start,end,direction,bias]。
-//   破坏性变更需升 SHARE_VERSION。</lang>
-// <lang en>Compact form: positional array replaces JSON keys; gradient values become arrays
-//   [enabled(0/1),family,start,end,direction,bias]. Bump SHARE_VERSION on breaking changes.</lang>
+//   category?,industry?,note?,gradients?,harmonyMode?,auxiliary?]；渐变值数组
+//   [enabled(0/1),family,start,end,direction,bias]；辅助紧凑为 [hex,name][]（色阶解码端重建）。
+//   破坏性变更需升 SHARE_VERSION；尾部追加向后兼容（旧 hash 缺尾段容忍）。</lang>
+// <lang en>Compact form: positional array; gradients as [enabled(0/1),family,start,end,direction,bias];
+//   auxiliary as [hex,name][] (scales rebuilt on decode). Bump SHARE_VERSION on breaking changes;
+//   trailing additions stay backward compatible.</lang>
 type CompactGradient=[number,string,string,string,string,string];
-type CompactPayload=[number,string,string,string,string,string,string?,string?,string?,Record<string,CompactGradient>?];
+type CompactPayload=[number,string,string,string,string,string,string?,string?,string?,Record<string,CompactGradient>?,string?,[string,string][]?];
 
 // 载荷 → 紧凑形态（内部序列化用；可选字段为空串占位以保持位置对齐）。
-// <lang zh-CN>空可选字段写空串而非 undefined——JSON 数组中 undefined 会丢失导致位次错乱。</lang>
-// <lang en>Empty strings (not undefined) for absent optionals — undefined would drop and shift positions in JSON arrays.</lang>
+// <lang zh-CN>空可选字段写空串而非 undefined——JSON 数组中 undefined 会丢失导致位次错乱；
+//   位置 10/11 为 ADR-007 配色关系段。</lang>
+// <lang en>Empty strings (not undefined) for absent optionals — undefined would shift positions;
+//   positions 10/11 carry the ADR-007 harmony segment.</lang>
 function toCompact(p:SharePayload):CompactPayload{
   const gradients:Record<string,CompactGradient>={};
   for(const[k,g]of Object.entries(p.gradients??{})){
@@ -113,7 +138,9 @@ function toCompact(p:SharePayload):CompactPayload{
   return[
     p.v,p.name,p.primary,p.secondary,p.primaryName,p.secondaryName,
     p.category??'',p.industry??'',p.note??'',
-    Object.keys(gradients).length?gradients:undefined
+    Object.keys(gradients).length?gradients:undefined,
+    p.harmonyMode&&p.harmonyMode!=='auto'?p.harmonyMode:undefined,
+    p.auxiliary?.length?p.auxiliary.map(a=>[a.value,a.name]):undefined
   ];
 }
 
@@ -157,6 +184,22 @@ function fromCompact(arr:unknown[]):SharePayload|null{
       rebuilt[k]={enabled:v[0]!==0,family:v[1] as 'primary'|'secondary',start:v[2] as import('./types.js').ShadeValue,end:v[3] as import('./types.js').ShadeValue,direction:v[4] as string,bias:v[5] as import('./types.js').GradientBias};
     }
     if(valid&&Object.keys(rebuilt).length)payload.gradients=cloneGradientSettings(rebuilt);
+  }
+  // 配色关系尾段（ADR-007）：位 10=harmonyMode（未登记 id 回退 'auto'）、位 11=辅助 [hex,name][]。
+  // <lang zh-CN>辅助 HEX 逐条校验，非法条目跳过；全部无效则不写入（避免半还原）。</lang>
+  // <lang en>Auxiliary entries with invalid hex are skipped; none valid → segment omitted (avoid half-restore).</lang>
+  const modeRaw=sanitizeText(arr[10],24);
+  if(modeRaw)payload.harmonyMode=getHarmonyModeDef(modeRaw).id;
+  const auxRaw=arr[11] as unknown;
+  if(Array.isArray(auxRaw)&&auxRaw.length){
+    const aux:{value:string;name:string}[]=[];
+    for(const item of auxRaw){
+      if(!Array.isArray(item)||item.length<1)continue;
+      const hex=normalizeHex(sanitizeText(item[0],16));
+      if(!validHex(hex))continue;
+      aux.push({value:hex,name:sanitizeText(item[1],80)||'辅助色'});
+    }
+    if(aux.length)payload.auxiliary=aux;
   }
   return payload;
 }

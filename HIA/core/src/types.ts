@@ -71,7 +71,10 @@ export interface PrimaryCandidate{id:string;name:string;en:string;hex:string;tag
 // 预设主题：可应用/保存的具名主题方案。
 // <lang zh-CN>已定稿的主题方案，可序列化进库或直接应用。</lang>
 // <lang en>A finalized theme scheme, serializable into the library or applied directly.</lang>
-export interface Preset{id:string;name:string;category:string;industry:string;primary:string;secondary:string;primaryName:string;secondaryName:string;note:string;gradients?:GradientSettings;}
+// 预设主题：可应用/保存的具名主题方案。
+// <lang zh-CN>harmonyMode/auxiliary 为 ADR-007 扩展（optional，旧库文件/远程源缺字段容忍）。</lang>
+// <lang en>harmonyMode/auxiliary are the ADR-007 extension (optional; legacy files/sources tolerate absence).</lang>
+export interface Preset{id:string;name:string;category:string;industry:string;primary:string;secondary:string;primaryName:string;secondaryName:string;note:string;gradients?:GradientSettings;harmonyMode?:HarmonyModeId;auxiliary?:RoleColor[];}
 // 和谐配色定义：副色生成的色彩理论依据。
 // <lang zh-CN>描述由主色推导副色的配色方案（类比/互补/三角等）与目标 L/C。</lang>
 // <lang en>Describes the color-harmony scheme (analogous/complementary/triadic) and target L/C for deriving a secondary.</lang>

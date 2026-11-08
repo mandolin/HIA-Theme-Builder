@@ -21,6 +21,11 @@ export function exportThemeJson(theme:Theme):string{
     industry:theme.industry||'',
     primary:{name:theme.primary.name,value:theme.primary.value,scale:primaryScale,on:theme.primary.on},
     secondary:{name:theme.secondary.name,value:theme.secondary.value,scale:secondaryScale,on:theme.secondary.on},
+    // 配色关系扩展（ADR-007）：模式与辅助槽位全量输出（含色阶，消费方免重建）。
+    // <lang zh-CN>auto 模式下 harmonyMode='auto'、auxiliary=[]，旧消费方按未知键容忍。</lang>
+    // <lang en>Under 'auto' these are 'auto' and []; legacy consumers tolerate unknown keys.</lang>
+    harmonyMode:theme.harmonyMode,
+    auxiliary:theme.auxiliary.map(a=>({name:a.name,value:a.value,scale:a.scale,on:a.on})),
     typography:theme.typography,
     spacing:theme.spacing,
     gradients:theme.gradients
