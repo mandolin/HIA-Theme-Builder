@@ -20,14 +20,18 @@ export interface ClipboardPort{writeText(value:string):Promise<void>;}
 // <lang zh-CN>实现可来自 Electron 预加载或 Tauri 命令，结果统一为 WebsiteThemeAnalysisV2。</lang>
 // <lang en>Backed by Electron preload or a Tauri command; result is always WebsiteThemeAnalysisV2.</lang>
 export interface ThemeExplorePort{exploreUrl(url:string):Promise<WebsiteThemeAnalysisV2>;}
+// 文本获取能力（`W-tb-P10`）：拉取远程预设源 JSON 等静态文本。
+// <lang zh-CN>统一消费层校验（协议白名单/大小/超时）在此端口内执行，调用方拿到即合法文本。</lang>
+// <lang en>Consumer-side validation (protocol allowlist/size/timeout) lives inside this port; callers receive validated text.</lang>
+export interface FetchTextPort{fetchText(url:string):Promise<string>;}
 // 平台聚合：操作台运行时依赖的完整能力集合。
-// <lang zh-CN>explorer 可选，仅当宿主提供网址探索时存在。</lang>
-// <lang en>explorer is optional and present only when the host provides URL exploration.</lang>
-export interface ThemeManagerPlatform{storage:StoragePort;clipboard:ClipboardPort;now():number;alert(message:string):void;confirm(message:string):boolean;explorer?:ThemeExplorePort;}
+// <lang zh-CN>explorer/fetchText 可选：explorer 仅桌面端存在；fetchText 默认由 WebView fetch 提供。</lang>
+// <lang en>explorer/fetchText are optional: explorer only on desktop; fetchText defaults to WebView fetch.</lang>
+export interface ThemeManagerPlatform{storage:StoragePort;clipboard:ClipboardPort;now():number;alert(message:string):void;confirm(message:string):boolean;explorer?:ThemeExplorePort;fetchText?:FetchTextPort;}
 // 注入式桥：宿主可部分覆盖默认能力，缺省项由适配器补齐。
 // <lang zh-CN>用于 Electron/Tauri 通过 window 注入自定义实现而不必全量提供。</lang>
 // <lang en>Lets Electron/Tauri inject partial overrides via window without supplying everything.</lang>
-export interface InjectedThemeBridge{storage?:StoragePort;clipboard?:ClipboardPort;now?:()=>number;alert?:(message:string)=>void;confirm?:(message:string)=>boolean;explorer?:ThemeExplorePort;}
+export interface InjectedThemeBridge{storage?:StoragePort;clipboard?:ClipboardPort;now?:()=>number;alert?:(message:string)=>void;confirm?:(message:string)=>boolean;explorer?:ThemeExplorePort;fetchText?:FetchTextPort;}
 
 // 旧版 Electron 桥的成功/失败响应形态。
 // <lang zh-CN>兼容 window.hia.extractFromUrl 的老协议（ok + result/reason）。</lang>
@@ -134,9 +138,9 @@ async function decodeAndQuantize(b64:string):Promise<ColorEvidence[]>{
 
 /**
  * @lang zh-CN 构建自适应平台：优先显式注入桥，其次旧版 Electron 桥，再 Tauri invoke，最后浏览器原生能力。
- *   纯浏览器环境仅提供原生存储与剪贴板，explorer 不存在。
+ *   纯浏览器环境提供原生存储、剪贴板与 fetchText，explorer 不存在。
  * @lang en Build an adaptive platform: prefer the injected bridge, then legacy Electron bridge, then Tauri invoke, finally browser natives.
- *   Plain browsers get only native storage/clipboard and no explorer.
+ *   Plain browsers get native storage/clipboard/fetchText and no explorer.
  */
 export function createAdaptivePlatform():ThemeManagerPlatform{
   const bridge=window.hiaThemeBridge;
@@ -144,6 +148,32 @@ export function createAdaptivePlatform():ThemeManagerPlatform{
   // <lang zh-CN>保证任一宿主提供即可启用网址探索。</lang>
   // <lang en>Any single host capability enables URL exploration.</lang>
   const explorer=bridge?.explorer??legacyElectronExplorer()??tauriExplorer();
+  // fetchText：注入桥优先，否则 WebView 原生 fetch（`W-tb-P10` 定案：三端统一 WebView fetch）。
+  // <lang zh-CN>消费层校验：仅 http/https、10s 超时、响应 ≤512KB；失败抛中文错误。</lang>
+  // <lang en>Consumer-side validation: http/https only, 10s timeout, response ≤512KB; failures throw localized errors.</lang>
+  const fetchText:FetchTextPort=bridge?.fetchText??{
+    async fetchText(url:string){
+      // 协议白名单：仅 http/https（拦截 file:/data:/javascript: 等注入面）。
+      // <lang zh-CN>大小写不敏感；其余协议直接拒绝。</lang>
+      // <lang en>Case-insensitive; any other scheme is rejected outright.</lang>
+      if(!/^https?:\/\//i.test(url))throw new Error('仅支持 http(s) 链接。');
+      let response:Response;
+      try{
+        response=await fetch(url,{signal:AbortSignal.timeout(10000)});
+      }catch{
+        throw new Error('远程源获取失败（网络/超时/CORS）。桌面端无 CORS 限制，可改用桌面端或本地导入。');
+      }
+      // 状态与大小校验：非 2xx 或超 512KB 拒绝。
+      // <lang zh-CN>Content-Length 缺失时读取后按实际长度校验（读完再查，可接受）。</lang>
+      // <lang en>When Content-Length is absent, validate by actual length after reading.</lang>
+      if(!response.ok)throw new Error(`远程源返回 ${response.status}。`);
+      const declared=response.headers.get('content-length');
+      if(declared&&parseInt(declared,10)>512*1024)throw new Error('远程源超过 512KB 上限。');
+      const text=await response.text();
+      if(text.length>512*1024)throw new Error('远程源超过 512KB 上限。');
+      return text;
+    }
+  };
   return{
     // 存储：注入桥优先，否则浏览器 localStorage。
     // <lang zh-CN>localStorage 为纯浏览器唯一持久化手段。</lang>
@@ -165,6 +195,10 @@ export function createAdaptivePlatform():ThemeManagerPlatform{
     // <lang zh-CN>覆盖内置预设前用于二次确认。</lang>
     // <lang en>Used to confirm before overwriting built-ins.</lang>
     confirm:bridge?.confirm??(message=>window.confirm(message)),
+    // fetchText：默认 WebView 实现，注入桥可覆盖。
+    // <lang zh-CN>`W-tb-P10`：远程预设源加载通道。</lang>
+    // <lang en>`W-tb-P10`: remote preset source channel.</lang>
+    fetchText,
     // 仅在存在探索器时附加 explorer 字段。
     // <lang zh-CN>保持接口整洁，纯浏览器不暴露不存在的能力。</lang>
     // <lang en>Keeps the interface tidy; pure browsers don't expose a nonexistent capability.</lang>

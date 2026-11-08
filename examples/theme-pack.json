@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "presets": [
+    {
+      "id": "example-cobalt",
+      "name": "钴蓝·清透青（官方默认）",
+      "category": "default",
+      "industry": "通用平台",
+      "primary": "#0047AB",
+      "secondary": "#00A8D3",
+      "primaryName": "钴蓝",
+      "secondaryName": "清透青",
+      "note": "HIA 官方默认主题：钴蓝基准主色 + 清透青副色，适用于通用企业平台。"
+    },
+    {
+      "id": "example-forest",
+      "name": "松林墨绿",
+      "category": "business",
+      "industry": "政务与国企",
+      "primary": "#1B4332",
+      "secondary": "#74A892",
+      "primaryName": "松林墨绿",
+      "secondaryName": "苔原青灰",
+      "note": "深墨绿主色适合政务与财务场景，副色取苔原青灰过渡，整体稳重不沉闷。"
+    },
+    {
+      "id": "example-ember",
+      "name": "炉火赭橙",
+      "category": "creative",
+      "industry": "AI / 创意",
+      "primary": "#C2410C",
+      "secondary": "#F59E0B",
+      "primaryName": "炉火赭橙",
+      "secondaryName": "琥珀黄",
+      "note": "高饱和暖色对，适合创意展示、活动 Banner 与需要能量感的界面。"
+    },
+    {
+      "id": "example-lavender",
+      "name": "薰衣草紫",
+      "category": "industry",
+      "industry": "数据平台",
+      "primary": "#6D28D9",
+      "secondary": "#22D3EE",
+      "primaryName": "薰衣草紫",
+      "secondaryName": "浅青蓝",
+      "note": "紫色主色搭配青蓝副色，常见于数据平台与开发者工具的科技感表达。"
+    },
+    {
+      "id": "example-graphite",
+      "name": "石墨深空",
+      "category": "dark",
+      "industry": "开发者工具",
+      "primary": "#334155",
+      "secondary": "#38BDF8",
+      "primaryName": "石墨深空",
+      "secondaryName": "晴空蓝",
+      "note": "深灰主色降低视觉疲劳，晴空蓝副色负责关键操作与数据强调。"
+    }
+  ]
+}

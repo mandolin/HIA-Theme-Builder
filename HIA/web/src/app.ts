@@ -7,9 +7,10 @@
 import{
   GRADIENT_DEFAULTS,GRADIENT_DEFS,autoThemeName,buildThemeFromDraft,builtinPresets,
   cloneGradientSettings,cloneSpacing,cloneTypography,createRuntimeCssVariables,createThemeDraft,draftFromPreset,
-  DEFAULT_SPACING,DEFAULT_TYPOGRAPHY,exportThemeCss,exportThemeJson,filterPresets,findMatchingPrimaryCandidate,
+  decodeShareHash,DEFAULT_SPACING,DEFAULT_TYPOGRAPHY,encodeShareHash,buildSharePayload,
+  exportThemeCss,exportThemeJson,filterPresets,findMatchingPrimaryCandidate,
   fontSizeAt,FONT_SIZE_STEPS,generateSecondarySet,getExportTarget,
-  gradientCss,isBuiltinPresetId,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,
+  gradientCss,isBuiltinPresetId,mergeImportedPresets,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,parseThemePack,
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
@@ -39,6 +40,11 @@ const THEME_STORAGE='hia-theme-manager-presets-v1';
   // <lang en>JSON of typoState/spaceState stored separately; parse failures fall back to defaults.</lang>
   const TYPOGRAPHY_STORAGE='hia-typography-tokens-v1';
   const SPACING_STORAGE='hia-spacing-tokens-v1';
+  // 远程源列表与默认官方源（`W-tb-P10` 定案：内置 GitHub Pages/raw 托管示例 JSON）。
+  // <lang zh-CN>源列表持久化；默认源始终存在（不可移除），raw.githubusercontent CORS 友好。</lang>
+  // <lang en>Source list persisted; the default source is always present and not removable; raw.githubusercontent is CORS-friendly.</lang>
+  const REMOTE_SOURCES_STORAGE='hia-remote-sources-v1';
+  const DEFAULT_REMOTE_SOURCE='https://raw.githubusercontent.com/mandolin/HIA-Theme-Builder/main/examples/theme-pack.json';
 // 色阶下拉选项：由深到浅排列，符合选色直觉。
 // <lang zh-CN>与 SHADE_KEYS 同值，仅顺序不同（UI 偏好深→浅）。</lang>
 // <lang en>Same values as SHADE_KEYS but ordered dark→light for UI preference.</lang>
@@ -194,6 +200,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>点击清单行后显示对应文件内容预览。</lang>
   // <lang en>After clicking a tree row its content shows in the preview pane.</lang>
   let selectedExportFile:string|null=null;
+
+  // `W-tb-P10` 市场状态：子 Tab、远程源列表与已加载的远程预设（内存态，不自动混入本地库）。
+  // <lang zh-CN>remoteSources 含默认源（首位，不可移除）；remoteLoading 防重复提交。</lang>
+  // <lang en>remoteSources includes the default source (first, not removable); remoteLoading guards duplicates.</lang>
+  let marketTab:'local'|'remote'='local';
+  let remoteSources:string[]=[DEFAULT_REMOTE_SOURCE];
+  let remotePresets:Preset[]=[];
+  let remoteDropped=0;
+  let remoteLoading=false;
 
   // 字体/间距令牌状态（ADR-006）：作为操作台全局状态独立于预设（预设仅携带颜色+渐变，既定决策）。
   // <lang zh-CN>typoState/spaceState 与 draft.typography/spacing 共享同一对象引用；换预设/应用草稿后重新挂回，
@@ -810,6 +825,150 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     return first.replace(/^['"]+|['"]+$/g,'');
   }
 
+  // ===== `W-tb-P10` 分享链接 / 主题库导入导出 / 远程预设源（市场骨架） =====
+
+  // 应用市场子 Tab：本地库（摘要+列表）与远程源（源栏+远程列表）互斥显示。
+  // <lang zh-CN>本地视图沿用既有 summary-strip/presetList；远程视图独立容器。</lang>
+  // <lang en>The local view reuses existing summary/list; the remote view uses its own container.</lang>
+  function applyMarketTab(tab:'local'|'remote'){
+    marketTab=tab;
+    all<HTMLButtonElement>('#marketTabs [data-market-tab]').forEach(btn=>btn.classList.toggle('active',btn.dataset.marketTab===tab));
+    byId<HTMLElement>('marketLocalView').hidden=tab!=='local';
+    byId<HTMLElement>('presetList').hidden=tab!=='local';
+    byId<HTMLElement>('marketRemoteView').hidden=tab!=='remote';
+  }
+
+  // 渲染远程源下拉：默认源置首位且名称标注"官方"。
+  // <lang zh-CN>value 存完整 URL；label 截短展示。</lang>
+  // <lang en>value holds the full URL; label is a truncated display.</lang>
+  function renderRemoteSources(){
+    const sel=byId<HTMLSelectElement>('remoteSourceSelect');
+    sel.innerHTML=remoteSources.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u===DEFAULT_REMOTE_SOURCE?t('p10.tab.local')+' · HIA 官方':u.length>52?u.slice(0,52)+'…':u)}</option>`).join('');
+    sel.value=remoteSources[0]??'';
+  }
+  // 恢复持久化源列表（默认源恒在首位，去重）。
+  // <lang zh-CN>存储损坏/为空时仅保留默认源。</lang>
+  // <lang en>Falls back to the default source alone when storage is broken/empty.</lang>
+  function loadRemoteSources(){
+    try{
+      const raw=platform.storage.getItem(REMOTE_SOURCES_STORAGE);
+      const saved=raw?(JSON.parse(raw) as unknown):[];
+      const list=Array.isArray(saved)?saved.filter((u):u is string=>typeof u==='string'&&/^https?:\/\//.test(u)):[];
+      remoteSources=[DEFAULT_REMOTE_SOURCE,...list.filter(u=>u!==DEFAULT_REMOTE_SOURCE)];
+    }catch{
+      remoteSources=[DEFAULT_REMOTE_SOURCE];
+    }
+    renderRemoteSources();
+  }
+  function saveRemoteSources(){
+    platform.storage.setItem(REMOTE_SOURCES_STORAGE,JSON.stringify(remoteSources.filter(u=>u!==DEFAULT_REMOTE_SOURCE)));
+  }
+
+  // 加载当前选中远程源：fetchText → parseThemePack → 内存预设列表 + 状态行。
+  // <lang zh-CN>失败不阻塞本地库；成功后过滤（复用 presetSearchInput/presetFilterSelect）并渲染卡片。</lang>
+  // <lang en>Failures never block the local library; on success the same search/filter controls apply to remote cards.</lang>
+  async function loadRemoteSource(){
+    if(remoteLoading)return;
+    const url=byId<HTMLSelectElement>('remoteSourceSelect').value;
+    if(!url){setText('remoteStatus',t('p10.remote.emptySelect'));return;}
+    remoteLoading=true;
+    setText('remoteStatus',t('p10.remote.status.loading'));
+    try{
+      const raw=await platform.fetchText!.fetchText(url);
+      const pack=parseThemePack(raw);
+      if(!pack){setText('remoteStatus',t('p10.remote.status.fail',{reason:t('p10.import.fail')}));return;}
+      remotePresets=pack.presets;
+      remoteDropped=pack.dropped;
+      const droppedText=remoteDropped>0?t('p10.remote.status.droppedSuffix',{n:remoteDropped}):'';
+      setText('remoteStatus',t('p10.remote.status.ok',{source:url.length>60?url.slice(0,60)+'…':url,count:String(remotePresets.length),dropped:droppedText}));
+    }catch(e){
+      remotePresets=[];remoteDropped=0;
+      setText('remoteStatus',t('p10.remote.status.fail',{reason:e instanceof Error?e.message:String(e)}));
+    }finally{
+      remoteLoading=false;
+      renderRemoteList();
+    }
+  }
+
+  // 渲染远程预设卡片（复用 preset-card 视觉）+ 搜索过滤 + 逐条导入按钮。
+  // <lang zh-CN>过滤复用本地搜索控件；卡片按钮 data-remote-import 触发单条导入。</lang>
+  // <lang en>Filtering reuses the local controls; card buttons carry data-remote-import for one-shot import.</lang>
+  function renderRemoteList(){
+    const list=filterPresets(remotePresets,inputValue('presetSearchInput'),inputValue('presetFilterSelect'));
+    setText('remoteCountLabel',t('p10.remote.count',{count:String(list.length)}));
+    const wrap=byId<HTMLElement>('remotePresetList');
+    wrap.innerHTML=list.map(p=>`<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(p.name)}</div><div class="small">${escapeHtml(p.category)} · ${escapeHtml(p.industry||t('未分类'))}</div></div></div><div class="preset-swatch"><i style="background:${p.primary}"></i><i style="background:${p.secondary}"></i></div><div class="small" style="margin-top:8px">${escapeHtml(p.primaryName)} / ${escapeHtml(p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(p.note||'')}</div><div class="preset-actions"><button class="btn primary" data-remote-import="${escapeHtml(p.id)}" style="padding:8px 10px">${t('p10.remote.importOne')}</button></div></div>`).join('');
+    all<HTMLButtonElement>('[data-remote-import]',wrap).forEach(btn=>btn.addEventListener('click',()=>{
+      const target=remotePresets.find(x=>x.id===btn.dataset.remoteImport);
+      if(!target)return;
+      importPresets([target]);
+    }));
+  }
+  // 导入预设到本地库：mergeImportedPresets（id 冲突重命名）→ 持久化 → 刷新列表。
+  // <lang zh-CN>导入后回执文案含重命名与丢弃计数；远程列表不动（源内容只读）。</lang>
+  // <lang en>Receipt includes rename/drop counts; the remote list is untouched (sources are read-only).</lang>
+  function importPresets(incoming:Preset[]){
+    const before=customPresets.length;
+    const {merged,renamed}=mergeImportedPresets(customPresets,incoming);
+    customPresets=merged;
+    saveCustomPresets();
+    renderPresetList();
+    setText('presetCount',String(getAllPresets().length));
+    platform.alert(t('p10.import.done',{count:String(customPresets.length-before),renamed:String(renamed),dropped:'0'}));
+  }
+
+  // 导出主题库文件：serializeThemeLibrary → Blob 下载（复用 P9 下载模式）。
+  // <lang zh-CN>文件名带日期；仅导出自定义预设（内置预设随产品分发无需搬运）。</lang>
+  // <lang en>Date-stamped filename; exports custom presets only (built-ins ship with the app).</lang>
+  function exportLibrary(){
+    const json=serializeThemeLibrary(customPresets);
+    const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const url=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+    const a=document.createElement('a');
+    a.href=url;a.download=`hia-themes-${stamp}.json`;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    setText('remoteStatus',t('p10.export.done',{count:String(customPresets.length)}));
+  }
+  // 触发本地文件选择（input[type=file] DOM 方案三端通用）。
+  // <lang zh-CN>点击隐藏的 file input；change 在 bind 里注册。</lang>
+  // <lang en>Clicks the hidden file input; change is registered in bind.</lang>
+  function triggerImport(){byId<HTMLInputElement>('importLibraryFile').click();}
+
+  // 复制分享链接：当前草稿 → buildSharePayload → encodeShareHash → 绝对 URL。
+  // <lang zh-CN>链接=当前页面地址（去 hash）+ #hia=…；electron/tauri 的 file:/tauri:// 同样可还原（本机打开）。</lang>
+  // <lang en>Link = current page (hash stripped) + #hia=…; file:/tauri:// restores fine when opened locally.</lang>
+  async function shareLink(){
+    const hash=encodeShareHash(buildSharePayload(draft));
+    const base=location.origin+location.pathname;
+    await copy(`${base}#${hash}`);
+    setText('generateStatus',t('p10.share.copied'));
+  }
+  // 启动时检测分享 hash：还原为预览态（填充草稿与界面，不自动入库），并清理地址栏。
+  // <lang zh-CN>清 hash 防刷新重复还原；还原失败静默清理（不打扰正常启动）。</lang>
+  // <lang en>Strips the hash to avoid re-restore on refresh; invalid hashes are cleaned silently.</lang>
+  function restoreFromHash(){
+    if(!location.hash.startsWith('#hia='))return;
+    const restored=decodeShareHash(location.hash);
+    history.replaceState(null,'',location.pathname+location.search);
+    if(!restored){
+      setText('generateStatus',t('p10.share.invalid'));
+      return;
+    }
+    draft.name=restored.name;
+    draft.primary=restored.primary;
+    draft.secondary=restored.secondary;
+    draft.primaryName=restored.primaryName;
+    draft.secondaryName=restored.secondaryName;
+    draft.category=restored.category||'custom';
+    draft.industry=restored.industry||'';
+    draft.note=restored.note||'';
+    draft.gradients=restored.gradients??draft.gradients;
+    selectedPresetId='';
+    syncInputs();applyCurrentTheme(false);renderGradients();
+    setText('generateStatus',t('p10.share.restored',{name:restored.name}));
+  }
+
   // 渲染预设列表：按搜索词/分类过滤，生成卡片并绑定应用/载入/删除。
   // <lang zh-CN>内置预设不显示删除；当前选中项加“当前”徽标；计数显示总数。</lang>
   // <lang en>Built-ins hide delete; the selected item gets a "当前" badge; count shows the total.</lang>
@@ -1047,6 +1206,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       //   (typography console / classic mocks / TDON placeholder / preview hint) re-render too.</lang>
       syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();
       renderTypography();renderClassicPreview();renderTdonPreview();applyPreviewMode(previewMode);renderExportTree();
+      renderRemoteSources();renderRemoteList();
       byId<HTMLButtonElement>('langToggleBtn').textContent=t('lang.switch');
       document.documentElement.lang=next;
     });
@@ -1095,11 +1255,77 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Caps length to avoid overflow; only updates the picker when validHex passes.</lang>
     byId<HTMLInputElement>('primaryHexInput').addEventListener('input',e=>{const target=e.currentTarget as HTMLInputElement,v=normalizeHex(target.value);if(v.length<=7)target.value=v;if(validHex(v))byId<HTMLInputElement>('primaryPicker').value=v;});
     byId<HTMLInputElement>('secondaryHexInput').addEventListener('input',e=>{const target=e.currentTarget as HTMLInputElement,v=normalizeHex(target.value);if(v.length<=7)target.value=v;if(validHex(v))byId<HTMLInputElement>('secondaryPicker').value=v;});
-    // 预设搜索/分类：即时过滤列表。
-    // <lang zh-CN>输入即筛选，无需额外按钮。</lang>
-    // <lang en>Filters live as you type; no extra button needed.</lang>
-    byId('presetSearchInput').addEventListener('input',renderPresetList);
-    byId('presetFilterSelect').addEventListener('change',renderPresetList);
+    // 预设搜索/分类：即时过滤列表（本地与远程共用同一组过滤控件）。
+    // <lang zh-CN>输入即筛选，无需额外按钮；远程 Tab 打开时同步过滤远程卡片。</lang>
+    // <lang en>Filters live as you type and drive both local and remote lists.</lang>
+    byId('presetSearchInput').addEventListener('input',()=>{renderPresetList();if(marketTab==='remote')renderRemoteList();});
+    byId('presetFilterSelect').addEventListener('change',()=>{renderPresetList();if(marketTab==='remote')renderRemoteList();});
+    // 市场子 Tab：本地库/远程源切换（`W-tb-P10`）。
+    // <lang zh-CN>仅接受两个合法枚举值。</lang>
+    // <lang en>Accepts only the two legal enum values.</lang>
+    all<HTMLButtonElement>('#marketTabs [data-market-tab]').forEach(btn=>btn.addEventListener('click',()=>{const tab=btn.dataset.marketTab;if(tab==='local'||tab==='remote')applyMarketTab(tab);}));
+    // 远程源加载：fetchText + parseThemePack（状态行回执）。
+    // <lang zh-CN>见 loadRemoteSource。</lang>
+    // <lang en>See loadRemoteSource.</lang>
+    byId('remoteLoadBtn').addEventListener('click',()=>loadRemoteSource());
+    // 添加源：协议白名单 + 去重 + 持久化。
+    // <lang zh-CN>非法/重复给状态行反馈，不改列表。</lang>
+    // <lang en>Invalid/duplicate URLs report via the status line without mutating the list.</lang>
+    byId('remoteAddSourceBtn').addEventListener('click',()=>{
+      const url=inputValue('remoteSourceInput').trim();
+      if(!/^https?:\/\//i.test(url)){setText('remoteStatus',t('p10.remote.badUrl'));return;}
+      if(remoteSources.includes(url)){setText('remoteStatus',t('p10.remote.dupeSource'));return;}
+      remoteSources=[...remoteSources,url];
+      saveRemoteSources();renderRemoteSources();
+      setInputValue('remoteSourceInput','');
+      byId<HTMLSelectElement>('remoteSourceSelect').value=url;
+      setText('remoteStatus','');
+    });
+    // 移除源：默认源不可移除。
+    // <lang zh-CN>移除后选首位（默认源）。</lang>
+    // <lang en>After removal, selection falls back to the first (default) source.</lang>
+    byId('remoteRemoveSourceBtn').addEventListener('click',()=>{
+      const url=byId<HTMLSelectElement>('remoteSourceSelect').value;
+      if(url===DEFAULT_REMOTE_SOURCE)return;
+      remoteSources=remoteSources.filter(u=>u!==url);
+      saveRemoteSources();renderRemoteSources();
+      setText('remoteStatus','');
+    });
+    // 整源导入：全部远程预设走合并链（重命名+计数回执）。
+    // <lang zh-CN>见 importPresets。</lang>
+    // <lang en>See importPresets.</lang>
+    byId('remoteImportAllBtn').addEventListener('click',()=>{if(remotePresets.length)importPresets(remotePresets);});
+    // 主题库导出/导入（`W-tb-P10` 文件搬运闭环）。
+    // <lang zh-CN>导出=自定义预设 JSON 下载；导入=文件→清洗→合并→回执。</lang>
+    // <lang en>Export downloads custom presets as JSON; import = file → sanitize → merge → receipt.</lang>
+    byId('exportLibraryBtn').addEventListener('click',exportLibrary);
+    byId('importLibraryBtn').addEventListener('click',triggerImport);
+    byId<HTMLInputElement>('importLibraryFile').addEventListener('change',e=>{
+      const file=(e.currentTarget as HTMLInputElement).files?.[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const pack=parseThemePack(String(reader.result));
+        if(!pack||pack.presets.length===0){
+          platform.alert(t('p10.import.fail'));
+          return;
+        }
+        const before=customPresets.length;
+        const {merged,renamed}=mergeImportedPresets(customPresets,pack.presets);
+        customPresets=merged;
+        saveCustomPresets();
+        renderPresetList();
+        setText('presetCount',String(getAllPresets().length));
+        platform.alert(t('p10.import.done',{count:String(customPresets.length-before),renamed:String(renamed),dropped:String(pack.dropped)}));
+      };
+      reader.onerror=()=>platform.alert(t('p10.import.fail'));
+      reader.readAsText(file);
+      (e.currentTarget as HTMLInputElement).value='';
+    });
+    // 分享链接：当前草稿编码进 hash 并复制（`W-tb-P10`）。
+    // <lang zh-CN>见 shareLink。</lang>
+    // <lang en>See shareLink.</lang>
+    byId('shareLinkBtn').addEventListener('click',()=>shareLink());
     // PC 布局分段：点击切换到 sidebar/top/mixed。
     // <lang zh-CN>仅接受合法枚举值。</lang>
     // <lang en>Only accepts legal enum values.</lang>
@@ -1206,6 +1432,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>applyPreviewMode 内部联动导出 Tab；经典 mock 依赖已注入变量，置于其后。</lang>
     // <lang en>applyPreviewMode links the export tabs; classic mocks need injected vars, hence placed after.</lang>
     renderTypography();renderClassicPreview();renderTdonPreview();applyPreviewMode('default');renderExportTree();
+    // `W-tb-P10` 首轮渲染：市场子 Tab（默认本地）、远程源列表与分享 hash 还原。
+    // <lang zh-CN>restoreFromHash 须在表单/渐变/候选初始化之后执行；还原后清 hash 防刷新重复。</lang>
+    // <lang en>restoreFromHash runs after form/gradient/candidate init; the hash is stripped to avoid re-restore.</lang>
+    loadRemoteSources();applyMarketTab('local');restoreFromHash();
     // 探索面板初始渲染（无 explorer 时隐藏）。
     // <lang zh-CN>放在最后避免影响其他面板的首次布局。</lang>
     // <lang en>Rendered last to avoid disturbing other panels' first layout.</lang>
