@@ -696,9 +696,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     }
   }
 
-  // 渲染字体/间距令牌操作台：左列控件（草稿态回填），右列实时样张（字号阶梯/间距序列/行高）。
-  // <lang zh-CN>每次字段生效后整块重绘（与渐变面板同一模式），保证回填与样张一致。</lang>
-  // <lang en>Whole-panel re-render after each applied field (same pattern as the gradient panel) keeps inputs and specimens consistent.</lang>
+  // 渲染字体/间距令牌操作台：左列控件与行高样张（草稿态回填），右列实时样张（字号阶梯/间距序列）。
+  // <lang zh-CN>行高样张置于左列底部（2026-11-08 维护者反馈：原左列底部悬空 ~300px，移入后两列高度均衡）；
+  //   每次字段生效后整块重绘（与渐变面板同一模式），保证回填与样张一致。</lang>
+  // <lang en>Left column holds controls plus the line-height specimen (moved after maintainer feedback to balance
+  //   column heights); whole-panel re-render after each applied field keeps inputs and specimens consistent.</lang>
   function renderTypography(){
     const wrap=byId<HTMLElement>('typographyBody');
     const ty=typoState,sp=spaceState;
@@ -744,6 +746,8 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
           <div class="control-group"><div class="label">${t('p9.typo.space.levels')}</div><input class="input" type="number" min="1" max="12" step="1" data-typo-field="spaceLevels" value="${sp.levels}"></div>
         </div>
         <div class="typo-hint">${t('p9.typo.family.heading.inherit')}</div>
+        <div class="typo-preview-head" style="margin-top:2px"><b>${t('p9.typo.preview.lineHeightTitle')}</b></div>
+        <div class="typo-line-height-demo">${t('p9.typo.preview.lineHeightBody')}</div>
       </div>
       <div class="typo-preview">
         <div class="typo-preview-head"><b>${t('p9.typo.preview.title')}</b><span class="small">--hia-font-* · --hia-fs-* · --hia-space-*</span></div>
@@ -752,11 +756,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
           <span class="typo-font-chip" style="font-family:${escapeHtml(ty.fontFamily.heading)}">Heading · ${escapeHtml(shortFontName(ty.fontFamily.heading))}</span>
           <span class="typo-font-chip" style="font-family:${escapeHtml(ty.fontFamily.mono)}">Mono · ${escapeHtml(shortFontName(ty.fontFamily.mono))}</span>
         </div>
-        <div class="typo-steps" style="margin-top:10px">${steps}</div>
-        <div class="typo-preview-head" style="margin-top:12px"><b>${t('p9.typo.preview.spaceTitle')}</b></div>
+        <div class="typo-steps" style="margin-top:12px">${steps}</div>
+        <div class="typo-preview-head" style="margin-top:14px"><b>${t('p9.typo.preview.spaceTitle')}</b></div>
         <div class="typo-space-row">${spaceBars}</div>
-        <div class="typo-preview-head" style="margin-top:12px"><b>${t('p9.typo.preview.lineHeightTitle')}</b></div>
-        <div class="typo-line-height-demo">${t('p9.typo.preview.lineHeightBody')}</div>
       </div>`;
     // 字段变更绑定：change 事件统走 applyTypographyField 校验链。
     // <lang zh-CN>非法输入重绘回退显示（与渐变面板策略一致）。</lang>

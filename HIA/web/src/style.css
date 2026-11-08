@@ -150,12 +150,19 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 
 /* W-tb-P9 字体/间距令牌操作台（ADR-006）：三族字体输入、模数字号、间距序列与实时样张。
    W-tb-P9 typography/spacing console (ADR-006): three font-family slots, modular scale, spacing sequence, live specimens. */
-.typo-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:14px;align-items:start}
-.typo-controls{display:grid;gap:12px}
-.typo-controls .grid-2{gap:10px}
-.typo-controls .label{margin-bottom:4px}
+/* 间距节奏（2026-11-08 维护者反馈调优）：头部标题/说明留白、控件行距放宽、左右两列高度均衡。
+   Spacing rhythm (maintainer feedback 2026-11-08): header breathing room, roomier control rows, balanced columns. */
+#typographyPanel .gradient-settings-head{margin-bottom:18px}
+#typographyPanel .gradient-settings-head p{margin:8px 0 0;max-width:880px}
+.typo-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:18px;align-items:stretch}
+.typo-controls{display:grid;gap:16px;align-content:start}
+.typo-controls .grid-2{gap:14px}
+.typo-controls .label{margin-bottom:6px}
 .typo-hint{font-size:11px;color:var(--muted);line-height:1.6}
-.typo-preview{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px;overflow:hidden}
+/* 行高样张移入左列底部：填充原左列空白，使两列高度接近（改前左列底部悬空 ~300px）。
+   The line-height specimen moves to the left column bottom, filling the former ~300px dead space. */
+.typo-controls .typo-line-height-demo{margin-top:2px}
+.typo-preview{border:1px solid var(--line);border-radius:10px;background:#fff;padding:16px;overflow:hidden;align-self:start}
 .typo-preview-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
 .typo-preview-head b{font-size:12px}
 .typo-steps{display:grid;gap:4px}

@@ -32,11 +32,11 @@
 
 ### 网址取色能力（原始规格 P0–P4 节，同周期连续交付）
 
-- **P0 Core 修复与 V2 契约**：修复 `rank()` 去重累计 bug（按规范化色建立唯一候选，每候选只计一次聚合分）；新增 `types-v2.ts` V2 契约（`ColorEvidence`/`WebsiteColorSignalsV2`/`WebsiteThemeAnalysisV2`，`schemaVersion:2`）+ `v1-compat.ts` 转换；core 回归测试 14/14 通过。
-- **P1 共享 extractor**：新建 `@hia/theme-url-extractor`，scanner 覆盖 meta/manifest/CSS 变量/computed/四边 border/伪元素/SVG/渐变/open shadow/祖先语义/iframe；确定性 median-cut 量化；纯逻辑 Node 单测 14/14、12 fixture + `EXPECTATIONS.md`；esbuild 打包为 `dist/browser-scanner.bundle.js`（IIFE，Electron/Tauri 两端共用同源）。
-- **P2 Electron 真实渲染**：隐藏隔离 BrowserWindow + 页面稳定化 + 注入同源 scanner bundle + 截图量化 + SSRF 防护 + degraded-static 降级 + finally 销毁；12 fixture 逐一真实渲染 `mode=render` 全通过。
-- **P3 Core V2 评分与 UI**：`analyze-v2.ts` 实现 OKLab 近似聚类 + role-aware 评分（unused-token 强降权 / 中性品牌例外 / 状态色惩罚 / 互证加分）+ 主副色选择（显式 token→高置信→区分→derived harmony-fallback）+ 置信度合成 + degraded-static 封顶 0.45；core 单测 8/8；Electron 端到端冒烟（fixture 01/03/09）验证；Web 新增"网址取色探索"面板（阶段状态/主副色/置信度/reasons/warnings/候选/应用，derived 标注，高置信不静默覆盖）。
-- **P4 Tauri 真实渲染**：`chromiumoxide` 0.5.7 + CDP 无头渲染 + `include_str!` 嵌入同源 scanner bundle + 截图 PNG base64 回传前端 `analyzeThemeV2` 量化评分；`render.rs` 抽离 `render_collect` 与集成测试（真实渲染 `example.com` 1 passed）；采用 connect 优先模式（`HIA_CHROME_WS` 复用已运行 Chrome CDP，避开 chromiumoxide launch 与新版 Chrome 的 CDP 兼容问题），launch 作离线/CI 回退。
+- **原始规格节 P0：Core 修复与 V2 契约**：修复 `rank()` 去重累计 bug（按规范化色建立唯一候选，每候选只计一次聚合分）；新增 `types-v2.ts` V2 契约（`ColorEvidence`/`WebsiteColorSignalsV2`/`WebsiteThemeAnalysisV2`，`schemaVersion:2`）+ `v1-compat.ts` 转换；core 回归测试 14/14 通过。
+- **原始规格节 P1：共享 extractor**：新建 `@hia/theme-url-extractor`，scanner 覆盖 meta/manifest/CSS 变量/computed/四边 border/伪元素/SVG/渐变/open shadow/祖先语义/iframe；确定性 median-cut 量化；纯逻辑 Node 单测 14/14、12 fixture + `EXPECTATIONS.md`；esbuild 打包为 `dist/browser-scanner.bundle.js`（IIFE，Electron/Tauri 两端共用同源）。
+- **原始规格节 P2：Electron 真实渲染**：隐藏隔离 BrowserWindow + 页面稳定化 + 注入同源 scanner bundle + 截图量化 + SSRF 防护 + degraded-static 降级 + finally 销毁；12 fixture 逐一真实渲染 `mode=render` 全通过。
+- **原始规格节 P3：Core V2 评分与 UI**：`analyze-v2.ts` 实现 OKLab 近似聚类 + role-aware 评分（unused-token 强降权 / 中性品牌例外 / 状态色惩罚 / 互证加分）+ 主副色选择（显式 token→高置信→区分→derived harmony-fallback）+ 置信度合成 + degraded-static 封顶 0.45；core 单测 8/8；Electron 端到端冒烟（fixture 01/03/09）验证；Web 新增"网址取色探索"面板（阶段状态/主副色/置信度/reasons/warnings/候选/应用，derived 标注，高置信不静默覆盖）。
+- **原始规格节 P4：Tauri 真实渲染**：`chromiumoxide` 0.5.7 + CDP 无头渲染 + `include_str!` 嵌入同源 scanner bundle + 截图 PNG base64 回传前端 `analyzeThemeV2` 量化评分；`render.rs` 抽离 `render_collect` 与集成测试（真实渲染 `example.com` 1 passed）；采用 connect 优先模式（`HIA_CHROME_WS` 复用已运行 Chrome CDP，避开 chromiumoxide launch 与新版 Chrome 的 CDP 兼容问题），launch 作离线/CI 回退。
 - **跨端同源约束**：Electron 注入与 Tauri `include_str!` 必须复用同一份 `extractor/dist/browser-scanner.bundle.js`；提供 `HIA/extractor/scripts/verify-bundle-consistency.mjs` 校验两端引用为同一文件（hash 一致），保证算法一致与评分可复现。
 
 ### P5 增强项（5 项，完整交付原始规格 P5 节）
