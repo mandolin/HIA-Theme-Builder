@@ -42,7 +42,7 @@ registerStrings({
   // <lang zh-CN>三族字体、模数字号、行高、间距序列的操作台文案。</lang>
   // <lang en>Console copy for the three font families, modular scale, line height and spacing sequence.</lang>
   'p9.typo.title': { zh: '设计令牌操作台：字体与间距', en: 'Design-Token Console: Typography & Spacing' },
-  'p9.typo.desc': { zh: '字体三族（正文/标题/等宽）与模数字号比例尺、正文行高、间距基数网格实时编辑；所有修改即时注入预览区与导出产物（CSS 变量 --hia-font-* / --hia-fs-* / --hia-space-*，ADR-006）。', en: 'Live editing for the three font families (body/heading/mono), the modular font-size scale, body line height and the spacing base grid; every change injects instantly into previews and exports (CSS vars --hia-font-* / --hia-fs-* / --hia-space-*, ADR-006).' },
+  'p9.typo.desc': { zh: '字体三族、模数字号、行高与间距网格实时编辑；修改即时作用于全部预览与导出产物（ADR-006）。', en: 'Live-edit font families, modular type scale, line height and spacing grid; changes apply instantly to all previews and exports (ADR-006).' },
   'p9.typo.reset': { zh: '恢复默认', en: 'Reset to defaults' },
   'p9.typo.family.body': { zh: '正文字体族', en: 'Body font family' },
   'p9.typo.family.heading': { zh: '标题字体族', en: 'Heading font family' },
