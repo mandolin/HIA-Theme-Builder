@@ -319,6 +319,16 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     setInputValue('primaryPicker',draft.primary);setInputValue('secondaryPicker',draft.secondary);
     setInputValue('primaryHexInput',draft.primary);setInputValue('secondaryHexInput',draft.secondary);
     setInputValue('primaryNameInput',draft.primaryName);setInputValue('secondaryNameInput',draft.secondaryName);
+    // 第三色一等位（ADR-007 v2 定案 1）：仅三色模式显示；值来自草稿第三色（装配语义下草稿缺省由面板推导写入）。
+    // <lang zh-CN>非三色模式隐藏整行；dual/single 不显示第三色拾色器。</lang>
+    // <lang en>The third row shows in triad only.</lang>
+    const thirdRow=document.getElementById('thirdColorRow');
+    if(thirdRow)thirdRow.hidden=draft.seriesMode!=='triad';
+    if(draft.seriesMode==='triad'&&draft.thirdColor){
+      setInputValue('thirdPicker',draft.thirdColor.value);
+      setInputValue('thirdHexInput',draft.thirdColor.value);
+      setInputValue('thirdNameInput',draft.thirdColor.name);
+    }
   }
 
   // 从表单读取用户输入并校验，成功则写回草稿；updateName 控制是否按输入覆盖主题名。
@@ -336,6 +346,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Symmetric with primary.</lang>
     if(!validHex(secondary)){platform.alert('副色色值无效，请输入 6 位 HEX。');return false;}
     draft.primary=primary;draft.secondary=secondary;
+    // 第三色（三色模式）：读输入并组装完整 RoleColor（色阶/前景自动）。
+    // <lang zh-CN>非三色模式不读（thirdColor 保持 undefined）。</lang>
+    // <lang en>Read only in triad; otherwise thirdColor stays undefined.</lang>
+    if((document.getElementById('thirdColorRow') as HTMLElement).hidden!==true){
+      const thirdRaw=normalizeHex(inputValue('thirdHexInput'));
+      if(validHex(thirdRaw)){
+        draft.thirdColor={name:inputValue('thirdNameInput').trim()||'第三色',value:thirdRaw,scale:tonalScale(thirdRaw),on:bestOnColor(thirdRaw).hex};
+      }
+    }
     // 名称留空时回退到已有名或默认“主色/副色”。
     // <lang zh-CN>trim 去除首尾空格，避免空白名。</lang>
     // <lang en>trim removes leading/trailing spaces to avoid blank names.</lang>
@@ -473,17 +492,29 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>方向/色阶/占比三组选项；色阶选项内联实时色块。</lang>
     // <lang en>Three option groups; shade options carry inline live swatches.</lang>
     const dirOptions=directions.map(d=>`<button type="button" class="combo-option" data-value="${d}">${directionLabels[d]??d}</button>`).join('');
-    const shadeOptions=(family:'primary'|'secondary')=>shadeValues.map(s=>`<button type="button" class="combo-option" data-value="${s}"><i class="combo-swatch" style="background:${tonalScaleAt(theme()[family].value,parseInt(s,10))}"></i>${s}</button>`).join('');
+    // 色阶选项基色解析：主/副走角色；third/aux 走对应槽位（ADR-007 v2 色源扩充）。
+    // <lang zh-CN>槽位缺失（切模式残留）时回退主色。</lang>
+    // <lang en>Falls back to primary when the slot is missing (stale after mode switches).</lang>
+    const familyBase=(family:string)=>{const cur=theme();return family==='primary'?cur.primary.value:family==='secondary'?cur.secondary.value:family==='third'?cur.thirdColor?.value??cur.primary.value:cur.auxiliary[parseInt(family.slice(3),10)]?.value??cur.primary.value;};
+    const shadeOptions=(family:string)=>shadeValues.map(s=>`<button type="button" class="combo-option" data-value="${s}"><i class="combo-swatch" style="background:${tonalScaleAt(familyBase(family),parseInt(s,10))}"></i>${s}</button>`).join('');
     const biasOptions=biasValues.map(b=>`<button type="button" class="combo-option" data-value="${b}">${biasLabel(b)}</button>`).join('');
     // 单卡片模板：色系仍为 select；方向/色阶/占比为自研组合框（可填可选 + 全部预设常显）；色阶带实时色块。
     // <lang zh-CN>色块经 tonalScaleAt 实时插值，任意色阶立即见效（ADR-004）。</lang>
     // <lang en>Swatches interpolate via tonalScaleAt so arbitrary shades show instantly (ADR-004).</lang>
     const card=(def:typeof GRADIENT_DEFS[number])=>{
       const cfg=draft.gradients[def.key];
-      const base=theme()[cfg.family].value;
+      const base=familyBase(cfg.family);
       const swatch=(shade:string)=>{const n=parseInt(shade,10);return Number.isFinite(n)?tonalScaleAt(base,n):'transparent';};
       const combo=(field:'direction'|'start'|'end'|'bias',value:string,optionsHTML:string)=>`<div class="combo"><input class="gradient-input" data-gradient-field="${field}" value="${escapeHtml(value)}" autocomplete="off" spellcheck="false"><button type="button" class="combo-toggle" tabindex="-1" aria-hidden="true">▾</button><div class="combo-list" hidden>${optionsHTML}</div></div>`;
-      return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${t(def.label)}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>${t('启用')}</label></div><div class="gradient-config-desc">${t(def.desc)}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>${t('色系')}</span><select class="gradient-select" data-gradient-field="family">${options(['primary','secondary'],cfg.family,{primary:t('主色系'),secondary:t('副色系')})}</select></label><label class="gradient-field"><span>${t('方向')}</span>${combo('direction',cfg.direction,dirOptions)}</label><label class="gradient-field"><span>${t('起始色阶')}</span><div class="gradient-shade-row">${combo('start',cfg.start,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.start)}"></i></div></label><label class="gradient-field"><span>${t('结束色阶')}</span><div class="gradient-shade-row">${combo('end',cfg.end,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.end)}"></i></div></label><label class="gradient-field" style="grid-column:1/-1"><span>${t('渐变占比')}</span>${combo('bias',biasLabel(cfg.bias),biasOptions)}</label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${cfg.family==='primary'?t('主色'):t('副色')} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>${t('交换')}</button><button class="gradient-mini-btn" data-gradient-reset>${t('重置')}</button></div></div></div>`;};
+      // 色系下拉动态扩充（ADR-007 v2 机制扩充）：主/副之外，三色模式的第三色系与辅助槽位 N 均可作色源。
+      // <lang zh-CN>third 仅三色模式出现；aux 按槽位逐个列出（名称取槽位名）。</lang>
+      // <lang en>third appears in triad only; aux slots are listed per slot with their names.</lang>
+      const familyOpts=()=>{const cur=theme();const opts=[['primary',t('主色系')],['secondary',t('副色系')]];
+        if(cur.thirdColor)opts.push(['third',t('p11.family.third')]);
+        cur.auxiliary.forEach((a,i)=>opts.push([`aux${i}`,`${a.name}（${t('p11.family.aux')} ${i+1}）`]));
+        return options(opts.map(o=>o[0]),cfg.family,Object.fromEntries(opts.map(o=>[o[0],o[1]])));};
+      const familyLabel=()=>cfg.family==='primary'?t('主色'):cfg.family==='secondary'?t('副色'):cfg.family==='third'?t('p11.family.thirdShort'):`${t('p11.family.auxShort')} ${cfg.family.slice(3)}`;
+      return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${t(def.label)}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>${t('启用')}</label></div><div class="gradient-config-desc">${t(def.desc)}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>${t('色系')}</span><select class="gradient-select" data-gradient-field="family">${familyOpts()}</select></label><label class="gradient-field"><span>${t('方向')}</span>${combo('direction',cfg.direction,dirOptions)}</label><label class="gradient-field"><span>${t('起始色阶')}</span><div class="gradient-shade-row">${combo('start',cfg.start,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.start)}"></i></div></label><label class="gradient-field"><span>${t('结束色阶')}</span><div class="gradient-shade-row">${combo('end',cfg.end,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.end)}"></i></div></label><label class="gradient-field" style="grid-column:1/-1"><span>${t('渐变占比')}</span>${combo('bias',biasLabel(cfg.bias),biasOptions)}</label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${familyLabel()} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>${t('交换')}</button><button class="gradient-mini-btn" data-gradient-reset>${t('重置')}</button></div></div></div>`;};
     wrap.innerHTML=GRADIENT_DEFS.map(def=>card(def)).join('');
     // 绑定字段变更：根据 data-gradient-field 写入对应配置项并刷新。
     // <lang zh-CN>非法值直接 return 不改草稿，保证类型安全。</lang>
@@ -501,7 +532,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         // 色系：仅接受 primary/secondary。
         // <lang zh-CN>其他值忽略，避免污染 family 类型。</lang>
         // <lang en>Other values ignored to protect the family type.</lang>
-        case'family':if(el.value==='primary'||el.value==='secondary')cfg.family=el.value;else return;break;
+        // 色族变更（ADR-007 v2）：主/副/第三/辅助 N 全部合法（third 仅三色模式、auxN 需槽位存在——由下拉选项保证）。
+        // <lang zh-CN>合法性由 familyOpts 动态选项保证，此处直接采纳。</lang>
+        // <lang en>Legality is guaranteed by the dynamic dropdown options.</lang>
+        case'family':cfg.family=el.value as typeof cfg.family;break;
         // 起始/结束色阶（`W-tb-P8` 组合框）：任意整数 0-1000 直接生效（真实插值，无吸附）；
         //   非法输入重渲染面板以回退显示。
         // <lang zh-CN>ADR-004：自由值经 tonalScaleAt 插值，CSS 变量按引用生成。</lang>
@@ -872,21 +906,82 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     info.textContent=draft.seriesMode==='single'
       ?t('p11.series.info.single')
       :`${relDef.name}——${relDef.note}`;
-    // 成员卡（装配后的真实成员）
+    // 成员卡（装配后的真实成员）——可拖拽互换（维护者要求：主色系成员调整顺序/互换，最好拖动）。
+    // <lang zh-CN>拖 A 到 B 位 = 两角色色值互换（角色语义不变，颜色对调）；single 模式不拖（单成员无意义）。</lang>
+    // <lang en>Dragging A onto B swaps the two roles' colors; single mode has nothing to swap.</lang>
     const members:RoleColor[]=[current.primary,current.secondary];
     if(current.thirdColor)members.push(current.thirdColor);
     const fromLabels=[t('p11.member.primary'),draft.seriesMode==='single'?t('p11.member.variant'):t('p11.member.secondary')];
     if(current.thirdColor)fromLabels.push(t('p11.member.third'));
-    byId<HTMLElement>('seriesMembers').innerHTML=members.map((m,i)=>`<div class="pp-member"><div class="pp-swatch" style="background:${m.value}"></div><div class="pp-role">${escapeHtml(m.name)}</div><div class="pp-rolehex">${m.value}</div><div class="pp-rolefrom">${escapeHtml(fromLabels[i]||'')}</div></div>`).join('');
-    // 辅助槽位卡
+    byId<HTMLElement>('seriesMembers').innerHTML=members.map((m,i)=>`<div class="pp-member" draggable="true" data-member-idx="${i}"><div class="pp-swatch" style="background:${m.value}"></div><div class="pp-role">${escapeHtml(m.name)}</div><div class="pp-rolehex">${m.value}</div><div class="pp-rolefrom">${escapeHtml(fromLabels[i]||'')}${members.length>1?' · ⬌':''}</div></div>`).join('');
+    // 拖拽互换写回：角色位交换（primary/secondary/thirdColor 按新序重挂）。
+    // <lang zh-CN>swap 语义保角色名不变（主色位永远是"主色"），仅颜色对调。</lang>
+    // <lang en>Swap keeps role names in place; only the colors trade positions.</lang>
+    const memberWrap=byId<HTMLElement>('seriesMembers');
+    let dragSrc=-1;
+    memberWrap.querySelectorAll<HTMLElement>('[data-member-idx]').forEach(card=>{
+      card.addEventListener('dragstart',e=>{dragSrc=+(card.dataset.memberIdx||-1);e.dataTransfer?.setData('text/plain',String(dragSrc));});
+      card.addEventListener('dragover',e=>{e.preventDefault();card.style.outline='2px dashed var(--p400)';});
+      card.addEventListener('dragleave',()=>{card.style.outline='';});
+      card.addEventListener('drop',e=>{
+        e.preventDefault();card.style.outline='';
+        const dst=+(card.dataset.memberIdx||-1);
+        if(dragSrc<0||dst===dragSrc||dragSrc>=members.length)return;
+        const colors=members.map(m=>({name:m.name,value:m.value}));
+        const tmp=colors[dragSrc]!;colors[dragSrc]=colors[dst]!;colors[dst]=tmp;
+        draft.primary=colors[0]!.value;draft.primaryName=colors[0]!.name;
+        draft.secondary=colors[1]!.value;draft.secondaryName=colors[1]!.name;
+        draft.thirdColor=colors[2]?{name:colors[2].name,value:colors[2].value,scale:tonalScale(colors[2].value),on:bestOnColor(colors[2].value).hex}:undefined;
+        syncInputs();applyCurrentTheme(false);renderHarmony();
+      });
+      card.addEventListener('dragend',()=>{card.style.outline='';});
+    });
+    // 辅助槽位卡（维护者要求：显示 + 编辑 + 重新排列，最好拖动）：
+    //   行内编辑（color/名称 input，change 即更新）+ 拖拽重排 + 上移/下移按钮 + 删除。
+    // <lang zh-CN>编辑经 makeRoleColor 重建（色阶/前景自动）；重排影响 aux<N> token 编号。</lang>
+    // <lang en>Inline edits rebuild via makeRoleColor; reorder renumbers aux<N> tokens.</lang>
     const auxWrap=byId<HTMLElement>('auxSlots');
-    auxWrap.innerHTML=draft.auxiliary!.map((aux,i)=>`<div class="pp-slot"><div class="pp-slot-head"><div class="pp-swatch" style="background:${aux.value}"></div><div class="pp-slot-name">${escapeHtml(aux.name)}</div><button class="pp-slot-del" data-aux-del="${i}" type="button">${t('p11.aux.delete')}</button></div><div class="pp-slot-hex">${aux.value} · ${t('p11.aux.slotMeta',{i})}</div></div>`).join('');
+    auxWrap.innerHTML=draft.auxiliary!.map((aux,i)=>`<div class="pp-slot" draggable="true" data-aux-idx="${i}"><div class="pp-slot-head"><input type="color" class="pp-swatch" value="${aux.value}" data-aux-color="${i}" data-tooltip="编辑颜色" aria-label="${t('p11.aux.colorAria',{i})}"><input class="pp-slot-name" value="${escapeHtml(aux.name)}" data-aux-name="${i}" aria-label="${t('p11.aux.nameAria',{i})}"><button class="pp-slot-del" data-aux-del="${i}" type="button">${t('p11.aux.delete')}</button></div><div class="pp-slot-hex">${aux.value} · ${t('p11.aux.slotMeta',{i})}</div><div class="pp-mini-actions"><button class="pp-slot-del" data-aux-up="${i}" type="button" ${i===0?'disabled':''}>↑</button><button class="pp-slot-del" data-aux-down="${i}" type="button" ${i===draft.auxiliary!.length-1?'disabled':''}>↓</button><span class="pp-drag-hint">⠿ ${t('p11.aux.dragHint')}</span></div></div>`).join('');
     byId<HTMLElement>('auxEmptyHint').style.display=draft.auxiliary!.length?'none':'block';
+    // 行内编辑：颜色/名称/修饰语
+    all<HTMLInputElement>('[data-aux-color]',auxWrap).forEach(inp=>inp.addEventListener('change',()=>{
+      const i=+(inp.dataset.auxColor||-1);const item=draft.auxiliary![i]!;
+      const rebuilt=makeRoleColor(inp.value,item.name);draft.auxiliary![i]=rebuilt;
+      saveAuxiliary();renderHarmony();applyRuntimeTheme();updateTokenOutputs();
+    }));
+    all<HTMLInputElement>('[data-aux-name]',auxWrap).forEach(inp=>inp.addEventListener('change',()=>{
+      const i=+(inp.dataset.auxName||-1);draft.auxiliary![i]!.name=inp.value.trim()||`辅助 ${i+1}`;
+      saveAuxiliary();renderHarmony();
+    }));
+    // 删除
     all<HTMLButtonElement>('[data-aux-del]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>{
       const idx=+(btn.dataset.auxDel ?? -1);
       if(idx>=0&&draft.auxiliary)draft.auxiliary.splice(idx,1);
-      saveAuxiliary();renderHarmony();applyRuntimeTheme();updateTokenOutputs();
+      saveAuxiliary();renderHarmony();renderGradients();applyRuntimeTheme();updateTokenOutputs();
     }));
+    // 上移/下移
+    const moveAux=(from:number,to:number)=>{
+      if(to<0||to>=draft.auxiliary!.length)return;
+      const item=draft.auxiliary!.splice(from,1)[0]!;
+      draft.auxiliary!.splice(to,0,item);
+      saveAuxiliary();renderHarmony();applyRuntimeTheme();updateTokenOutputs();
+    };
+    all<HTMLButtonElement>('[data-aux-up]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>moveAux(+(btn.dataset.auxUp||0),+(btn.dataset.auxUp||0)-1)));
+    all<HTMLButtonElement>('[data-aux-down]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>moveAux(+(btn.dataset.auxDown||0),+(btn.dataset.auxDown||0)+1)));
+    // 拖拽重排（move 语义：拖到目标位插入）
+    let auxDragSrc=-1;
+    auxWrap.querySelectorAll<HTMLElement>('[data-aux-idx]').forEach(card=>{
+      card.addEventListener('dragstart',e=>{auxDragSrc=+(card.dataset.auxIdx||-1);e.dataTransfer?.setData('text/plain',String(auxDragSrc));});
+      card.addEventListener('dragover',e=>{e.preventDefault();card.style.outline='2px dashed var(--p400)';});
+      card.addEventListener('dragleave',()=>{card.style.outline='';});
+      card.addEventListener('drop',e=>{
+        e.preventDefault();card.style.outline='';
+        const dst=+(card.dataset.auxIdx||-1);
+        if(auxDragSrc<0||dst===auxDragSrc)return;
+        moveAux(auxDragSrc,dst);
+      });
+      card.addEventListener('dragend',()=>{card.style.outline='';});
+    });
   }
   // 应用主色系模式：写草稿、规则重置（single 无规则；dual/triad 回默认首项）、推导填充、全链刷新。
   // <lang zh-CN>single 模式不改草稿 secondary（装配时自动取变体，切回 dual 恢复原副色）；triad 清显式第三色（装配推导新规则值）。</lang>
@@ -895,7 +990,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     draft.seriesMode=mode;
     const defs=SERIES_RELATION_DEFS.filter(r=>r.modes.includes(mode));
     draft.seriesRelation=defs[0]!.id;
-    applySeriesRelation();
+    applySeriesRelation();renderGradients();
   }
   // 应用关系规则：dual 推导值写入 secondary（可覆写）；triad 清显式第三色（装配推导）；刷新。
   // <lang zh-CN>deriveSecondaryByRelation 返回 null（manual/pure）时不写 secondary。</lang>
@@ -906,7 +1001,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const derived=deriveSecondaryByRelation(draft.primary,relation);
     if(derived){draft.secondary=derived;draft.secondaryName='规则推导（可覆写）';}
     draft.thirdColor=undefined;
-    syncInputs();applyCurrentTheme(false);renderHarmony();
+    syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();
   }
   // 应用宝典预设：组合色号直用（主位=组合首色；1 色组合→single、2 色→dual、3 色→triad 自动匹配模式）。
   // <lang zh-CN>主位色替换 draft.primary（预设是完整配色方案，定案允许）；成员名标注宝典来源。</lang>
@@ -954,7 +1049,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const name=byId<HTMLInputElement>('auxNameInput').value.trim()||`辅助 ${draft.auxiliary!.length+1}`;
     draft.auxiliary!.push(makeRoleColor(hex,name));
     byId<HTMLInputElement>('auxNameInput').value='';
-    saveAuxiliary();renderHarmony();
+    saveAuxiliary();renderHarmony();renderGradients();
   }
   // 按规则生成辅助候选：加入三个强调候选（定案 3）。
   // <lang zh-CN>generateAuxiliaryCandidates 从主色推导 ±60°/150°/-90° 候选。</lang>
@@ -962,12 +1057,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   function generateAuxiliary(){
     const cands=generateAuxiliaryCandidates(draft.primary);
     cands.forEach(c=>draft.auxiliary!.push(makeRoleColor(c.hex,c.name)));
-    saveAuxiliary();renderHarmony();
+    saveAuxiliary();renderHarmony();renderGradients();
   }
   // 清空辅助槽位。
   // <lang zh-CN>显式清空（[]），不影响主色系成员。</lang>
   // <lang en>Explicit clear; series members untouched.</lang>
-  function clearAuxiliary(){draft.auxiliary=[];saveAuxiliary();renderHarmony();}
+  function clearAuxiliary(){draft.auxiliary=[];saveAuxiliary();renderHarmony();renderGradients();}
   // 更新关系推导链（v2）：规则/预设应用后由 applySeriesRelation/applyBaodianPreset 承载。
   // <lang zh-CN>取色应用后同样按模式推导（single 变体自动、triad 第三色推导、辅助不动）。</lang>
   // <lang en>Explore-apply follows the same semantics (single variant auto; triad third derived; auxiliary untouched).</lang>
@@ -1406,6 +1501,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Keeps visual picker and text input in two-way sync.</lang>
     byId<HTMLInputElement>('primaryPicker').addEventListener('input',e=>setInputValue('primaryHexInput',(e.currentTarget as HTMLInputElement).value.toUpperCase()));
     byId<HTMLInputElement>('secondaryPicker').addEventListener('input',e=>setInputValue('secondaryHexInput',(e.currentTarget as HTMLInputElement).value.toUpperCase()));
+    // 第三色拾色器↔HEX 联动（`W-tb-P11` 一等位，模式同主/副）。
+    // <lang zh-CN>输入后需点"应用当前主题"生效（与主副色一致）。</lang>
+    // <lang en>Applied via the Apply button, consistent with primary/secondary.</lang>
+    byId<HTMLInputElement>('thirdPicker').addEventListener('input',e=>setInputValue('thirdHexInput',(e.currentTarget as HTMLInputElement).value.toUpperCase()));
+    byId<HTMLInputElement>('thirdHexInput').addEventListener('input',e=>{const target=e.currentTarget as HTMLInputElement,v=normalizeHex(target.value);if(v.length<=7)target.value=v;if(validHex(v))byId<HTMLInputElement>('thirdPicker').value=v;});
     // HEX 输入 → 取色器：实时规范化并回填，合法时同步拾色器。
     // <lang zh-CN>限制长度避免溢出，validHex 通过才更新拾色器值。</lang>
     // <lang en>Caps length to avoid overflow; only updates the picker when validHex passes.</lang>

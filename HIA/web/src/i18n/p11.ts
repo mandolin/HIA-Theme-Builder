@@ -5,6 +5,11 @@
 import { registerStrings } from './i18n.js';
 
 registerStrings({
+  // 操作台第三色一等位（ADR-007 v2 定案 1：三组拾色器并列）。
+  // <lang zh-CN>三色模式显示，随模式显隐。</lang>
+  // <lang en>Shown in triad mode, toggled with the mode.</lang>
+  'p11.console.third.label': { zh: '第三色 / HEX（三色模式）', en: 'Third / HEX (triad)' },
+  'p11.console.thirdName.label': { zh: '第三色名称', en: 'Third color name' },
   // 面板标题。
   // <lang zh-CN>操作台内配色关系面板。</lang>
   // <lang en>Harmony panel inside the console.</lang>
