@@ -159,7 +159,10 @@ export function createAdaptivePlatform():ThemeManagerPlatform{
       if(!/^https?:\/\//i.test(url))throw new Error('仅支持 http(s) 链接。');
       let response:Response;
       try{
-        response=await fetch(url,{signal:AbortSignal.timeout(10000)});
+        // cache:'no-store'：绕过 CDN/HTTP 缓存（raw.githubusercontent 等源会缓存推送前的 404，实测踩坑）。
+        // <lang zh-CN>源内容应始终取最新；no-store 同时规避浏览器内存缓存。</lang>
+        // <lang en>Sources must always be fresh; no-store also bypasses in-memory caches.</lang>
+        response=await fetch(url,{signal:AbortSignal.timeout(10000),cache:'no-store'});
       }catch{
         throw new Error('远程源获取失败（网络/超时/CORS）。桌面端无 CORS 限制，可改用桌面端或本地导入。');
       }
