@@ -10,6 +10,18 @@ registerStrings({
   // <lang en>Shown in triad mode, toggled with the mode.</lang>
   'p11.console.third.label': { zh: '第三色 / HEX（三色模式）', en: 'Third / HEX (triad)' },
   'p11.console.thirdName.label': { zh: '第三色名称', en: 'Third color name' },
+  // 渐变色系与辅助交互词条（机制扩充轮）。
+  // <lang zh-CN>渐变下拉选项、辅助槽位行内编辑与拖拽提示。</lang>
+  // <lang en>Gradient dropdown options, auxiliary inline editors and drag hints.</lang>
+  'p11.family.third': { zh: '第三色系', en: 'Third role' },
+  'p11.family.thirdShort': { zh: '第三色', en: 'Third' },
+  'p11.family.aux': { zh: '辅助色', en: 'Auxiliary' },
+  'p11.family.auxShort': { zh: '辅助', en: 'Aux' },
+  'p11.aux.colorAria': { zh: '辅助色 {i} 颜色编辑', en: 'Auxiliary {i} color editor' },
+  'p11.aux.nameAria': { zh: '辅助色 {i} 名称', en: 'Auxiliary {i} name' },
+  'p11.aux.dragHint': { zh: '拖动排序', en: 'Drag to reorder' },
+  'p11.card.auxGroup': { zh: '辅助色组', en: 'Auxiliary group' },
+  'p11.console.dragHint': { zh: '拖动互换位置', en: 'Drag to swap positions' },
   // 面板标题。
   // <lang zh-CN>操作台内配色关系面板。</lang>
   // <lang en>Harmony panel inside the console.</lang>

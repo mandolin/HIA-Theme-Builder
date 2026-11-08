@@ -322,8 +322,13 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 第三色一等位（ADR-007 v2 定案 1）：仅三色模式显示；值来自草稿第三色（装配语义下草稿缺省由面板推导写入）。
     // <lang zh-CN>非三色模式隐藏整行；dual/single 不显示第三色拾色器。</lang>
     // <lang en>The third row shows in triad only.</lang>
-    const thirdRow=document.getElementById('thirdColorRow');
-    if(thirdRow)thirdRow.hidden=draft.seriesMode!=='triad';
+    // 三格显隐：single 隐藏副/第三格（主色系 1 色）；triad 显示第三格。
+    // <lang zh-CN>single 模式装配的 secondary 变体仍由 theme().secondary 承载，但操作台不显示其编辑位。</lang>
+    // <lang en>single hides secondary/third groups; triad shows all three.</lang>
+    const thirdGroup=document.querySelector<HTMLElement>('#seriesPickers [data-picker="third"]');
+    if(thirdGroup)thirdGroup.hidden=draft.seriesMode!=='triad';
+    const secGroup=document.querySelector<HTMLElement>('#seriesPickers [data-picker="secondary"]');
+    if(secGroup)secGroup.hidden=draft.seriesMode==='single';
     if(draft.seriesMode==='triad'&&draft.thirdColor){
       setInputValue('thirdPicker',draft.thirdColor.value);
       setInputValue('thirdHexInput',draft.thirdColor.value);
@@ -349,7 +354,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 第三色（三色模式）：读输入并组装完整 RoleColor（色阶/前景自动）。
     // <lang zh-CN>非三色模式不读（thirdColor 保持 undefined）。</lang>
     // <lang en>Read only in triad; otherwise thirdColor stays undefined.</lang>
-    if((document.getElementById('thirdColorRow') as HTMLElement).hidden!==true){
+    if(draft.seriesMode==='triad'){
       const thirdRaw=normalizeHex(inputValue('thirdHexInput'));
       if(validHex(thirdRaw)){
         draft.thirdColor={name:inputValue('thirdNameInput').trim()||'第三色',value:thirdRaw,scale:tonalScale(thirdRaw),on:bestOnColor(thirdRaw).hex};
@@ -1516,6 +1521,28 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Applied via the Apply button, consistent with primary/secondary.</lang>
     byId<HTMLInputElement>('thirdPicker').addEventListener('input',e=>setInputValue('thirdHexInput',(e.currentTarget as HTMLInputElement).value.toUpperCase()));
     byId<HTMLInputElement>('thirdHexInput').addEventListener('input',e=>{const target=e.currentTarget as HTMLInputElement,v=normalizeHex(target.value);if(v.length<=7)target.value=v;if(validHex(v))byId<HTMLInputElement>('thirdPicker').value=v;});
+    // 操作台三格拖动互换（维护者要求）：拖 A 组到 B 组 = 两角色色值对调（角色语义不变）。
+    // <lang zh-CN>字段映射 primary/secondary/third；swap 后全链刷新；single 模式无意义（一格）。</lang>
+    // <lang en>Drag A onto B swaps the two role colors; single mode has nothing to swap.</lang>
+    let pickDragSrc:string|null=null;
+    all<HTMLElement>('#seriesPickers [data-picker]').forEach(group=>{
+      group.addEventListener('dragstart',e=>{pickDragSrc=group.dataset.pick||null;e.dataTransfer?.setData('text/plain',pickDragSrc!);});
+      group.addEventListener('dragover',e=>{e.preventDefault();group.style.outline='2px dashed var(--p400)';});
+      group.addEventListener('dragleave',()=>{group.style.outline='';});
+      group.addEventListener('drop',e=>{
+        e.preventDefault();group.style.outline='';
+        const dst=group.dataset.pick||null;
+        if(!pickDragSrc||!dst||pickDragSrc===dst)return;
+        const get=(p:string)=>p==='primary'?draft.primary:p==='secondary'?draft.secondary:draft.thirdColor?.value??null;
+        const getName=(p:string)=>p==='primary'?draft.primaryName:p==='secondary'?draft.secondaryName:draft.thirdColor?.name??null;
+        const a=get(pickDragSrc),b=get(dst),an=getName(pickDragSrc),bn=getName(dst);
+        if(a===null||b===null)return;
+        const set=(p:string,val:string,name:string)=>{if(p==='primary'){draft.primary=val;draft.primaryName=name;}else if(p==='secondary'){draft.secondary=val;draft.secondaryName=name;}else{draft.thirdColor={name,value:val,scale:tonalScale(val),on:bestOnColor(val).hex};}};
+        set(dst,a,an!);set(pickDragSrc,b,bn!);
+        syncInputs();applyCurrentTheme(false);renderHarmony();
+      });
+      group.addEventListener('dragend',()=>{group.style.outline='';});
+    });
     // HEX 输入 → 取色器：实时规范化并回填，合法时同步拾色器。
     // <lang zh-CN>限制长度避免溢出，validHex 通过才更新拾色器值。</lang>
     // <lang en>Caps length to avoid overflow; only updates the picker when validHex passes.</lang>
