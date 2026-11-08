@@ -6,13 +6,17 @@
  */
 import{
   GRADIENT_DEFAULTS,GRADIENT_DEFS,autoThemeName,buildThemeFromDraft,builtinPresets,
-  cloneGradientSettings,createRuntimeCssVariables,createThemeDraft,draftFromPreset,
-  exportThemeCss,exportThemeJson,filterPresets,findMatchingPrimaryCandidate,generateSecondarySet,
+  cloneGradientSettings,cloneSpacing,cloneTypography,createRuntimeCssVariables,createThemeDraft,draftFromPreset,
+  DEFAULT_SPACING,DEFAULT_TYPOGRAPHY,exportThemeCss,exportThemeJson,filterPresets,findMatchingPrimaryCandidate,
+  fontSizeAt,FONT_SIZE_STEPS,generateSecondarySet,getExportTarget,
   gradientCss,isBuiltinPresetId,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,
-  presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,
-  swapGradientBias,tonalScaleAt,upsertPreset,validHex,type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
+  presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
+  swapGradientBias,tonalScaleAt,upsertPreset,validHex,
+  type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
+  type TypographyTokens,type SpacingTokens,
   type WebsiteThemeAnalysisV2
 }from'@hia/theme-core';
+import{zipSync,strToU8}from'fflate';
 import{all,byId,inputValue,setInputValue,setText}from'./dom.js';
 import{t,setLocale,getLocale,applyAll}from'./i18n/index.js';
 import type{ThemeManagerPlatform}from'./platform.js';
@@ -26,10 +30,15 @@ export interface ThemeManagerHandle{getDraft():ThemeDraft;getTheme():Theme;apply
 // <lang zh-CN>与 parseThemeLibrary/serializeThemeLibrary 配对使用。</lang>
 // <lang en>Paired with parseThemeLibrary/serializeThemeLibrary.</lang>
 const THEME_STORAGE='hia-theme-manager-presets-v1';
-// 渐变设置独立存储键（与预设库分开，便于单独持久化当前渐变）。
-// <lang zh-CN>载入时覆盖草稿的 gradients，使渐变编辑跨会话保留。</lang>
-// <lang en>Overlays the draft's gradients on load so gradient edits persist across sessions.</lang>
-const GRADIENT_STORAGE='hia-gradient-settings-v1';
+  // 渐变设置独立存储键（与预设库分开，便于单独持久化当前渐变）。
+  // <lang zh-CN>载入时覆盖草稿的 gradients，使渐变编辑跨会话保留。</lang>
+  // <lang en>Overlays the draft's gradients on load so gradient edits persist across sessions.</lang>
+  const GRADIENT_STORAGE='hia-gradient-settings-v1';
+  // 字体/间距令牌独立存储键（ADR-006 / `W-tb-P9`）：与渐变同一持久化先例。
+  // <lang zh-CN>分别存 typoState/spaceState 的 JSON；解析失败回退默认。</lang>
+  // <lang en>JSON of typoState/spaceState stored separately; parse failures fall back to defaults.</lang>
+  const TYPOGRAPHY_STORAGE='hia-typography-tokens-v1';
+  const SPACING_STORAGE='hia-spacing-tokens-v1';
 // 色阶下拉选项：由深到浅排列，符合选色直觉。
 // <lang zh-CN>与 SHADE_KEYS 同值，仅顺序不同（UI 偏好深→浅）。</lang>
 // <lang en>Same values as SHADE_KEYS but ordered dark→light for UI preference.</lang>
@@ -172,6 +181,28 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   let exploreStage:'idle'|'exploring'|'done'|'degraded'|'error'='idle';
   let exploring=false;
 
+  // `W-tb-P9` 预览/导出联动状态：预览三类型与导出三 Tab 同构联动（模式级），经典/导出目标独立记忆。
+  // <lang zh-CN>previewMode 驱动预览区面板显隐；classicTargetId 为经典预览目标（WP/Tailwind）；
+  //   exportTargetId 为导出目标（三选一）；tdonSource 为 TDON 源子 Tab（连接器延后）。</lang>
+  // <lang en>`W-tb-P9` preview/export linked state: the three preview types and three export tabs link
+  //   isomorphically (mode level); classic/export targets and the TDON source are remembered independently.</lang>
+  let previewMode:'default'|'classic'|'tdon'='default';
+  let classicTargetId:'wordpress-child'|'tailwind-config'='wordpress-child';
+  let exportTargetId='wordpress-child';
+  let tdonSource:'url'|'local'='url';
+  // 导出文件树当前选中文件（null=未选中，仅展示清单）。
+  // <lang zh-CN>点击清单行后显示对应文件内容预览。</lang>
+  // <lang en>After clicking a tree row its content shows in the preview pane.</lang>
+  let selectedExportFile:string|null=null;
+
+  // 字体/间距令牌状态（ADR-006）：作为操作台全局状态独立于预设（预设仅携带颜色+渐变，既定决策）。
+  // <lang zh-CN>typoState/spaceState 与 draft.typography/spacing 共享同一对象引用；换预设/应用草稿后重新挂回，
+  //   保证字体/间距编辑跨预设保留（与渐变独立持久化同一先例）。</lang>
+  // <lang en>typoState/spaceState share object references with draft.typography/spacing; re-attached after preset
+  //   swaps/draft applies so typography/spacing edits survive preset changes (same precedent as gradient persistence).</lang>
+  let typoState:TypographyTokens=cloneTypography(DEFAULT_TYPOGRAPHY);
+  let spaceState:SpacingTokens=cloneSpacing(DEFAULT_SPACING);
+
   // 由当前草稿构建完整主题（用于渲染/导出）。
   // <lang zh-CN>每次调用都会重新计算色阶，确保与草稿同步。</lang>
   // <lang en>Recomputes scales each call so it stays in sync with the draft.</lang>
@@ -188,6 +219,53 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>确保渐变编辑不依赖预设保存也能跨会话保留。</lang>
   // <lang en>Ensures gradient edits persist across sessions even without saving a preset.</lang>
   function saveGradients(){platform.storage.setItem(GRADIENT_STORAGE,JSON.stringify(draft.gradients));}
+  // 持久化字体/间距令牌到平台存储（ADR-006 / `W-tb-P9`）。
+  // <lang zh-CN>与渐变同一先例：独立键、编辑即存、失败不阻断（storage 实现自行容错）。</lang>
+  // <lang en>Same precedent as gradients: separate keys, save-on-edit, non-blocking failures.</lang>
+  function saveTypography(){platform.storage.setItem(TYPOGRAPHY_STORAGE,JSON.stringify(typoState));platform.storage.setItem(SPACING_STORAGE,JSON.stringify(spaceState));}
+  // 从平台存储恢复字体/间距令牌；非法/缺失回退默认。
+  // <lang zh-CN>逐字段校验类型与范围，防止脏数据污染渲染（字体串任意、数值钳制）。</lang>
+  // <lang en>Per-field type/range validation keeps stale data from polluting rendering (families free-form, numbers clamped).</lang>
+  function loadTypography(){
+    try{
+      const rawTy=platform.storage.getItem(TYPOGRAPHY_STORAGE);
+      if(rawTy){
+        const p=JSON.parse(rawTy) as Partial<TypographyTokens>;
+        if(p&&typeof p==='object'){
+          const fam={body:String(p.fontFamily?.body??DEFAULT_TYPOGRAPHY.fontFamily.body),heading:String(p.fontFamily?.heading??DEFAULT_TYPOGRAPHY.fontFamily.heading),mono:String(p.fontFamily?.mono??DEFAULT_TYPOGRAPHY.fontFamily.mono)};
+          // 缺失/非对象则空对象，字段级 clampNum 兜底默认。
+          // <lang zh-CN>scale 经显式类型断言收窄为 Partial，避免 {} 推导丢失属性。</lang>
+          // <lang en>The scale narrows via an explicit Partial assertion, avoiding {} property loss.</lang>
+          const scale=(p.fontSizeScale&&typeof p.fontSizeScale==='object'?p.fontSizeScale:{}) as Partial<TypographyTokens['fontSizeScale']>;
+          typoState={fontFamily:fam,fontSizeScale:{base:clampNum(scale.base,DEFAULT_TYPOGRAPHY.fontSizeScale.base,9,48),ratio:clampNum(scale.ratio,DEFAULT_TYPOGRAPHY.fontSizeScale.ratio,1,3)},lineHeightBody:clampNum(p.lineHeightBody,DEFAULT_TYPOGRAPHY.lineHeightBody,1,2.4)};
+        }
+      }
+      const rawSp=platform.storage.getItem(SPACING_STORAGE);
+      if(rawSp){
+        const p=JSON.parse(rawSp) as Partial<SpacingTokens>;
+        if(p&&typeof p==='object'){
+          const step=p.step==='linear4'||p.step==='x15'?p.step:p.step==='x2'?'x2':DEFAULT_SPACING.step;
+          spaceState={base:clampNum(p.base,DEFAULT_SPACING.base,2,32),step,levels:Math.round(clampNum(p.levels,DEFAULT_SPACING.levels,1,12))};
+        }
+      }
+    }catch{
+      // <lang zh-CN>解析失败回退默认（与 parseGradientSettings 同策略）。</lang>
+      // <lang en>Parse failure falls back to defaults (same policy as parseGradientSettings).</lang>
+      typoState=cloneTypography(DEFAULT_TYPOGRAPHY);
+      spaceState=cloneSpacing(DEFAULT_SPACING);
+    }
+  }
+  // 数值钳制工具：非数值回退 fallback，否则夹取到 [min,max]。
+  // <lang zh-CN>仅用于令牌恢复与输入校验的局部工具。</lang>
+  // <lang en>Local helper for token restore and input validation.</lang>
+  function clampNum(v:unknown,fallback:number,min:number,max:number):number{
+    const n=typeof v==='number'?v:parseFloat(String(v));
+    return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
+  }
+  // 把当前字体/间距状态挂回草稿（换预设/应用草稿后调用，共享引用）。
+  // <lang zh-CN>共享引用保证后续对 typoState 的编辑同步作用于 draft，buildThemeFromDraft 即取最新值。</lang>
+  // <lang en>Shared references keep later typoState edits in sync with the draft, so buildThemeFromDraft always sees fresh values.</lang>
+  function attachTokensToDraft(){draft.typography=typoState;draft.spacing=spaceState;}
 
   // 把当前主题应用到运行时：写入 :root CSS 变量，并刷新每个渐变角色的预览与说明文字。
   // <lang zh-CN>是“状态→界面”的核心同步点，任何状态变更后调用。</lang>
@@ -468,6 +546,268 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     }));
   }
 
+  // ===== `W-tb-P9` 预览三类型 / 导出三 Tab（ADR-005）/ 字体间距操作台（ADR-006） =====
+
+  // 应用预览类型：面板显隐 + 子控件显隐 + 提示文案 + 导出 Tab 同构联动。
+  // <lang zh-CN>default 显示 PC/小程序两块默认预览；classic/tdon 显示对应新面板；
+  //   导出区三 Tab 与预览类型同构联动（用户仍可在导出区手动切换，不回写预览避免环）。</lang>
+  // <lang en>default shows the PC/mini-program panels; classic/tdon show the new panels; the export tabs
+  //   follow the preview type (manual export switching stays one-way to avoid loops).</lang>
+  function applyPreviewMode(mode:'default'|'classic'|'tdon'){
+    previewMode=mode;
+    all<HTMLButtonElement>('#previewTypeSwitch .seg').forEach(btn=>btn.classList.toggle('active',btn.dataset.previewMode===mode));
+    byId<HTMLElement>('classicTargetSelect').hidden=mode!=='classic';
+    byId<HTMLElement>('tdonSourceSelect').hidden=mode!=='tdon';
+    byId<HTMLButtonElement>('tdonConnectBtn').hidden=mode!=='tdon';
+    byId<HTMLElement>('pcPreviewPanel').style.display=mode==='default'?'block':'none';
+    byId<HTMLElement>('wxPreviewPanel').style.display=mode==='default'?'block':'none';
+    byId<HTMLElement>('classicPreviewPanel').hidden=mode!=='classic';
+    byId<HTMLElement>('tdonPreviewPanel').hidden=mode!=='tdon';
+    byId<HTMLElement>('previewTypeHint').textContent=t(`p9.preview.hint.${mode}`);
+    applyExportMode(mode);
+  }
+  // 应用导出区三 Tab 显隐（默认=CSS/JSON，经典=目标+文件树+ZIP，自定义=TDON 占位）。
+  // <lang zh-CN>与 applyPreviewMode 解耦：可由预览联动触发，也可由导出 Tab 手动触发。</lang>
+  // <lang en>Decoupled from applyPreviewMode: triggered by preview linkage or by manual export-tab clicks.</lang>
+  function applyExportMode(mode:'default'|'classic'|'tdon'){
+    all<HTMLButtonElement>('#exportTypeTabs .tab').forEach(btn=>btn.classList.toggle('active',btn.dataset.exportMode===mode));
+    byId<HTMLElement>('exportViewDefault').hidden=mode!=='default';
+    byId<HTMLElement>('exportViewClassic').hidden=mode!=='classic';
+    byId<HTMLElement>('exportViewTdon').hidden=mode!=='tdon';
+  }
+
+  // 渲染经典支持场景预览：WordPress（前台 + 后台）或 Tailwind 落地页 mock。
+  // <lang zh-CN>全部颜色/字体/间距引用当前主题变量（--hia-* 与 --p/--s 渐变/色阶），主题或字体间距令牌
+  //   变更后重绘即生效；mock 元素均为展示用途（span/tabindex=-1），不产生交互误导。</lang>
+  // <lang en>All colors/fonts/spacings reference the current theme vars (--hia-* plus --p/--s gradients/scales);
+  //   re-rendering after theme or token edits applies them instantly. Mock elements are display-only
+  //   (span/tabindex=-1) to avoid implying interactivity.</lang>
+  function renderClassicPreview(){
+    const wrap=byId<HTMLElement>('classicPreviewBody');
+    if(classicTargetId==='wordpress-child'){
+      // WordPress 场景：前台（导航/主视觉/卡片网格）+ 后台（管理栏/侧边菜单/内容区）。
+      // <lang zh-CN>主视觉用 --gradient-carousel，标题字号取 --hia-fs-h1，正文取 --hia-fs-body 与行高令牌。</lang>
+      // <lang en>Hero uses --gradient-carousel; headings use --hia-fs-h1; body uses --hia-fs-body and the line-height token.</lang>
+      const card=(title:string,body:string,chips=true)=>`<div class="mock-wp-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(body)}</p>${chips?`<div class="mock-wp-chip-row"><span class="mock-wp-chip">primary-500</span><span class="mock-wp-chip alt">secondary-500</span></div>`:''}</div>`;
+      wrap.innerHTML=`
+        <div class="classic-mock-note">${t('p9.classic.wp.note')}</div>
+        <span class="mock-label">${t('前台首页')}</span>
+        <div class="mock-browser">
+          <div class="mock-browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="mock-browser-url">https://example.com</span></div>
+          <div class="mock-wp-front-nav"><b>${t('站点名称示例')}</b><span>${t('产品服务')}</span><span>${t('解决方案')}</span><span>${t('新闻动态')}</span><span>${t('关于我们')}</span><span class="mock-wp-btn" aria-hidden="true">${t('开始使用')}</span></div>
+          <div class="mock-wp-front-hero"><h2>${t('欢迎来到企业门户')}</h2><p>${t('主视觉使用 HIA 渐变令牌（--hia-gradient-carousel），字号与间距随操作台实时变化。')}</p><span class="mock-wp-btn alt" aria-hidden="true">${t('查看文档')}</span></div>
+          <div style="padding:12px;background:#F0F4F8"><div class="mock-wp-front-grid">${card(t('板块标题示例'),t('正文示例：字号取 --hia-fs-body，行高取 --hia-line-height-body，颜色取 --hia-primary-700。'))}${card(t('功能卡片二'),t('正文示例：字号取 --hia-fs-body，行高取 --hia-line-height-body，颜色取 --hia-primary-700。'),false)}${card(t('功能卡片三'),t('正文示例：字号取 --hia-fs-body，行高取 --hia-line-height-body，颜色取 --hia-primary-700。'),false)}</div></div>
+        </div>
+        <div style="height:14px"></div>
+        <span class="mock-label">${t('后台管理')}</span>
+        <div class="mock-browser">
+          <div class="mock-browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="mock-browser-url">https://example.com/wp-admin/</span></div>
+          <div class="mock-wp-adminbar"><span class="mock-wp-dot">W</span><span>${t('站点名称示例')}</span><span aria-hidden="true">＋ 新建</span><span style="margin-left:auto">Howdy, Admin</span></div>
+          <div class="mock-wp-layout">
+            <div class="mock-wp-menu"><div class="mock-wp-menu-group">Dashboard</div><div class="mock-wp-menu-item active">${t('仪表盘')}</div><div class="mock-wp-menu-item">${t('媒体')}</div><div class="mock-wp-menu-item">${t('页面')}</div><div class="mock-wp-menu-item">${t('外观')}</div><div class="mock-wp-menu-item">${t('插件')}</div><div class="mock-wp-menu-item">${t('用户')}</div><div class="mock-wp-menu-item">${t('设置')}</div></div>
+            <div class="mock-wp-content">
+              <div class="mock-wp-notice"><b>${t('站点公告')}</b> ${t('副色用于提醒与强调，符合 HIA 副色语义。')}</div>
+              ${card(t('快速编辑'),t('正文示例：字号取 --hia-fs-body，行高取 --hia-line-height-body，颜色取 --hia-primary-700。'),false)}
+              <div class="mock-wp-card"><h4>${t('站点健康')}</h4><p>${t('主题面板与渐变来自生成的 theme.json，色板含 10 档与自定义色阶。')}</p><div class="mock-wp-chip-row"><span class="mock-wp-chip">theme.json v2</span><span class="mock-wp-chip alt">hia-child</span></div></div>
+            </div>
+          </div>
+        </div>`;
+    }else{
+      // Tailwind 场景：导航/主视觉/特性卡/页脚，色阶与字体族映射 config 的 colors/fontFamily。
+      // <lang zh-CN>演示 bg-primary-700 类映射效果：卡片条用 --primary/--secondary/--p400 表示三档色。</lang>
+      // <lang en>Demonstrates bg-primary-700-style mappings: card bars use --primary/--secondary/--p400 for three steps.</lang>
+      const twCard=(title:string)=>`<div class="mock-tw-card"><div class="mock-tw-swatch"></div><h5>${escapeHtml(title)}</h5><p>${t('色阶令牌直接映射为 Tailwind 类名。')}</p></div>`;
+      wrap.innerHTML=`
+        <div class="classic-mock-note">${t('p9.classic.tw.note')}</div>
+        <span class="mock-label">${t('Tailwind 落地页场景')}</span>
+        <div class="mock-browser">
+          <div class="mock-browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="mock-browser-url">https://example.com/</span></div>
+          <div class="mock-tw-nav"><b>HIA Tailwind</b><a href="javascript:void(0)" tabindex="-1">${t('产品服务')}</a><a href="javascript:void(0)" tabindex="-1">${t('解决方案')}</a><a href="javascript:void(0)" tabindex="-1">${t('关于我们')}</a><span class="mock-wp-btn" aria-hidden="true">${t('开始使用')}</span></div>
+          <div class="mock-tw-hero"><h2>${t('构建一致的设计系统')}</h2><p>${t('字体族经 fontFamily 透传（body / heading / mono），色阶类名即时可用。')}</p><div class="mock-tw-cta-row"><span class="mock-wp-btn" aria-hidden="true">${t('开始使用')}</span><span class="mock-wp-btn alt" aria-hidden="true">${t('查看文档')}</span></div></div>
+          <div class="mock-tw-cards">${twCard(t('功能卡片一'))}${twCard(t('功能卡片二'))}${twCard(t('功能卡片三'))}</div>
+          <div class="mock-tw-footer"><span>${t('由 HIA Theme Builder 生成')}</span><span>${escapeHtml(theme().name)}</span></div>
+        </div>`;
+    }
+    setText('classicTargetLabel',classicTargetId==='wordpress-child'?t('p9.classic.target.wp'):t('p9.classic.target.tw'));
+  }
+
+  // 渲染 TDON 自定义支持面板占位（运行时延后）：说明连接器管线与规范出处。
+  // <lang zh-CN>连接按钮保持禁用（HTML disabled），不提供假交互。</lang>
+  // <lang en>The connect button stays disabled (HTML disabled); no fake interactions.</lang>
+  function renderTdonPreview(){
+    byId<HTMLElement>('tdonPreviewBody').innerHTML=`<div class="tdon-placeholder"><b>${t('p9.tdon.placeholder.title')}</b><p>${t('p9.tdon.placeholder.desc')}</p></div>`;
+    // 状态标签回显当前选中的源子 Tab（url/local），连接按钮保持禁用。
+    // <lang zh-CN>让"源子 Tab"状态可见，连接器接入后沿用同一状态位。</lang>
+    // <lang en>Makes the source sub-tab choice visible; the connector reuses this state once it lands.</lang>
+    setText('tdonStatusLabel',`${t('p9.tdon.status.pending')} · ${tdonSource==='url'?t('p9.tdon.source.url'):t('p9.tdon.source.local')}`);
+  }
+
+  // 渲染导出文件树：目标产物清单（路径 + 字节）+ 选中文件内容预览 + ZIP 名回显。
+  // <lang zh-CN>清单由 getExportTarget(exportTargetId).files(theme()) 现算（纯函数），保证与 ZIP 内容一致；
+  //   字节数用 TextEncoder 统计 UTF-8 长度。</lang>
+  // <lang en>The list is computed live via getExportTarget(...).files(theme()) (pure), matching ZIP content exactly;
+  //   byte size uses TextEncoder UTF-8 length.</lang>
+  function renderExportTree(){
+    const target=getExportTarget(exportTargetId);
+    if(!target)return;
+    const files=target.files(theme());
+    // 未选中或选中项不在当前目标清单时，默认选中第一个文件。
+    // <lang zh-CN>切换目标后自动回落，避免预览残留上一目标内容。</lang>
+    // <lang en>Auto-falls back after target switches so stale content never lingers.</lang>
+    if(!selectedExportFile||!files.some(f=>f.path===selectedExportFile))selectedExportFile=files[0]?.path??null;
+    const tree=byId<HTMLElement>('exportFileTree');
+    tree.innerHTML=files.map(f=>{
+      const size=new TextEncoder().encode(f.content).length;
+      const sizeLabel=size<1024?`${size} B`:`${(size/1024).toFixed(1)} KB`;
+      return`<button type="button" class="export-file-row ${f.path===selectedExportFile?'active':''}" data-export-file="${escapeHtml(f.path)}"><i class="export-file-icon" aria-hidden="true"></i><span>${escapeHtml(f.path)}</span><span class="export-file-size">${sizeLabel}</span></button>`;
+    }).join('');
+    const preview=byId<HTMLTextAreaElement>('exportFilePreview');
+    const current=files.find(f=>f.path===selectedExportFile);
+    if(current){preview.hidden=false;preview.value=current.content;}else{preview.hidden=true;preview.value='';}
+    setText('exportZipName',target.archiveName(theme()));
+    all<HTMLButtonElement>('[data-export-file]',tree).forEach(btn=>btn.addEventListener('click',()=>{
+      selectedExportFile=btn.dataset.exportFile||null;
+      renderExportTree();
+    }));
+  }
+
+  // 生成并下载目标 ZIP（fflate zipSync 打包虚拟文件树 → Blob → a[download]）。
+  // <lang zh-CN>文件名取 target.archiveName(theme)；成功后回显"已生成"文案；失败走平台 alert。
+  //   web/electron/tauri 共用同一实现（DOM 下载在三者宿主中均可用）。</lang>
+  // <lang en>Packages via target.archiveName(theme); success echoes a generated note; failures alert via platform.
+  //   Shared by web/electron/tauri (DOM downloads work in all three hosts).</lang>
+  function downloadZip(){
+    const target=getExportTarget(exportTargetId);
+    if(!target)return;
+    try{
+      const files=target.files(theme());
+      // zipSync 接受 {path: Uint8Array}；strToU8 完成 UTF-8 编码。
+      // <lang zh-CN>ZIP 内路径即适配器给定的相对 POSIX 路径。</lang>
+      // <lang en>ZIP entry paths are the adapter-provided relative POSIX paths.</lang>
+      const zipped=zipSync(Object.fromEntries(files.map(f=>[f.path,strToU8(f.content)])));
+      const url=URL.createObjectURL(new Blob([zipped],{type:'application/zip'}));
+      const a=document.createElement('a');
+      a.href=url;a.download=target.archiveName(theme());
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      setText('exportZipName',t('p9.export.zip.done',{name:target.archiveName(theme()),count:files.length}));
+    }catch{
+      platform.alert(t('p9.export.zip.fail'));
+    }
+  }
+
+  // 渲染字体/间距令牌操作台：左列控件（草稿态回填），右列实时样张（字号阶梯/间距序列/行高）。
+  // <lang zh-CN>每次字段生效后整块重绘（与渐变面板同一模式），保证回填与样张一致。</lang>
+  // <lang en>Whole-panel re-render after each applied field (same pattern as the gradient panel) keeps inputs and specimens consistent.</lang>
+  function renderTypography(){
+    const wrap=byId<HTMLElement>('typographyBody');
+    const ty=typoState,sp=spaceState;
+    // 比例尺选项：常用模数比率；存储中的自定义比率回退显示 1.25。
+    // <lang zh-CN>select 仅提供离散选项，自由比率经编辑输入仍可保留（仅展示回退）。</lang>
+    // <lang en>The select offers discrete options; a stored custom ratio falls back in display only.</lang>
+    const ratioOptions=['1.125','1.2','1.25','1.333','1.414','1.5'];
+    const ratioSelected=ratioOptions.includes(String(ty.fontSizeScale.ratio))?String(ty.fontSizeScale.ratio):'1.25';
+    const stepLabels:Record<string,string>={linear4:t('p9.typo.step.linear4'),x2:t('p9.typo.step.x2'),x15:t('p9.typo.step.x15')};
+    // 字号阶梯样张行：档位变量名 + 按该档字号渲染的样张 + px 值。
+    // <lang zh-CN>样张字体按档位语义取族（display..h3 标题族，body/small 正文族，展示 mono 行）。</lang>
+    // <lang en>Specimen rows pick the family by step semantics (display..h3 heading, body/small body, plus a mono row).</lang>
+    const steps=FONT_SIZE_STEPS.map(step=>{
+      const px=fontSizeAt(ty,step);
+      // 样张字体按档位语义取族：body/small 正文族，其余（display..h3）标题族；等宽族在 chips 行展示。
+      // <lang zh-CN>FONT_SIZE_STEPS 无 mono 档，等宽样张由 Body/Heading/Mono chips 承担。</lang>
+      // <lang en>FONT_SIZE_STEPS has no mono step; the mono specimen lives in the Body/Heading/Mono chips.</lang>
+      const family=step==='body'||step==='small'?ty.fontFamily.body:ty.fontFamily.heading;
+      return`<div class="typo-step-row"><span class="typo-step-name">--hia-fs-${step}</span><span class="typo-step-sample" style="font-size:${px}px;font-family:${escapeHtml(family)}">HIA Aa</span><span class="typo-step-px">${px}px</span></div>`;
+    }).join('');
+    // 间距序列条：按序列最大值归一化高度（6..96px 视觉域），标签显示实际 px。
+    // <lang zh-CN>高度仅作视觉对比，不代表绝对比例。</lang>
+    // <lang en>Bar heights are visual comparisons, not absolute scale.</lang>
+    const seq=spacingSequence(sp);
+    const maxSeq=Math.max(...seq,1);
+    const spaceBars=seq.map((v,i)=>`<div class="typo-space-item"><i class="typo-space-bar" style="height:${Math.max(6,Math.min(96,Math.round(v/maxSeq*72)))}px"></i><span class="typo-space-name">${v}px</span><span class="typo-space-name">space-${i}</span></div>`).join('');
+    wrap.innerHTML=`
+      <div class="typo-controls">
+        <div class="grid-2">
+          <div class="control-group"><div class="label">${t('p9.typo.family.body')}</div><input class="input" data-typo-field="familyBody" value="${escapeHtml(ty.fontFamily.body)}" spellcheck="false"></div>
+          <div class="control-group"><div class="label">${t('p9.typo.family.heading')}</div><input class="input" data-typo-field="familyHeading" value="${escapeHtml(ty.fontFamily.heading)}" placeholder="inherit" spellcheck="false"></div>
+        </div>
+        <div class="grid-2">
+          <div class="control-group"><div class="label">${t('p9.typo.family.mono')}</div><input class="input" data-typo-field="familyMono" value="${escapeHtml(ty.fontFamily.mono)}" spellcheck="false"></div>
+          <div class="control-group"><div class="label">${t('p9.typo.fs.base')} / ${t('p9.typo.fs.ratio')}</div><div class="row" style="flex-wrap:nowrap"><input class="input" type="number" min="9" max="48" step="1" data-typo-field="fsBase" value="${ty.fontSizeScale.base}" style="width:90px;flex:none"><select class="select" data-typo-field="fsRatio" style="width:110px;flex:none">${ratioOptions.map(r=>`<option value="${r}" ${r===ratioSelected?'selected':''}>${r}</option>`).join('')}</select></div></div>
+        </div>
+        <div class="grid-2">
+          <div class="control-group"><div class="label">${t('p9.typo.lineHeight')}</div><input class="input" type="number" min="1" max="2.4" step="0.05" data-typo-field="lineHeight" value="${ty.lineHeightBody}"></div>
+          <div class="control-group"><div class="label">${t('p9.typo.space.base')}</div><input class="input" type="number" min="2" max="32" step="1" data-typo-field="spaceBase" value="${sp.base}"></div>
+        </div>
+        <div class="grid-2">
+          <div class="control-group"><div class="label">${t('p9.typo.space.step')}</div><select class="select" data-typo-field="spaceStep">${(['linear4','x2','x15']as const).map(s=>`<option value="${s}" ${s===sp.step?'selected':''}>${stepLabels[s]}</option>`).join('')}</select></div>
+          <div class="control-group"><div class="label">${t('p9.typo.space.levels')}</div><input class="input" type="number" min="1" max="12" step="1" data-typo-field="spaceLevels" value="${sp.levels}"></div>
+        </div>
+        <div class="typo-hint">${t('p9.typo.family.heading.inherit')}</div>
+      </div>
+      <div class="typo-preview">
+        <div class="typo-preview-head"><b>${t('p9.typo.preview.title')}</b><span class="small">--hia-font-* · --hia-fs-* · --hia-space-*</span></div>
+        <div class="typo-font-row">
+          <span class="typo-font-chip" style="font-family:${escapeHtml(ty.fontFamily.body)}">Body · ${escapeHtml(shortFontName(ty.fontFamily.body))}</span>
+          <span class="typo-font-chip" style="font-family:${escapeHtml(ty.fontFamily.heading)}">Heading · ${escapeHtml(shortFontName(ty.fontFamily.heading))}</span>
+          <span class="typo-font-chip" style="font-family:${escapeHtml(ty.fontFamily.mono)}">Mono · ${escapeHtml(shortFontName(ty.fontFamily.mono))}</span>
+        </div>
+        <div class="typo-steps" style="margin-top:10px">${steps}</div>
+        <div class="typo-preview-head" style="margin-top:12px"><b>${t('p9.typo.preview.spaceTitle')}</b></div>
+        <div class="typo-space-row">${spaceBars}</div>
+        <div class="typo-preview-head" style="margin-top:12px"><b>${t('p9.typo.preview.lineHeightTitle')}</b></div>
+        <div class="typo-line-height-demo">${t('p9.typo.preview.lineHeightBody')}</div>
+      </div>`;
+    // 字段变更绑定：change 事件统走 applyTypographyField 校验链。
+    // <lang zh-CN>非法输入重绘回退显示（与渐变面板策略一致）。</lang>
+    // <lang en>Invalid inputs re-render to revert display (same policy as the gradient panel).</lang>
+    all<HTMLInputElement|HTMLSelectElement>('[data-typo-field]',wrap).forEach(el=>el.addEventListener('change',()=>{
+      const field=el.dataset.typoField;
+      if(field)applyTypographyField(field,el.value);
+    }));
+  }
+  // 应用字体/间距字段：校验 → 写状态 → 持久化 → 运行时变量 → 令牌输出 → 样张/经典 mock 重绘。
+  // <lang zh-CN>heading 允许 'inherit'（回退正文字体）；数值字段钳制到安全域；非法输入重绘回退。</lang>
+  // <lang en>heading accepts 'inherit' (falls back to body family); numeric fields clamp; invalid input re-reverts.</lang>
+  function applyTypographyField(field:string,raw:string){
+    const v=raw.trim();
+    switch(field){
+      // 字体族：非空才写（清空回退默认/inherit），避免空串进入渲染。
+      // <lang zh-CN>heading 空值视为 inherit。</lang>
+      // <lang en>Empty heading means inherit; body/mono require non-empty.</lang>
+      case'familyBody':if(v)typoState.fontFamily.body=v;break;
+      case'familyHeading':typoState.fontFamily.heading=v||'inherit';break;
+      case'familyMono':if(v)typoState.fontFamily.mono=v;break;
+      case'fsBase':{const n=parseFloat(v);if(Number.isFinite(n))typoState.fontSizeScale.base=clampNum(n,typoState.fontSizeScale.base,9,48);else{renderTypography();return;}break;}
+      case'fsRatio':{const n=parseFloat(v);if(Number.isFinite(n)&&n>=1&&n<=3)typoState.fontSizeScale.ratio=n;else{renderTypography();return;}break;}
+      case'lineHeight':{const n=parseFloat(v);if(Number.isFinite(n))typoState.lineHeightBody=clampNum(n,typoState.lineHeightBody,1,2.4);else{renderTypography();return;}break;}
+      case'spaceBase':{const n=parseFloat(v);if(Number.isFinite(n))spaceState.base=clampNum(n,spaceState.base,2,32);else{renderTypography();return;}break;}
+      case'spaceStep':if(v==='linear4'||v==='x2'||v==='x15')spaceState.step=v;else{renderTypography();return;}break;
+      case'spaceLevels':{const n=parseInt(v,10);if(Number.isFinite(n))spaceState.levels=Math.round(clampNum(n,spaceState.levels,1,12));else{renderTypography();return;}break;}
+      default:return;
+    }
+    // 生效链：持久化 + 变量注入 + 令牌输出 + 样张重绘 + 经典 mock 刷新（字体族/字号实时跟随）。
+    // <lang zh-CN>attachTokensToDraft 在 boot/换预设时已共享引用，这里改 typoState 即改 draft。</lang>
+    // <lang en>References were shared at boot/preset-swap; mutating typoState mutates the draft too.</lang>
+    saveTypography();applyRuntimeTheme();updateTokenOutputs();renderTypography();renderClassicPreview();
+  }
+  // 恢复字体/间距默认：重建状态对象并重新挂回草稿（引用更换后必须 attach）。
+  // <lang zh-CN>cloneTypography/cloneSpacing 产生新对象，draft 引用需重挂。</lang>
+  // <lang en>clone helpers create new objects, so the draft references must be re-attached.</lang>
+  function resetTypography(){
+    typoState=cloneTypography(DEFAULT_TYPOGRAPHY);
+    spaceState=cloneSpacing(DEFAULT_SPACING);
+    attachTokensToDraft();
+    saveTypography();applyRuntimeTheme();updateTokenOutputs();renderTypography();renderClassicPreview();
+  }
+  // 字体栈短名：取第一个族名并去引号，用于 chip 标签展示。
+  // <lang zh-CN>仅展示用途。</lang>
+  // <lang en>Display-only.</lang>
+  function shortFontName(stack:string):string{
+    const first=stack.split(',')[0]?.trim()??stack;
+    return first.replace(/^['"]+|['"]+$/g,'');
+  }
+
   // 渲染预设列表：按搜索词/分类过滤，生成卡片并绑定应用/载入/删除。
   // <lang zh-CN>内置预设不显示删除；当前选中项加“当前”徽标；计数显示总数。</lang>
   // <lang en>Built-ins hide delete; the selected item gets a "当前" badge; count shows the total.</lang>
@@ -621,6 +961,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     if(!p)return;
     selectedPresetId=id;
     draft=draftFromPreset(p);
+    // 字体/间距令牌为操作台全局状态（既定决策）：换预设后重新挂回，保持编辑连续性。
+    // <lang zh-CN>draftFromPreset 不携带令牌字段（预设仅颜色+渐变），需显式重挂共享引用。</lang>
+    // <lang en>draftFromPreset carries no token fields (presets are colors+gradients only), so re-attach explicitly.</lang>
+    attachTokensToDraft();
     saveGradients();
     // 尝试匹配主色候选，以决定副色候选集是否置顶推荐副色。
     // <lang zh-CN>命中则 primaryMeta 非空，副色候选与预设配对一致。</lang>
@@ -695,9 +1039,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       if(!setLocale(next))return;
       applyAll();
       // 动态区域重渲染：与 boot() 的渲染序列保持一致。
-      // <lang zh-CN>复用同一渲染链，保证语言切换后所有面板与翻译同步。</lang>
-      // <lang en>Reuses the same render chain so every panel re-renders in the new locale.</lang>
+      // <lang zh-CN>复用同一渲染链，保证语言切换后所有面板与翻译同步；`W-tb-P9` 面板（字体操作台/经典
+      //   mock/TDON 占位/预览提示）一并重绘。</lang>
+      // <lang en>Reuses the same render chain so every panel re-renders in the new locale; `W-tb-P9` panels
+      //   (typography console / classic mocks / TDON placeholder / preview hint) re-render too.</lang>
       syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();
+      renderTypography();renderClassicPreview();renderTdonPreview();applyPreviewMode(previewMode);renderExportTree();
       byId<HTMLButtonElement>('langToggleBtn').textContent=t('lang.switch');
       document.documentElement.lang=next;
     });
@@ -784,6 +1131,34 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>按钮文字在“展开设置/收起设置”间切换。</lang>
     // <lang en>Button text toggles between "展开设置" / "收起设置".</lang>
     byId<HTMLButtonElement>('toggleGradientPanelBtn').addEventListener('click',e=>{const panel=byId<HTMLElement>('gradientSettingsPanel');panel.classList.toggle('collapsed');(e.currentTarget as HTMLButtonElement).textContent=panel.classList.contains('collapsed')?'展开设置':'收起设置';});
+    // 预览三类型切换（`W-tb-P9`）：面板显隐 + 子控件显隐 + 导出 Tab 同构联动。
+    // <lang zh-CN>仅接受三个合法枚举值。</lang>
+    // <lang en>Accepts only the three legal enum values.</lang>
+    all<HTMLButtonElement>('#previewTypeSwitch .seg').forEach(btn=>btn.addEventListener('click',()=>{const mode=btn.dataset.previewMode;if(mode==='default'||mode==='classic'||mode==='tdon')applyPreviewMode(mode);}));
+    // 经典目标下拉：切换 WP/Tailwind 场景并重绘 mock。
+    // <lang zh-CN>枚举校验后记录 classicTargetId。</lang>
+    // <lang en>Records classicTargetId after enum validation.</lang>
+    byId<HTMLSelectElement>('classicTargetSelect').addEventListener('change',()=>{const v=byId<HTMLSelectElement>('classicTargetSelect').value;if(v==='wordpress-child'||v==='tailwind-config')classicTargetId=v;renderClassicPreview();});
+    // TDON 源子 Tab：仅记录选择；连接按钮按规划延后（保持禁用），不提供假交互。
+    // <lang zh-CN>url/local 两源；后续接入 SSRF 管线/本地文件读取。</lang>
+    // <lang en>url/local sources; the SSRF pipeline / local-file read lands with the runtime.</lang>
+    byId<HTMLSelectElement>('tdonSourceSelect').addEventListener('change',()=>{const v=byId<HTMLSelectElement>('tdonSourceSelect').value;if(v==='url'||v==='local'){tdonSource=v;renderTdonPreview();}});
+    // 导出三 Tab：手动切换（默认/经典/自定义）。
+    // <lang zh-CN>与预览联动独立：预览切换会跟随导出 Tab，导出切换不回写预览。</lang>
+    // <lang en>Independent of preview linkage: preview follows export mode, but export clicks do not rewrite preview mode.</lang>
+    all<HTMLButtonElement>('#exportTypeTabs .tab').forEach(btn=>btn.addEventListener('click',()=>{const mode=btn.dataset.exportMode;if(mode==='default'||mode==='classic'||mode==='tdon')applyExportMode(mode);}));
+    // 导出目标切换：记录目标并重绘文件树（选中文件回落第一个）。
+    // <lang zh-CN>三个内置目标 id 与 core 注册表一致。</lang>
+    // <lang en>The three built-in target ids match the core registry.</lang>
+    byId<HTMLSelectElement>('exportTargetSelect').addEventListener('change',()=>{exportTargetId=byId<HTMLSelectElement>('exportTargetSelect').value;selectedExportFile=null;renderExportTree();});
+    // ZIP 下载：fflate 打包虚拟文件树并触发浏览器下载。
+    // <lang zh-CN>见 downloadZip；文件名由适配器 archiveName 决定。</lang>
+    // <lang en>See downloadZip; filename comes from the adapter's archiveName.</lang>
+    byId<HTMLButtonElement>('exportZipBtn').addEventListener('click',downloadZip);
+    // 字体/间距恢复默认（ADR-006）：重置令牌组并全链刷新。
+    // <lang zh-CN>见 resetTypography。</lang>
+    // <lang en>See resetTypography.</lang>
+    byId<HTMLButtonElement>('resetTypographyBtn').addEventListener('click',resetTypography);
     // 网址取色探索：提交 URL 给宿主 explorer，更新阶段状态并渲染 V2 报告。
     // <lang zh-CN>仅当存在 explorer 能力时绑定，纯浏览器不报错。</lang>
     // <lang en>Only binds when an explorer exists; plain browsers stay error-free.</lang>
@@ -816,11 +1191,19 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>parseThemeLibrary/parseGradientSettings are fault-tolerant.</lang>
     customPresets=parseThemeLibrary(platform.storage.getItem(THEME_STORAGE));
     draft.gradients=parseGradientSettings(platform.storage.getItem(GRADIENT_STORAGE));
+    // 恢复字体/间距令牌并挂回草稿（ADR-006 / `W-tb-P9`）：与渐变同一持久化先例。
+    // <lang zh-CN>必须在首轮 applyRuntimeTheme 之前，保证 --hia-font-*/fs/space 变量按存储值注入。</lang>
+    // <lang en>Must run before the first applyRuntimeTheme so --hia-font-*/fs/space vars inject from stored values.</lang>
+    loadTypography();attachTokensToDraft();
     secondaryCandidates=secondarySetForDraft(draft,primaryMeta);
     // 首轮渲染：运行时变量、表单、候选、渐变、预设、令牌、元信息。
     // <lang zh-CN>顺序保证变量注入先于依赖 var() 的预览渲染。</lang>
     // <lang en>Order ensures vars are injected before var()-dependent previews render.</lang>
     applyRuntimeTheme();syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();
+    // `W-tb-P9` 首轮渲染：字体/间距操作台、经典 mock、TDON 占位、预览类型（默认）与导出文件树。
+    // <lang zh-CN>applyPreviewMode 内部联动导出 Tab；经典 mock 依赖已注入变量，置于其后。</lang>
+    // <lang en>applyPreviewMode links the export tabs; classic mocks need injected vars, hence placed after.</lang>
+    renderTypography();renderClassicPreview();renderTdonPreview();applyPreviewMode('default');renderExportTree();
     // 探索面板初始渲染（无 explorer 时隐藏）。
     // <lang zh-CN>放在最后避免影响其他面板的首次布局。</lang>
     // <lang en>Rendered last to avoid disturbing other panels' first layout.</lang>
@@ -844,6 +1227,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     getTheme:()=>theme(),
     applyDraft(next){
       draft=createThemeDraft(next);
+      // 字体/间距令牌保持操作台全局状态（与 applyPreset 同策略）。
+      // <lang zh-CN>外部草稿不携带令牌组时以当前令牌状态接管。</lang>
+      // <lang en>External drafts without token groups adopt the current token state.</lang>
+      attachTokensToDraft();
       primaryMeta=findMatchingPrimaryCandidate(draft,primaryCandidates)||null;
       secondaryCandidates=secondarySetForDraft(draft,primaryMeta);
       syncInputs();applyRuntimeTheme();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();updateTokenOutputs();updatePreviewMeta();

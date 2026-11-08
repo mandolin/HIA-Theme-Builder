@@ -2,13 +2,15 @@ import type{RoleColor,Theme,ThemeInput,TypographyTokens,SpacingTokens}from'./typ
 import{DEFAULT_TYPOGRAPHY,DEFAULT_SPACING}from'./token/typography.js';
 
 // 字体令牌深拷贝（ADR-006）：阻断外部对象与内部状态的隐含耦合。
-// <lang zh-CN>fontFamily/scale/overrides 逐层复制。</lang>
-// <lang en>Deep-copies fontFamily/scale/overrides.</lang>
-function cloneTypography(t:TypographyTokens):TypographyTokens{const r:TypographyTokens={fontFamily:{...t.fontFamily},fontSizeScale:{...t.fontSizeScale},lineHeightBody:t.lineHeightBody};if(t.fontSizeScale.overrides)r.fontSizeScale.overrides={...t.fontSizeScale.overrides};return r;}
+// <lang zh-CN>fontFamily/scale/overrides 逐层复制；overrides 为 undefined 时不显式写入键，
+//   保证 deepEqual 语义（`W-tb-P9` 转接备忘的坑）。</lang>
+// <lang en>Deep-copies fontFamily/scale/overrides; an undefined overrides is NOT written explicitly,
+//   preserving deepEqual semantics (pitfall from the `W-tb-P9` handoff notes).</lang>
+export function cloneTypography(t:TypographyTokens):TypographyTokens{const r:TypographyTokens={fontFamily:{...t.fontFamily},fontSizeScale:{...t.fontSizeScale},lineHeightBody:t.lineHeightBody};if(t.fontSizeScale.overrides)r.fontSizeScale.overrides={...t.fontSizeScale.overrides};return r;}
 // 间距令牌深拷贝。
-// <lang zh-CN>overrides 按索引键复制。</lang>
-// <lang en>Copies overrides keyed by level index.</lang>
-function cloneSpacing(s:SpacingTokens):SpacingTokens{const r:SpacingTokens={...s};if(s.overrides)r.overrides={...s.overrides};return r;}
+// <lang zh-CN>overrides 按索引键复制；undefined 同样不显式写入。</lang>
+// <lang en>Copies overrides keyed by level index; undefined is likewise not written explicitly.</lang>
+export function cloneSpacing(s:SpacingTokens):SpacingTokens{const r:SpacingTokens={...s};if(s.overrides)r.overrides={...s.overrides};return r;}
 import{bestOnColor}from'./color/contrast.js';
 import{normalizeHex}from'./color/convert.js';
 import{tonalScale}from'./color/scale.js';

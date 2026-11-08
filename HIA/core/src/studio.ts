@@ -8,7 +8,8 @@ import type{GradientSettings,Preset,PrimaryCandidate,Theme,ThemeDraft,ThemeLibra
 import{normalizeHex}from'./color/convert.js';
 import{generateSecondarySet,type SecondaryCandidate}from'./color/harmony.js';
 import{cloneGradientSettings,GRADIENT_DEFAULTS}from'./data/gradients.js';
-import{buildTheme}from'./theme.js';
+import{DEFAULT_SPACING,DEFAULT_TYPOGRAPHY}from'./token/typography.js';
+import{buildTheme,cloneSpacing,cloneTypography}from'./theme.js';
 
 // 默认草稿：首次进入操作台时的初始主题（HIA 官方默认）。
 // <lang zh-CN>作为所有新建草稿的基础模板，渐变取自全局默认配置的深拷贝。</lang>
@@ -35,7 +36,12 @@ export function createThemeDraft(value:Partial<ThemeDraft>={}):ThemeDraft{
     // 渐变深拷贝，隔离外部对象引用。
     // <lang zh-CN>防止调用方持有引用后意外修改默认/已存配置。</lang>
     // <lang en>Prevents accidental external mutation of default/stored configs via retained references.</lang>
-    gradients:cloneGradientSettings(value.gradients||DEFAULT_THEME_DRAFT.gradients)
+    gradients:cloneGradientSettings(value.gradients||DEFAULT_THEME_DRAFT.gradients),
+    // 字体/间距令牌（ADR-006 / `W-tb-P9`）：缺省补默认并深拷贝隔离引用。
+    // <lang zh-CN>旧数据/旧调用点不携带令牌组时自动获得出厂默认，保证 buildThemeFromDraft 全量可用。</lang>
+    // <lang en>Legacy data/call sites without token groups get factory defaults; deep-cloned to isolate references.</lang>
+    typography:cloneTypography(value.typography||DEFAULT_TYPOGRAPHY),
+    spacing:cloneSpacing(value.spacing||DEFAULT_SPACING)
   };
 }
 
@@ -47,10 +53,10 @@ export function draftFromPreset(preset:Preset):ThemeDraft{
 }
 
 // 将草稿构建为完整主题，名称缺省时按主副色名自动生成。
-// <lang zh-CN>草稿到渲染/导出的桥梁，所有色阶在此计算。</lang>
-// <lang en>Bridge from draft to render/export; all scales are computed here.</lang>
+// <lang zh-CN>草稿到渲染/导出的桥梁，所有色阶在此计算；typography/spacing 随草稿透传（ADR-006）。</lang>
+// <lang en>Bridge from draft to render/export; all scales are computed here; typography/spacing pass through (ADR-006).</lang>
 export function buildThemeFromDraft(draft:ThemeDraft):Theme{
-  return buildTheme({name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category,industry:draft.industry,primary:draft.primary,secondary:draft.secondary,primaryName:draft.primaryName,secondaryName:draft.secondaryName,note:draft.note,gradients:draft.gradients});
+  return buildTheme({name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category,industry:draft.industry,primary:draft.primary,secondary:draft.secondary,primaryName:draft.primaryName,secondaryName:draft.secondaryName,note:draft.note,gradients:draft.gradients,typography:draft.typography,spacing:draft.spacing});
 }
 
 // 由草稿导出为可保存预设，id 缺失时以时间戳生成自定义 id。

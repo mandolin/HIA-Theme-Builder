@@ -75,9 +75,11 @@ export interface Preset{id:string;name:string;category:string;industry:string;pr
 // <lang en>Describes the color-harmony scheme (analogous/complementary/triadic) and target L/C for deriving a secondary.</lang>
 export interface HarmonyDef{id:string;name:string;en:string;scheme:string;offset:number;L?:number;C?:number;note:string;}
 // 主题草稿：操作台中持续编辑的工作态（基色为 HEX 字符串，未生成色阶）。
-// <lang zh-CN>操作台实时编辑态，序列化友好，是持久化与构建 Theme 的中间形态。</lang>
-// <lang en>Live editing state of the studio; serialization-friendly intermediate form before building a Theme.</lang>
-export interface ThemeDraft{id?:string;name:string;category:string;industry:string;primary:string;secondary:string;primaryName:string;secondaryName:string;note:string;gradients:GradientSettings;}
+// <lang zh-CN>操作台实时编辑态，序列化友好，是持久化与构建 Theme 的中间形态；typography/spacing 为可选
+//   令牌组（ADR-006，`W-tb-P9`），缺省由 createThemeDraft 补默认。</lang>
+// <lang en>Live editing state of the studio; serialization-friendly intermediate form before building a Theme.
+//   typography/spacing are optional token groups (ADR-006, `W-tb-P9`); createThemeDraft fills defaults.</lang>
+export interface ThemeDraft{id?:string;name:string;category:string;industry:string;primary:string;secondary:string;primaryName:string;secondaryName:string;note:string;gradients:GradientSettings;typography?:TypographyTokens;spacing?:SpacingTokens;}
 // 主题库文档：带 schema 版本的可持久化根结构。
 // <lang zh-CN>用于本地存储/导入导出的顶层文档，含 schemaVersion 以便未来迁移。</lang>
 // <lang en>Top-level document for storage / import-export, carrying schemaVersion for future migration.</lang>

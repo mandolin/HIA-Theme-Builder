@@ -8,7 +8,7 @@
 // 类型与常量导出。
 // <lang zh-CN>类型用 export type 保留编译期隔离；SHADE_KEYS 为运行时常量。</lang>
 // <lang en>Types use `export type` for compile-time isolation; SHADE_KEYS is a runtime constant.</lang>
-export type{ColorScale,RoleColor,GradientConfig,GradientSettings,Theme,ThemeInput,PrimaryCandidate,Preset,HarmonyDef,ThemeDraft,ThemeLibraryDocument,CssVariableMap,ShadeKey,ColorFamily,GradientBias}from'./types.js';
+export type{ColorScale,RoleColor,GradientConfig,GradientSettings,Theme,ThemeInput,PrimaryCandidate,Preset,HarmonyDef,ThemeDraft,ThemeLibraryDocument,CssVariableMap,ShadeKey,ColorFamily,GradientBias,TypographyTokens,SpacingTokens}from'./types.js';
 export{SHADE_KEYS}from'./types.js';
 
 // 颜色转换与数学工具（HEX/RGB/OKLab/OKLCH 互转、色域映射、线性化）。
@@ -46,7 +46,7 @@ export type{GradientRenderMode}from'./gradient/render.js';
 // 由主题输入构建完整主题。
 // <lang zh-CN>连接 color/scale 与 studio 的顶层主题工厂。</lang>
 // <lang en>Top-level theme factory linking color/scale and studio.</lang>
-export{buildTheme}from'./theme.js';
+export{buildTheme,cloneTypography,cloneSpacing}from'./theme.js';
 
 // 操作台状态层 API（草稿/预设/库读写）。
 // <lang zh-CN>web 操作台与各端 UI 的主要调用面。</lang>
@@ -58,6 +58,14 @@ export{DEFAULT_THEME_DRAFT,autoThemeName,createThemeDraft,draftFromPreset,buildT
 // <lang en>Exports consumed by design systems / mini-programs; analyzeTheme provides URL color extraction.</lang>
 export{exportThemeCss}from'./token/css.js';
 export{exportThemeJson}from'./token/json.js';
+// 导出适配器：虚拟文件树目标注册表与三个内置适配器（`ADR-005` / `W-tb-P9`）。
+// <lang zh-CN>适配器为纯函数（Theme → {path,content}[]）；ZIP 打包由各端 UI 层用 fflate 完成，core 无 IO。</lang>
+// <lang en>Adapters are pure (Theme → {path,content}[]); ZIP packaging is done per-runtime with fflate in the UI layer — core stays IO-free.</lang>
+export type{VirtualFile,ExportTarget,ExportAdapterOptions}from'./export/types.js';
+export{EXPORT_TARGETS,getExportTarget,listExportTargets}from'./export/registry.js';
+export{wordpressChildTarget}from'./export/wordpress.js';
+export{tailwindConfigTarget}from'./export/tailwind.js';
+export{injectTemplateTarget}from'./export/inject-template.js';
 export{analyzeTheme}from'./analyze/analyze.js';
 export type{ExtractSignals,ScoredColor,ExtractResult,CssVarSignal,DomColorSignal,ScreenshotColorSignal}from'./analyze/types.js';
 // V2 契约与 V1→V2 兼容层（P0 建立，P1/P3 填充真实渲染实现）。
