@@ -1144,7 +1144,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const list=filterPresets(remotePresets,inputValue('presetSearchInput'),inputValue('presetFilterSelect'));
     setText('remoteCountLabel',t('p10.remote.count',{count:String(list.length)}));
     const wrap=byId<HTMLElement>('remotePresetList');
-    wrap.innerHTML=list.map(p=>`<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(p.name)}</div><div class="small">${escapeHtml(p.category)} · ${escapeHtml(p.industry||t('未分类'))}</div></div></div><div class="preset-swatch"><i style="background:${p.primary}"></i><i style="background:${p.secondary}"></i></div><div class="small" style="margin-top:8px">${escapeHtml(p.primaryName)} / ${escapeHtml(p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(p.note||'')}</div><div class="preset-actions"><button class="btn primary" data-remote-import="${escapeHtml(p.id)}" style="padding:8px 10px">${t('p10.remote.importOne')}</button></div></div>`).join('');
+    wrap.innerHTML=list.map(p=>`<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(p.name)}</div><div class="small">${escapeHtml(p.category)} · ${escapeHtml(p.industry||t('未分类'))}</div></div></div>${presetSwatches(p)}<div class="small" style="margin-top:8px">${escapeHtml(p.primaryName)} / ${escapeHtml(p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(p.note||'')}</div><div class="preset-actions"><button class="btn primary" data-remote-import="${escapeHtml(p.id)}" style="padding:8px 10px">${t('p10.remote.importOne')}</button></div></div>`).join('');
     all<HTMLButtonElement>('[data-remote-import]',wrap).forEach(btn=>btn.addEventListener('click',()=>{
       const target=remotePresets.find(x=>x.id===btn.dataset.remoteImport);
       if(!target)return;
@@ -1216,6 +1216,16 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     setText('generateStatus',t('p10.share.restored',{name:restored.name}));
   }
 
+
+  // 预设卡色板（ADR-007 v2 机制扩充）：主色系成员（1-3）+ 辅助色条。
+  // <lang zh-CN>旧预设（无 third/auxiliary）保持两块；新预设第三色/辅助色逐块展示。</lang>
+  // <lang en>Legacy presets keep two swatches; new ones show third and auxiliary swatches.</lang>
+  function presetSwatches(p:Preset):string{
+    const blocks=[p.primary,p.secondary];
+    if(p.thirdColor)blocks.push(p.thirdColor.value);
+    const aux=(p.auxiliary??[]).map(a=>a.value);
+    return `<div class="preset-swatch">${blocks.map(c=>`<i style="background:${c}"></i>`).join('')}${aux.length?`<i class="preset-aux-group" style="background:linear-gradient(90deg,${aux.join(',')})" title="${t('p11.card.auxGroup')}"></i>`:''}</div>`;
+  }
   // 渲染预设列表：按搜索词/分类过滤，生成卡片并绑定应用/载入/删除。
   // <lang zh-CN>内置预设不显示删除；当前选中项加“当前”徽标；计数显示总数。</lang>
   // <lang en>Built-ins hide delete; the selected item gets a "当前" badge; count shows the total.</lang>
@@ -1229,7 +1239,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 逐预设生成卡片：头部（名/分类/行业 + 当前徽标）、双色板、名称、说明、操作按钮。
     // <lang zh-CN>动态文本经 escapeHtml；删除按钮仅自定义预设显示。</lang>
     // <lang en>Dynamic text escaped; delete button only for custom presets.</lang>
-    wrap.innerHTML=list.map(p=>{const bi=isBuiltinPresetId(p.id);const nm=bi?t(p.name):p.name;const ct=bi?t(p.category):p.category;const ind=bi&&p.industry?t(p.industry):p.industry;return `<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(nm)}</div><div class="small">${escapeHtml(ct)} · ${escapeHtml(ind||t('未分类'))}</div></div>${selectedPresetId===p.id?`<span class="badge">${t('当前')}</span>`:''}</div><div class="preset-swatch"><i style="background:${p.primary}"></i><i style="background:${p.secondary}"></i></div><div class="small" style="margin-top:8px">${escapeHtml(bi?t(p.primaryName):p.primaryName)} / ${escapeHtml(bi?t(p.secondaryName):p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(bi&&p.note?t(p.note):(p.note||''))}</div><div class="preset-actions"><button class="btn primary" data-apply-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('应用')}</button><button class="btn outline" data-load-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('载入操作台')}</button>${!bi?`<button class="btn ghost" data-delete-preset="${escapeHtml(p.id)}" style="padding:8px 10px;color:var(--danger)">${t('删除')}</button>`:''}</div></div>`;}).join('');
+    wrap.innerHTML=list.map(p=>{const bi=isBuiltinPresetId(p.id);const nm=bi?t(p.name):p.name;const ct=bi?t(p.category):p.category;const ind=bi&&p.industry?t(p.industry):p.industry;return `<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(nm)}</div><div class="small">${escapeHtml(ct)} · ${escapeHtml(ind||t('未分类'))}</div></div>${selectedPresetId===p.id?`<span class="badge">${t('当前')}</span>`:''}</div>${presetSwatches(p)}<div class="small" style="margin-top:8px">${escapeHtml(bi?t(p.primaryName):p.primaryName)} / ${escapeHtml(bi?t(p.secondaryName):p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(bi&&p.note?t(p.note):(p.note||''))}</div><div class="preset-actions"><button class="btn primary" data-apply-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('应用')}</button><button class="btn outline" data-load-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('载入操作台')}</button>${!bi?`<button class="btn ghost" data-delete-preset="${escapeHtml(p.id)}" style="padding:8px 10px;color:var(--danger)">${t('删除')}</button>`:''}</div></div>`;}).join('');
     // 应用按钮：直接套用预设到当前主题。
     // <lang zh-CN>改变界面与草稿，但不保存为新预设。</lang>
     // <lang en>Changes UI and draft but does not save a new preset.</lang>

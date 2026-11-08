@@ -286,3 +286,4 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .pp-mini-actions .pp-slot-del:disabled{opacity:.4;cursor:default}
 .pp-mini-actions .pp-slot-del:disabled:hover{border-color:var(--line);color:var(--danger)}
 .pp-drag-hint{font-size:10px;color:var(--muted);margin-left:4px}
+.preset-aux-group{flex:1 1 auto;min-width:28px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
