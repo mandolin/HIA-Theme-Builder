@@ -150,11 +150,12 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 
 /* W-tb-P9 字体/间距令牌操作台（ADR-006）：三族字体输入、模数字号、间距序列与实时样张。
    W-tb-P9 typography/spacing console (ADR-006): three font-family slots, modular scale, spacing sequence, live specimens. */
-/* 间距节奏（2026-11-08 维护者反馈二次调优）：4px 级微调不可辨，改为结构性整改——
-   说明压缩为单行短语（i18n p9.typo.desc），头部三段间距放大到肉眼可辨量级。
-   Spacing rhythm round 2 (maintainer feedback): 4px tweaks were imperceptible, so restructured —
-   description shortened to a one-liner (i18n p9.typo.desc) and header gaps enlarged visibly. */
-#typographyPanel .gradient-settings-head{margin-bottom:24px}
+/* 间距节奏（2026-11-08 维护者反馈三次定位）：真因是 section 漏掉 gradient-settings-panel 类
+   （16px 内边距 + 底色），头部区块贴死面板边缘。补类后与渐变面板节奏对齐（head margin 14px，
+   正文区不再套 preview-wrap，直接 typo-grid 贴 section 内边距）。
+   Root cause round 3: the section was missing the gradient-settings-panel class (16px padding +
+   tinted background), leaving the header glued to the panel edge; fixed to mirror the gradient panel. */
+#typographyPanel .gradient-settings-head{margin-bottom:14px}
 #typographyPanel .gradient-settings-head p{margin:10px 0 0;max-width:880px;line-height:1.7}
 .typo-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:18px;align-items:stretch}
 .typo-controls{display:grid;gap:16px;align-content:start}

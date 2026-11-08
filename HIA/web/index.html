@@ -46,18 +46,18 @@
     <div class="gradient-settings-grid" id="gradientSettingsGrid"></div>
   </div>
 </section>
-<section class="panel" id="typographyPanel">
+<section class="panel gradient-settings-panel" id="typographyPanel">
   <div class="gradient-settings-head">
     <div>
       <h3 data-i18n="p9.typo.title">设计令牌操作台：字体与间距</h3>
-      <p data-i18n="p9.typo.desc">字体三族（正文/标题/等宽）与模数字号比例尺、正文行高、间距基数网格实时编辑；所有修改即时注入预览区与导出产物（CSS 变量 --hia-font-* / --hia-fs-* / --hia-space-*，ADR-006）。</p>
+      <p data-i18n="p9.typo.desc">字体三族、模数字号、行高与间距网格实时编辑；修改即时作用于全部预览与导出产物（ADR-006）。</p>
     </div>
     <div class="gradient-settings-actions">
       <span class="badge">ADR-006</span>
       <button class="btn outline" id="resetTypographyBtn" style="padding:8px 10px" data-i18n="p9.typo.reset">恢复默认</button>
     </div>
   </div>
-  <div class="preview-wrap"><div id="typographyBody" class="typo-grid"></div></div>
+  <div id="typographyBody" class="typo-grid"></div>
 </section>
 <section class="panel" id="previewTypePanel">
   <div class="preview-controls">
