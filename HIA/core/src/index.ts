@@ -56,6 +56,12 @@ export{DEFAULT_THEME_DRAFT,autoThemeName,createThemeDraft,draftFromPreset,buildT
 // 令牌导出：CSS 自定义属性与 JSON 主题描述。
 // <lang zh-CN>导出物供设计系统/小程序消费；analyzeTheme 提供网址取色分析。</lang>
 // <lang en>Exports consumed by design systems / mini-programs; analyzeTheme provides URL color extraction.</lang>
+// 分享链接与主题包（`W-tb-P10` / M-THEME-BUILDER-MARKET）：分享编解码 + 远程源/文件清洗合并。
+// <lang zh-CN>均为纯函数（core 无 DOM/网络）；fetch 由 web 层完成。</lang>
+// <lang en>All pure (no DOM/network in core); fetching belongs to the web layer.</lang>
+export type{SharePayload}from'./share.js';
+export{buildSharePayload,encodeShareHash,decodeShareHash}from'./share.js';
+export{parseThemePack,mergeImportedPresets,sanitizePreset,THEME_PACK_MAX_PRESETS}from'./pack.js';
 export{exportThemeCss}from'./token/css.js';
 export{exportThemeJson}from'./token/json.js';
 // 导出适配器：虚拟文件树目标注册表与三个内置适配器（`ADR-005` / `W-tb-P9`）。
