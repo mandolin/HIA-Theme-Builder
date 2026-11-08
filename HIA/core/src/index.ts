@@ -40,6 +40,11 @@ export{luminance,contrast,bestOnColor}from'./color/contrast.js';
 export{primaryCandidates}from'./data/primaryCandidates.js';
 export{builtinPresets}from'./data/presets.js';
 export{GRADIENT_DEFS,GRADIENT_DEFAULTS,cloneGradientSettings}from'./data/gradients.js';
+// 配色宝典组合预设数据（`W-tb-P11` 数据工程）：97 色号表 + 10 形态 × 1067 组合。
+// <lang zh-CN>数据文件自动抽取自配色宝典 CHM 源（抽取脚本留档 WorkZone 会话日志）；关系规则下拉的预设数据源。</lang>
+// <lang en>Auto-extracted from the Peise Baodian CHM source; backs the relation-rule preset dropdown.</lang>
+export{BAODIAN_PALETTE,FORM_PACKS,BAODIAN_FORM_NAMES}from'./data/palette-packs.js';
+export type{BaodianCombo}from'./data/palette-packs.js';
 
 // 渐变渲染：起止色停靠点、CSS 生成、运行时变量与导出变量行。
 // <lang zh-CN>GradientRenderMode 区分运行时 var()、导出 var() 与字面量三种渲染。</lang>
