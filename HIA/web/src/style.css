@@ -276,6 +276,9 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .pp-slot-del{border:1px solid var(--line);background:#fff;border-radius:5px;padding:4px 8px;font-size:11px;color:var(--danger);cursor:pointer;font-weight:800}
 .pp-slot-del:hover{border-color:var(--danger)}
 .pp-slot-hex{font:11px ui-monospace,Consolas,monospace;color:var(--muted);margin-top:7px}
+.grid-2{min-width:0}
+.grid-2 .control-group{min-width:0}
+.grid-2 .row input.input{min-width:0;width:100%}
 .pp-member[draggable="true"]{cursor:grab}
 .pp-member[draggable="true"]:active{cursor:grabbing}
 .pp-slot[draggable="true"]{cursor:grab}
