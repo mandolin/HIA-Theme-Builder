@@ -122,6 +122,14 @@ export function createRuntimeCssVariables(theme:Theme):CssVariableMap{
   // <lang zh-CN>与主色对称。</lang>
   // <lang en>Symmetric with the primary.</lang>
   for(const[k,v]of Object.entries(theme.secondary.scale))vars[`--s${k}`]=v;
+  // 第三角色变量（ADR-007 v2）：仅三色模式存在（--third / --t{step} / --on-third）。
+  // <lang zh-CN>thirdColor 缺省 undefined 时不写入，预览与产物保持旧形态。</lang>
+  // <lang en>Omitted when thirdColor is absent, keeping previews and artifacts in legacy shape.</lang>
+  if(theme.thirdColor){
+    vars['--third']=theme.thirdColor.value;
+    vars['--on-third']=theme.thirdColor.on;
+    for(const[k,v]of Object.entries(theme.thirdColor.scale))vars[`--t${k}`]=v;
+  }
   // 字体/间距变量（ADR-006）：--hia-font-* / --hia-fs-* / --hia-space-*，供全部预览类型与导出消费。
   // <lang zh-CN>追加入 :root 内联变量集合。</lang>
   // <lang en>Merged into the :root inline var set.</lang>

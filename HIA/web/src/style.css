@@ -260,3 +260,19 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .mock-label{display:inline-flex;padding:4px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);font-size:10px;font-weight:800;margin:0 0 6px}
 
 @media(max-width:1100px){.typo-grid{grid-template-columns:1fr}.mock-wp-layout{grid-template-columns:1fr}.mock-wp-menu{display:flex;flex-wrap:wrap;padding:6px}.mock-wp-menu .mock-wp-menu-group{display:none}.mock-wp-front-grid,.mock-tw-cards{grid-template-columns:1fr}}
+
+/* W-tb-P11 配色关系面板（对稿原型 v3）：成员卡/辅助槽位样式。
+   W-tb-P11 harmony panel (prototype v3): member cards and auxiliary slot styles. */
+.pp-member{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px;width:190px}
+.pp-swatch{width:52px;height:52px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.pp-member .pp-role{font-weight:800;font-size:12px;margin-top:8px}
+.pp-member .pp-rolehex{font:11px ui-monospace,Consolas,monospace;color:var(--muted);margin-top:3px}
+.pp-member .pp-rolefrom{font-size:10px;color:var(--muted);margin-top:2px}
+.pp-info{margin-top:10px;padding:9px 11px;border-radius:8px;background:linear-gradient(90deg,var(--p50),var(--p100) 68%,var(--p50));border:1px solid color-mix(in srgb,var(--primary) 20%,var(--line));font-size:12px;line-height:1.6;color:var(--p900)}
+.pp-slot{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px}
+.pp-slot-head{display:flex;gap:10px;align-items:center}
+.pp-slot .pp-swatch{width:40px;height:40px}
+.pp-slot-name{font-weight:800;font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-slot-del{border:1px solid var(--line);background:#fff;border-radius:5px;padding:4px 8px;font-size:11px;color:var(--danger);cursor:pointer;font-weight:800}
+.pp-slot-del:hover{border-color:var(--danger)}
+.pp-slot-hex{font:11px ui-monospace,Consolas,monospace;color:var(--muted);margin-top:7px}

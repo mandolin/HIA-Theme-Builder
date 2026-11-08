@@ -12,7 +12,10 @@ import{
   fontSizeAt,FONT_SIZE_STEPS,generateSecondarySet,getExportTarget,
   gradientCss,isBuiltinPresetId,mergeImportedPresets,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,parseThemePack,
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
-  swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,generateAuxiliarySet,getHarmonyModeDef,
+  swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
+  BAODIAN_PALETTE,FORM_PACKS,SERIES_RELATION_DEFS,getSeriesRelationDef,
+  deriveSecondaryByRelation,generateAuxiliaryCandidates,
+  type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
   type WebsiteThemeAnalysisV2
@@ -820,6 +823,155 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // 字体栈短名：取第一个族名并去引号，用于 chip 标签展示。
   // <lang zh-CN>仅展示用途。</lang>
   // <lang en>Display-only.</lang>
+  // ===== `W-tb-P11` 配色关系模式与辅助色（对稿原型 v3） =====
+  // 预设应用前快照：还原用户色用（单层，重复应用覆盖）。
+  // <lang zh-CN>预设是完整配色方案（替换主位色），还原按钮恢复应用前状态。</lang>
+  // <lang en>Presets replace the whole series; the reset button restores the pre-apply snapshot.</lang>
+  let seriesSnapshot:{primary:string;primaryName:string;secondary:string;secondaryName:string;thirdColor?:RoleColor;seriesMode:SeriesMode;seriesRelation:SeriesRelationId}|null=null;
+
+  // 组装角色色：与 buildTheme 同链路（规范化/色阶/前景色）。
+  // <lang zh-CN>供第三色/辅助槽位从 hex 构建完整 RoleColor。</lang>
+  // <lang en>Builds a full RoleColor from hex for third/auxiliary slots.</lang>
+  function makeRoleColor(value:string,name:string):RoleColor{
+    const hex=normalizeHex(value);
+    return{name:name||'辅助色',value:hex,scale:tonalScale(hex),on:bestOnColor(hex).hex};
+  }
+  // 渲染配色关系面板：模式 segmented、规则/预设下拉、模式信息、成员卡、辅助槽位。
+  // <lang zh-CN>成员卡从 theme() 读（装配后的真实成员，含 single 变体/triad 第三色）；辅助槽位从草稿读。</lang>
+  // <lang en>Member cards read from theme() (assembled truth); auxiliary slots read from the draft.</lang>
+  function renderHarmony(){
+    const current=theme();
+    // 模式 segmented 高亮
+    all<HTMLButtonElement>('#seriesModeSeg [data-series-mode]').forEach(btn=>btn.classList.toggle('active',btn.dataset.seriesMode===draft.seriesMode));
+    // 规则下拉（随模式）：single 无规则（隐藏）
+    const relWrap=byId<HTMLElement>('seriesRelationWrap');
+    if(draft.seriesMode==='single'){
+      relWrap.style.display='none';
+    }else{
+      relWrap.style.display='block';
+      const relSel=byId<HTMLSelectElement>('seriesRelationSelect');
+      const modeNorm:SeriesMode=draft.seriesMode??'dual';
+      const defs=SERIES_RELATION_DEFS.filter(r=>r.modes.includes(modeNorm));
+      relSel.innerHTML=defs.map(r=>`<option value="${r.id}"${r.id===draft.seriesRelation?' selected':''}>${escapeHtml(r.name)}</option>`).join('');
+      if(!defs.some(r=>r.id===draft.seriesRelation))draft.seriesRelation=defs[0]!.id;
+    }
+    // 预设下拉（随规则，按情感分组；manual/pure 无预设隐藏）
+    const presetWrap=byId<HTMLElement>('baodianPresetWrap');
+    const pack=FORM_PACKS[draft.seriesRelation??'manual'];
+    if(!pack){presetWrap.style.display='none';}
+    else{
+      presetWrap.style.display='block';
+      const byEmotion:Record<string,{i:number;n:number[]}[]>={};
+      pack.forEach((c,i)=>(byEmotion[c.e]||(byEmotion[c.e]=[])).push({i,n:c.n}));
+      const presetSel=byId<HTMLSelectElement>('baodianPresetSelect');
+      presetSel.innerHTML=Object.entries(byEmotion).map(([e,items])=>`<optgroup label="${escapeHtml(e)}">${items.map(it=>`<option value="${it.i}">${it.n.join('+')}</option>`).join('')}</optgroup>`).join('');
+    }
+    // 模式信息
+    const relDef=getSeriesRelationDef(draft.seriesRelation??'manual',draft.seriesMode??'dual');
+    const info=byId<HTMLElement>('seriesInfo');
+    info.textContent=draft.seriesMode==='single'
+      ?t('p11.series.info.single')
+      :`${relDef.name}——${relDef.note}`;
+    // 成员卡（装配后的真实成员）
+    const members:RoleColor[]=[current.primary,current.secondary];
+    if(current.thirdColor)members.push(current.thirdColor);
+    const fromLabels=[t('p11.member.primary'),draft.seriesMode==='single'?t('p11.member.variant'):t('p11.member.secondary')];
+    if(current.thirdColor)fromLabels.push(t('p11.member.third'));
+    byId<HTMLElement>('seriesMembers').innerHTML=members.map((m,i)=>`<div class="pp-member"><div class="pp-swatch" style="background:${m.value}"></div><div class="pp-role">${escapeHtml(m.name)}</div><div class="pp-rolehex">${m.value}</div><div class="pp-rolefrom">${escapeHtml(fromLabels[i]||'')}</div></div>`).join('');
+    // 辅助槽位卡
+    const auxWrap=byId<HTMLElement>('auxSlots');
+    auxWrap.innerHTML=draft.auxiliary!.map((aux,i)=>`<div class="pp-slot"><div class="pp-slot-head"><div class="pp-swatch" style="background:${aux.value}"></div><div class="pp-slot-name">${escapeHtml(aux.name)}</div><button class="pp-slot-del" data-aux-del="${i}" type="button">${t('p11.aux.delete')}</button></div><div class="pp-slot-hex">${aux.value} · ${t('p11.aux.slotMeta',{i})}</div></div>`).join('');
+    byId<HTMLElement>('auxEmptyHint').style.display=draft.auxiliary!.length?'none':'block';
+    all<HTMLButtonElement>('[data-aux-del]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>{
+      const idx=+(btn.dataset.auxDel ?? -1);
+      if(idx>=0&&draft.auxiliary)draft.auxiliary.splice(idx,1);
+      saveAuxiliary();renderHarmony();applyRuntimeTheme();updateTokenOutputs();
+    }));
+  }
+  // 应用主色系模式：写草稿、规则重置（single 无规则；dual/triad 回默认首项）、推导填充、全链刷新。
+  // <lang zh-CN>single 模式不改草稿 secondary（装配时自动取变体，切回 dual 恢复原副色）；triad 清显式第三色（装配推导新规则值）。</lang>
+  // <lang en>single leaves the draft secondary untouched (assembly derives the variant); triad clears an explicit third so the new rule derives it.</lang>
+  function applySeriesMode(mode:SeriesMode){
+    draft.seriesMode=mode;
+    const defs=SERIES_RELATION_DEFS.filter(r=>r.modes.includes(mode));
+    draft.seriesRelation=defs[0]!.id;
+    applySeriesRelation();
+  }
+  // 应用关系规则：dual 推导值写入 secondary（可覆写）；triad 清显式第三色（装配推导）；刷新。
+  // <lang zh-CN>deriveSecondaryByRelation 返回 null（manual/pure）时不写 secondary。</lang>
+  // <lang en>Writes the derived secondary when the rule yields one; otherwise leaves the user color.</lang>
+  function applySeriesRelation(){
+    const relation:SeriesRelationId=getSeriesRelationDef(draft.seriesRelation??'manual',draft.seriesMode??'dual').id;
+    draft.seriesRelation=relation;
+    const derived=deriveSecondaryByRelation(draft.primary,relation);
+    if(derived){draft.secondary=derived;draft.secondaryName='规则推导（可覆写）';}
+    draft.thirdColor=undefined;
+    syncInputs();applyCurrentTheme(false);renderHarmony();
+  }
+  // 应用宝典预设：组合色号直用（主位=组合首色；1 色组合→single、2 色→dual、3 色→triad 自动匹配模式）。
+  // <lang zh-CN>主位色替换 draft.primary（预设是完整配色方案，定案允许）；成员名标注宝典来源。</lang>
+  // <lang en>Preset swatches replace the series members verbatim; the mode auto-matches the combo size.</lang>
+  function applyBaodianPreset(){
+    const pack=FORM_PACKS[draft.seriesRelation??'manual'];
+    if(!pack)return;
+    const combo=pack[+byId<HTMLSelectElement>('baodianPresetSelect').value];
+    if(!combo)return;
+    seriesSnapshot={primary:draft.primary,primaryName:draft.primaryName,secondary:draft.secondary,secondaryName:draft.secondaryName,thirdColor:draft.thirdColor,seriesMode:draft.seriesMode??'dual',seriesRelation:draft.seriesRelation??'manual'};
+    const hexes=combo.n.map((num:number)=>BAODIAN_PALETTE[num]||'#cccccc');
+    draft.primary=hexes[0];
+    draft.primaryName=`宝典 #${combo.n[0]}`;
+    if(hexes[1]){draft.secondary=hexes[1];draft.secondaryName=`宝典 #${combo.n[1]}`;}
+    draft.seriesMode=hexes.length===1?'single':hexes.length===2?'dual':'triad';
+    draft.thirdColor=hexes[2]?makeRoleColor(hexes[2],`宝典 #${combo.n[2]}`):undefined;
+    syncInputs();applyCurrentTheme(false);renderHarmony();
+    setText('generateStatus',t('p11.series.presetApplied',{combo:combo.n.join('+'),emotion:combo.e}));
+  }
+  // 还原用户色：恢复预设应用前快照（无快照提示）。
+  // <lang zh-CN>快照含主副色名/第三色/模式与规则。</lang>
+  // <lang en>Restores names, third color, mode and relation from the snapshot.</lang>
+  function restoreSeriesSnapshot(){
+    if(!seriesSnapshot){platform.alert(t('p11.series.noSnapshot'));return;}
+    draft.primary=seriesSnapshot.primary;
+    draft.primaryName=seriesSnapshot.primaryName;
+    draft.secondary=seriesSnapshot.secondary;
+    draft.secondaryName=seriesSnapshot.secondaryName;
+    draft.thirdColor=seriesSnapshot.thirdColor;
+    draft.seriesMode=seriesSnapshot.seriesMode??'dual';
+    draft.seriesRelation=seriesSnapshot.seriesRelation??'manual';
+    seriesSnapshot=null;
+    syncInputs();applyCurrentTheme(false);renderHarmony();
+  }
+  // 持久化辅助槽位（独立维度，随草稿存储由 presetFromDraft/serialize 承载）。
+  // <lang zh-CN>auxiliary 存于草稿；库文件/分享导出已传导。</lang>
+  // <lang en>Auxiliary lives on the draft; library/share exports already carry it.</lang>
+  function saveAuxiliary(){applyCurrentTheme(false);}
+  // 添加辅助槽位（手动）：拾色器 + 名称。
+  // <lang zh-CN>经 makeRoleColor 补全色阶与前景色。</lang>
+  // <lang en>Builds a full RoleColor from the picker hex.</lang>
+  function addAuxiliary(){
+    const hex=normalizeHex(byId<HTMLInputElement>('auxColorPicker').value);
+    if(!validHex(hex))return;
+    const name=byId<HTMLInputElement>('auxNameInput').value.trim()||`辅助 ${draft.auxiliary!.length+1}`;
+    draft.auxiliary!.push(makeRoleColor(hex,name));
+    byId<HTMLInputElement>('auxNameInput').value='';
+    saveAuxiliary();renderHarmony();
+  }
+  // 按规则生成辅助候选：加入三个强调候选（定案 3）。
+  // <lang zh-CN>generateAuxiliaryCandidates 从主色推导 ±60°/150°/-90° 候选。</lang>
+  // <lang en>Derives three accent candidates from the primary.</lang>
+  function generateAuxiliary(){
+    const cands=generateAuxiliaryCandidates(draft.primary);
+    cands.forEach(c=>draft.auxiliary!.push(makeRoleColor(c.hex,c.name)));
+    saveAuxiliary();renderHarmony();
+  }
+  // 清空辅助槽位。
+  // <lang zh-CN>显式清空（[]），不影响主色系成员。</lang>
+  // <lang en>Explicit clear; series members untouched.</lang>
+  function clearAuxiliary(){draft.auxiliary=[];saveAuxiliary();renderHarmony();}
+  // 更新关系推导链（v2）：规则/预设应用后由 applySeriesRelation/applyBaodianPreset 承载。
+  // <lang zh-CN>取色应用后同样按模式推导（single 变体自动、triad 第三色推导、辅助不动）。</lang>
+  // <lang en>Explore-apply follows the same semantics (single variant auto; triad third derived; auxiliary untouched).</lang>
+
   function shortFontName(stack:string):string{
     const first=stack.split(',')[0]?.trim()??stack;
     return first.replace(/^['"]+|['"]+$/g,'');
@@ -1108,15 +1260,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       draft.primaryName=primary.role==='brand'?'提取主色':'提取主色';
       draft.secondaryName=secondary?'提取副色':'副色';
       draft.name=inputValue('themeNameInput').trim()||autoThemeName(draft.primaryName,draft.secondaryName);
-      // 取色→辅助色推导链（ADR-007 定案 1）：模式非 auto 时按新模式主色自动填充槽位（可覆写）。
-      // <lang zh-CN>RoleColor 组装与 buildTheme 同链路（tonalScale+bestOnColor）；0 槽模式清空旧槽位。</lang>
-      // <lang en>RoleColor assembly mirrors buildTheme (tonalScale+bestOnColor); zero-slot modes clear stale slots.</lang>
-      if(draft.harmonyMode&&draft.harmonyMode!=='auto'){
-        const modeDef=getHarmonyModeDef(draft.harmonyMode);
-        const derived=generateAuxiliarySet(draft.primary,draft.harmonyMode,draft.auxiliaryModifiers);
-        draft.auxiliary=derived.map(c=>({name:c.name,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}));
-        if(modeDef.slots===0)draft.auxiliary=[];
-      }
+      // 取色推导链（ADR-007 v2）：single 模式 secondary 变体与 triad 第三色由 buildTheme 装配按规则自动推导；
+      //   辅助色独立维度不动（定案 3）。规则推导值可手动覆写（applySeriesRelation 同语义）。
+      // <lang zh-CN>取色应用后无需额外推导代码——装配语义已覆盖。</lang>
+      // <lang en>Assembly semantics cover derivation on explore-apply; no extra code needed.</lang>
       syncInputs();applyCurrentTheme(false);
       setText('generateStatus',`已应用网址取色结果（主色 ${draft.primary}${secondary?` / 副色 ${draft.secondary}`:''}）。`);
     });
@@ -1215,7 +1362,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       //   (typography console / classic mocks / TDON placeholder / preview hint) re-render too.</lang>
       syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();
       renderTypography();renderClassicPreview();renderTdonPreview();applyPreviewMode(previewMode);renderExportTree();
-      renderRemoteSources();renderRemoteList();
+      renderRemoteSources();renderRemoteList();renderHarmony();
       byId<HTMLButtonElement>('langToggleBtn').textContent=t('lang.switch');
       document.documentElement.lang=next;
     });
@@ -1396,6 +1543,16 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>见 resetTypography。</lang>
     // <lang en>See resetTypography.</lang>
     byId<HTMLButtonElement>('resetTypographyBtn').addEventListener('click',resetTypography);
+    // 配色关系面板交互（`W-tb-P11`）：模式 segmented / 规则下拉 / 预设应用 / 辅助槽位按钮。
+    // <lang zh-CN>仅接受合法枚举；辅助按钮见各 handler。</lang>
+    // <lang en>Enum-validated; see handlers for auxiliary actions.</lang>
+    all<HTMLButtonElement>('#seriesModeSeg [data-series-mode]').forEach(btn=>btn.addEventListener('click',()=>{const mode=btn.dataset.seriesMode;if(mode==='single'||mode==='dual'||mode==='triad')applySeriesMode(mode);}));
+    byId<HTMLSelectElement>('seriesRelationSelect').addEventListener('change',()=>{draft.seriesRelation=byId<HTMLSelectElement>('seriesRelationSelect').value as SeriesRelationId;applySeriesRelation();});
+    byId('presetApplyBtn').addEventListener('click',applyBaodianPreset);
+    byId('seriesResetBtn').addEventListener('click',restoreSeriesSnapshot);
+    byId('auxAddBtn').addEventListener('click',addAuxiliary);
+    byId('auxGenBtn').addEventListener('click',generateAuxiliary);
+    byId('auxClearBtn').addEventListener('click',clearAuxiliary);
     // 网址取色探索：提交 URL 给宿主 explorer，更新阶段状态并渲染 V2 报告。
     // <lang zh-CN>仅当存在 explorer 能力时绑定，纯浏览器不报错。</lang>
     // <lang en>Only binds when an explorer exists; plain browsers stay error-free.</lang>
@@ -1444,7 +1601,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // `W-tb-P10` 首轮渲染：市场子 Tab（默认本地）、远程源列表与分享 hash 还原。
     // <lang zh-CN>restoreFromHash 须在表单/渐变/候选初始化之后执行；还原后清 hash 防刷新重复。</lang>
     // <lang en>restoreFromHash runs after form/gradient/candidate init; the hash is stripped to avoid re-restore.</lang>
-    loadRemoteSources();applyMarketTab('local');restoreFromHash();
+    loadRemoteSources();applyMarketTab('local');restoreFromHash();renderHarmony();
     // 探索面板初始渲染（无 explorer 时隐藏）。
     // <lang zh-CN>放在最后避免影响其他面板的首次布局。</lang>
     // <lang en>Rendered last to avoid disturbing other panels' first layout.</lang>

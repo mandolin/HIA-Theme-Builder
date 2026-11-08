@@ -82,9 +82,9 @@ export interface SeriesRelationDef{id:SeriesRelationId;name:string;en:string;mod
 // <lang en>Angles verified against the color wheel; combo modes carry absolute hues.</lang>
 export const SERIES_RELATION_DEFS:SeriesRelationDef[]=[
   {id:'manual',name:'手动（现行）',en:'Manual',modes:['dual'],note:'第二色由用户手动选择，不自动推导。'},
-  {id:'complement',name:'互补 complement',en:'Complement',modes:['dual','triad'],secondAngle:180,thirdAngle:180,note:'色相环上全然相反的两色（180°）。'},
-  {id:'clash',name:'冲突 clash',en:'Clash',modes:['dual','triad'],secondAngle:150,thirdAngle:150,note:'主色补色的左/右侧（+150°，半冲突）。'},
-  {id:'neutral',name:'中性 neutral',en:'Neutral',modes:['dual','triad'],secondAngle:180,secondChromaScale:.4,thirdAngle:180,thirdChromaScale:.4,note:'补色低饱和化（彩度 ×0.4），中性过渡。'},
+  {id:'complement',name:'互补 complement',en:'Complement',modes:['dual'],secondAngle:180,note:'色相环上全然相反的两色（180°）。'},
+  {id:'clash',name:'冲突 clash',en:'Clash',modes:['dual'],secondAngle:150,note:'主色补色的左/右侧（+150°，半冲突）。'},
+  {id:'neutral',name:'中性 neutral',en:'Neutral',modes:['dual'],secondAngle:180,secondChromaScale:.4,note:'主色 + 其补色或黑色（彩度 ×0.4），中性过渡；宝典中另有三色形态（预设数据承载）。'},
   {id:'analogous',name:'类比 analogous',en:'Analogous',modes:['triad'],thirdFromSecondary:true,note:'主色相两侧连续色（第二/第三色分居 ±30°，按副色相位取另一侧）。'},
   {id:'split-complement',name:'分裂补色 split-complement',en:'Split Complement',modes:['triad'],thirdFromSecondary:true,note:'主色补色两侧（150°/210°），副色占一侧时第三色取另一侧。'},
   {id:'tertiary',name:'三次色三色 tertiary',en:'Tertiary Triad',modes:['triad'],thirdFromSecondary:true,note:'等距三色（120°/240°），副色占一侧时第三色取剩余等距位。'},
