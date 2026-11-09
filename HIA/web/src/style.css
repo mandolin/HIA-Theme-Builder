@@ -295,3 +295,46 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .pickers-grid .picker-group[hidden]{display:none}
 .pickers-grid .picker-group[draggable="true"]{cursor:grab}
 .pickers-grid .picker-group[draggable="true"]:active{cursor:grabbing}
+
+/* ===== W-tb-P12 配色机制 UX 重构 ===== */
+/* 消除操作台横向滚动条：网格列 minmax(0,1fr) 允许收缩、子项 min-width:0。 */
+.console-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pickers-grid,.grid-2,.grid-3{min-width:0}
+.pickers-grid .control-group,.aux-console-box .row>*{min-width:0}
+.pickers-grid .input{min-width:0}
+.pickers-grid .picker-group{position:relative}
+.picker-x{position:absolute;top:0;right:0;border:0;background:none;color:var(--danger);font-size:16px;font-weight:900;cursor:pointer;line-height:1;padding:2px 6px}
+.secondary-anchor{display:inline-block;margin-top:6px;font-size:11px;color:var(--primary);text-decoration:none;font-weight:800}
+.secondary-anchor:hover{text-decoration:underline}
+/* 成员卡：色块行内取色器 + 删除 X */
+.pp-member{position:relative}
+.pp-member .pp-swatch-input{width:52px;height:52px;border:0;border-radius:8px;padding:0;background:none;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.pp-member .pp-slot-head{justify-content:space-between}
+.pp-member-del{border:0;background:none;color:var(--danger);font-size:18px;font-weight:900;cursor:pointer;line-height:1;padding:0 6px}
+.pp-aux-color{width:40px;height:40px;border:0;border-radius:8px;padding:0;background:none;cursor:pointer;flex:none}
+/* 自定义色源 combo（带色块预览，替代原生 select） */
+.family-combo{position:relative}
+.family-combo-toggle{display:flex;align-items:center;gap:6px;width:100%;padding:7px 8px;border:1px solid #D3DFE7;border-radius:5px;background:#fff;color:var(--text);font-size:11px;cursor:pointer}
+.family-combo-toggle span{flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.family-combo-toggle .fc-caret{color:var(--muted);font-size:10px}
+.family-combo-list{position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:40;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);max-height:220px;overflow:auto}
+.family-option{display:flex;align-items:center;gap:6px;width:100%;padding:7px 10px;border:0;background:none;text-align:left;font-size:12px;color:var(--text);cursor:pointer}
+.family-option:hover{background:var(--p50)}
+.family-option.active{font-weight:900}
+/* 宝典选色弹出层（左情感菜单 + 右 CHM 色卡区） */
+.baodian-modal{position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.42);display:grid;place-items:center;padding:16px}
+.baodian-pop{width:min(880px,94vw);max-height:86vh;display:flex;flex-direction:column;background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(15,23,42,.35);overflow:hidden}
+.baodian-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--p50)}
+.baodian-head b{font-size:14px;color:var(--p900)}
+.baodian-body{display:flex;min-height:0;overflow:hidden}
+.baodian-menu{width:150px;flex:none;overflow:auto;border-right:1px solid var(--line);padding:8px;background:#FBFCFD}
+.baodian-emo{display:block;width:100%;text-align:left;border:0;background:none;border-radius:6px;padding:8px 10px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;margin-bottom:2px}
+.baodian-emo:hover{background:var(--p50)}
+.baodian-emo.active{background:var(--primary);color:var(--on-primary)}
+.baodian-right{flex:1;overflow:auto;padding:12px;min-width:0}
+.bd-form{margin-bottom:14px}
+.bd-form-title{font-size:11px;font-weight:900;color:var(--muted);margin-bottom:6px}
+.bd-combos{display:flex;flex-wrap:wrap;gap:8px}
+.bd-combo{display:grid;gap:1px;border:1px solid var(--line);border-radius:6px;overflow:hidden;padding:0;cursor:pointer;background:none}
+.bd-combo:hover{border-color:var(--primary)}
+.bd-bar{display:flex;align-items:flex-start;justify-content:flex-start;height:26px;width:70px;padding:2px 4px;font-size:10px;font-weight:700;color:rgba(0,0,0,.6);text-shadow:0 0 2px rgba(255,255,255,.4)}

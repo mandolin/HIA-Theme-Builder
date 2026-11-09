@@ -13,8 +13,8 @@ import{
   gradientCss,isBuiltinPresetId,mergeImportedPresets,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,parseThemePack,
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
-  BAODIAN_PALETTE,FORM_PACKS,SERIES_RELATION_DEFS,getSeriesRelationDef,
-  deriveSecondaryByRelation,generateAuxiliaryCandidates,
+  BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,
+  deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
@@ -142,10 +142,6 @@ function bindCombos(scope:HTMLElement):void{
   });
 }
 function escapeHtml(value:unknown):string{return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]??ch));}
-// 生成 <option> 列表字符串，current 项标记 selected，labels 提供可读文案。
-// <lang zh-CN>复用于分类、色系、方向、色阶、占比等所有下拉。</lang>
-// <lang en>Reused by every dropdown: category, family, direction, shade, bias.</lang>
-function options(values:readonly string[],current:string,labels:Record<string,string>={}){return values.map(v=>`<option value="${v}" ${v===current?'selected':''}>${labels[v]||v}</option>`).join('');}
 
 /**
  * @lang zh-CN 挂载主题操作台：初始化状态、渲染各区域、绑定事件并返回控制句柄。
@@ -514,12 +510,19 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       // 色系下拉动态扩充（ADR-007 v2 机制扩充）：主/副之外，三色模式的第三色系与辅助槽位 N 均可作色源。
       // <lang zh-CN>third 仅三色模式出现；aux 按槽位逐个列出（名称取槽位名）。</lang>
       // <lang en>third appears in triad only; aux slots are listed per slot with their names.</lang>
-      const familyOpts=()=>{const cur=theme();const opts=[['primary',t('主色系')],['secondary',t('副色系')]];
-        if(cur.thirdColor)opts.push(['third',t('p11.family.third')]);
-        cur.auxiliary.forEach((a,i)=>opts.push([`aux${i}`,`${a.name}（${t('p11.family.aux')} ${i+1}）`]));
-        return options(opts.map(o=>o[0]),cfg.family,Object.fromEntries(opts.map(o=>[o[0],o[1]])));};
-      const familyLabel=()=>cfg.family==='primary'?t('主色'):cfg.family==='secondary'?t('副色'):cfg.family==='third'?t('p11.family.thirdShort'):`${t('p11.family.auxShort')} ${cfg.family.slice(3)}`;
-      return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${t(def.label)}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>${t('启用')}</label></div><div class="gradient-config-desc">${t(def.desc)}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>${t('色系')}</span><select class="gradient-select" data-gradient-field="family">${familyOpts()}</select></label><label class="gradient-field"><span>${t('方向')}</span>${combo('direction',cfg.direction,dirOptions)}</label><label class="gradient-field"><span>${t('起始色阶')}</span><div class="gradient-shade-row">${combo('start',cfg.start,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.start)}"></i></div></label><label class="gradient-field"><span>${t('结束色阶')}</span><div class="gradient-shade-row">${combo('end',cfg.end,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.end)}"></i></div></label><label class="gradient-field" style="grid-column:1/-1"><span>${t('渐变占比')}</span>${combo('bias',biasLabel(cfg.bias),biasOptions)}</label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${familyLabel()} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>${t('交换')}</button><button class="gradient-mini-btn" data-gradient-reset>${t('重置')}</button></div></div></div>`;};
+      // 色源令牌表（主/副/第三/辅助N）：每项 [令牌, 标签, 色块hex@500]，供自定义 combo 渲染。
+      // <lang zh-CN>第三色仅三色模式出现；辅助按槽位逐个列出（1-based 标签）。</lang>
+      // <lang en>Third appears in triad only; aux slots listed 1-based with swatches.</lang>
+      const curTheme=theme();
+      const famList:[string,string,string][]=[
+        ['primary',t('p12.family.primary'),curTheme.primary.scale['500']||curTheme.primary.value],
+        ['secondary',t('p12.family.secondary'),curTheme.secondary.scale['500']||curTheme.secondary.value]];
+      if(curTheme.thirdColor)famList.push(['third',t('p11.family.thirdShort'),curTheme.thirdColor.scale['500']||curTheme.thirdColor.value]);
+      curTheme.auxiliary.forEach((a,i)=>famList.push([`aux${i}`,`${t('p11.family.aux')}${i+1}`,a.scale['500']||a.value]));
+      const curFam=famList.find(o=>o[0]===cfg.family)??famList[0]!;
+      const familyLabel=()=>curFam[1];
+      const famCombo=`<div class="family-combo" data-fc-key="${def.key}"><button type="button" class="family-combo-toggle" aria-haspopup="listbox"><i class="combo-swatch" style="background:${curFam[2]}"></i><span>${escapeHtml(curFam[1])}</span><b class="fc-caret">▾</b></button><div class="family-combo-list" role="listbox" hidden>${famList.map(o=>`<button type="button" class="family-option${o[0]===cfg.family?' active':''}" role="option" aria-selected="${o[0]===cfg.family}" data-fc-value="${o[0]}" data-fc-swatch="${o[2]}"><i class="combo-swatch" style="background:${o[2]}"></i>${escapeHtml(o[1])}</button>`).join('')}</div></div>`;
+      return`<div class="gradient-config-card" data-gradient-key="${def.key}"><div class="gradient-config-title"><strong>${t(def.label)}</strong><label><input type="checkbox" data-gradient-field="enabled" ${cfg.enabled!==false?'checked':''}>${t('启用')}</label></div><div class="gradient-config-desc">${t(def.desc)}</div><div class="gradient-config-preview" data-gradient-preview="${def.key}" style="background:${gradientCss(cfg,'runtime',theme())}"></div><div class="gradient-config-grid"><label class="gradient-field"><span>${t('色系')}</span>${famCombo}</label><label class="gradient-field"><span>${t('方向')}</span>${combo('direction',cfg.direction,dirOptions)}</label><label class="gradient-field"><span>${t('起始色阶')}</span><div class="gradient-shade-row">${combo('start',cfg.start,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.start)}"></i></div></label><label class="gradient-field"><span>${t('结束色阶')}</span><div class="gradient-shade-row">${combo('end',cfg.end,shadeOptions(cfg.family))}<i class="gradient-shade-swatch" style="background:${swatch(cfg.end)}"></i></div></label><label class="gradient-field" style="grid-column:1/-1"><span>${t('渐变占比')}</span>${combo('bias',biasLabel(cfg.bias),biasOptions)}</label></div><div class="gradient-config-footer"><span class="gradient-config-code" data-gradient-code="${def.key}">${familyLabel()} ${cfg.start} → ${cfg.end}</span><div class="gradient-mini-actions"><button class="gradient-mini-btn" data-gradient-swap>${t('交换')}</button><button class="gradient-mini-btn" data-gradient-reset>${t('重置')}</button></div></div></div>`;};
     wrap.innerHTML=GRADIENT_DEFS.map(def=>card(def)).join('');
     // 绑定字段变更：根据 data-gradient-field 写入对应配置项并刷新。
     // <lang zh-CN>非法值直接 return 不改草稿，保证类型安全。</lang>
@@ -583,6 +586,20 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>自研下拉点开常显全部预设（修复原生 datalist 前缀过滤缺陷）。</lang>
     // <lang en>Custom dropdown always shows all presets (fixes native datalist prefix filtering).</lang>
     bindCombos(wrap);
+    // 自定义色源 combo 接线（`W-tb-P12` 需求 1c：下拉带色块预览）。
+    // <lang zh-CN>点击展开/收起列表；选择色源即写回 cfg.family 并全链刷新（同字段 change 语义）。</lang>
+    // <lang en>Toggle list; pick a source writes cfg.family and refreshes (same semantics as field change).</lang>
+    all<HTMLElement>('.family-combo',wrap).forEach(fc=>{
+      const key=fc.dataset.fcKey;const list=fc.querySelector<HTMLElement>('.family-combo-list');const toggle=fc.querySelector<HTMLButtonElement>('.family-combo-toggle');
+      if(!key||!list||!toggle)return;
+      toggle.addEventListener('click',()=>{list.hidden=!list.hidden;});
+      all<HTMLButtonElement>('.family-option',list).forEach(opt=>opt.addEventListener('click',()=>{
+        const cfg=draft.gradients[key];if(!cfg)return;
+        const v=opt.dataset.fcValue;if(!v)return;
+        cfg.family=v as typeof cfg.family;
+        applyRuntimeTheme();saveGradients();updateTokenOutputs();renderGradients();
+      }));
+    });
     // 交换按钮：起止色阶互换，并翻转占比（保持视觉权重一致）。
     // <lang zh-CN>如 front75 ↔ end75，避免交换后占比与方向错位。</lang>
     // <lang en>E.g. front75 ↔ end75, avoiding weight/ direction mismatch after swap.</lang>
@@ -862,118 +879,140 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // 字体栈短名：取第一个族名并去引号，用于 chip 标签展示。
   // <lang zh-CN>仅展示用途。</lang>
   // <lang en>Display-only.</lang>
-  // ===== `W-tb-P11` 配色关系模式与辅助色（对稿原型 v3） =====
-  // 预设应用前快照：还原用户色用（单层，重复应用覆盖）。
-  // <lang zh-CN>预设是完整配色方案（替换主位色），还原按钮恢复应用前状态。</lang>
-  // <lang en>Presets replace the whole series; the reset button restores the pre-apply snapshot.</lang>
-  let seriesSnapshot:{primary:string;primaryName:string;secondary:string;secondaryName:string;thirdColor?:RoleColor;seriesMode:SeriesMode;seriesRelation:SeriesRelationId}|null=null;
+  // ===== `W-tb-P12` 配色关系区（宝典选色弹层 + 规则补色；seriesMode 改派生） =====
+
+  // 预设/组合应用前快照：还原用户色用（单层，重复应用覆盖）。
+  // <lang zh-CN>宝典选色与成员删除/重排都是整体替换，快照支撑"还原用户色"。</lang>
+  // <lang en>Snapshot supports "restore mine" for combo loads and member edits.</lang>
+  let seriesSnapshot:{primary:string;primaryName:string;secondary:string;secondaryName:string;thirdColor?:RoleColor;seriesMode?:SeriesMode;seriesRelation?:SeriesRelationId}|null=null;
+  // 宝典弹层状态：当前情感分类与情感清单（首次打开时收集）。
+  // <lang zh-CN>情感顺序按 CHM 页序（complement 形态首见序）。</lang>
+  // <lang en>Emotion order follows CHM page order (first-seen in complement pack).</lang>
+  let baodianEmotions:string[]=[];
+  let baodianEmotion='';
 
   // 组装角色色：与 buildTheme 同链路（规范化/色阶/前景色）。
-  // <lang zh-CN>供第三色/辅助槽位从 hex 构建完整 RoleColor。</lang>
+  // <lang zh-CN>供第三色与辅助槽位从 hex 构建完整 RoleColor。</lang>
   // <lang en>Builds a full RoleColor from hex for third/auxiliary slots.</lang>
   function makeRoleColor(value:string,name:string):RoleColor{
     const hex=normalizeHex(value);
     return{name:name||'辅助色',value:hex,scale:tonalScale(hex),on:bestOnColor(hex).hex};
   }
-  // 渲染配色关系面板：模式 segmented、规则/预设下拉、模式信息、成员卡、辅助槽位。
-  // <lang zh-CN>成员卡从 theme() 读（装配后的真实成员，含 single 变体/triad 第三色）；辅助槽位从草稿读。</lang>
-  // <lang en>Member cards read from theme() (assembled truth); auxiliary slots read from the draft.</lang>
-  function renderHarmony(){
-    const current=theme();
-    // 模式 segmented 高亮
-    all<HTMLButtonElement>('#seriesModeSeg [data-series-mode]').forEach(btn=>btn.classList.toggle('active',btn.dataset.seriesMode===draft.seriesMode));
-    // 规则下拉（随模式）：single 无规则（隐藏）
-    const relWrap=byId<HTMLElement>('seriesRelationWrap');
-    if(draft.seriesMode==='single'){
-      relWrap.style.display='none';
+  // 成员色列表（派生自草稿）：1=主色（single）/2=主+副（dual）/3=主+副+第三（triad）。
+  // <lang zh-CN>模式不再手动切换——成员数即模式（single 时副色为装配变体，不列成员）。</lang>
+  // <lang en>Mode derives from member count; in single mode the secondary is an assembly variant, not a member.</lang>
+  function seriesMemberList():{name:string;value:string}[]{
+    const t=theme();
+    const out:[{name:string;value:string}]=[{name:t.primary.name,value:t.primary.value}];
+    if(draft.seriesMode!=='single')out.push({name:t.secondary.name,value:t.secondary.value});
+    if(t.thirdColor)out.push({name:t.thirdColor.name,value:t.thirdColor.value});
+    return out;
+  }
+  // 成员列表写回草稿并重算派生模式（不足三位清第三色；单成员置 single）。
+  // <lang zh-CN>写回后走全链刷新（syncInputs→applyCurrentTheme→渲染）。</lang>
+  // <lang en>After commit the full chain refreshes.</lang>
+  function commitSeriesMembers(list:{name:string;value:string}[]){
+    if(!list.length)return;
+    if(list.length===1){draft.seriesMode='single';draft.primary=normalizeHex(list[0]!.value);if(list[0]!.name)draft.primaryName=list[0]!.name;draft.thirdColor=undefined;}
+    else if(list.length===2){draft.seriesMode='dual';draft.primary=normalizeHex(list[0]!.value);if(list[0]!.name)draft.primaryName=list[0]!.name;draft.secondary=normalizeHex(list[1]!.value);if(list[1]!.name)draft.secondaryName=list[1]!.name;draft.thirdColor=undefined;}
+    else{draft.seriesMode='triad';draft.primary=normalizeHex(list[0]!.value);if(list[0]!.name)draft.primaryName=list[0]!.name;draft.secondary=normalizeHex(list[1]!.value);if(list[1]!.name)draft.secondaryName=list[1]!.name;draft.thirdColor=makeRoleColor(list[2]!.value,list[2]!.name||'第三色');}
+    syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();
+  }
+  // 规则可用性判定：可补副色=有 secondAngle 或 pure（变体）；可补第三色=有 thirdFromSecondary/thirdCombo 或 pure。
+  // <lang zh-CN>manual 不可补（排除在下拉外）；不适用按钮置灰（维护者确认：置灰不适用）。</lang>
+  // <lang en>manual excluded; inapplicable buttons are disabled.</lang>
+  function ruleDef(id:string){return SERIES_RELATION_DEFS.find(r=>r.id===id)!;}
+  function ruleCanSecondary(id:string):boolean{const d=ruleDef(id);return d.secondAngle!==undefined||d.id==='pure';}
+  function ruleCanThird(id:string):boolean{const d=ruleDef(id);return !!d.thirdFromSecondary||!!d.thirdCombo||d.id==='pure';}
+  // 规则补色（补副色/补第三色）：pure 走主色明暗变体（700/300 档），其余走 core 推导。
+  // <lang zh-CN>结果写入对应成员（名字标注规则来源，可再手动改）。</lang>
+  // <lang en>Result fills the member slot with a rule-tagged name; manually editable afterwards.</lang>
+  function completeSeriesMember(which:'secondary'|'third',ruleOverride?:string){
+    const rule=ruleOverride??byId<HTMLSelectElement>('seriesRuleSelect').value;
+    const d=ruleDef(rule);
+    if(which==='secondary'){
+      if(!ruleCanSecondary(rule)){platform.alert(t('p12.rule.noSecondary'));return;}
+      const hex=d.id==='pure'?tonalScale(draft.primary)['700']!:(deriveSecondaryByRelation(draft.primary,rule as SeriesRelationId)??'');
+      if(!hex)return;
+      draft.secondary=normalizeHex(hex);
+      draft.secondaryName=`${t(d.name)} 推导`;
+      if(draft.seriesMode==='single')draft.seriesMode='dual';
     }else{
-      relWrap.style.display='block';
-      const relSel=byId<HTMLSelectElement>('seriesRelationSelect');
-      const modeNorm:SeriesMode=draft.seriesMode??'dual';
-      const defs=SERIES_RELATION_DEFS.filter(r=>r.modes.includes(modeNorm));
-      relSel.innerHTML=defs.map(r=>`<option value="${r.id}"${r.id===draft.seriesRelation?' selected':''}>${escapeHtml(r.name)}</option>`).join('');
-      if(!defs.some(r=>r.id===draft.seriesRelation))draft.seriesRelation=defs[0]!.id;
+      if(!ruleCanThird(rule)){platform.alert(t('p12.rule.noThird'));return;}
+      const hex=d.id==='pure'?(tonalScale(draft.primary)['300']??draft.secondary):(deriveThirdByRelation(draft.primary,draft.secondary,rule as SeriesRelationId)??'');
+      if(!hex)return;
+      draft.thirdColor=makeRoleColor(hex,`${t(d.name)} 第三色`);
+      draft.seriesMode='triad';
     }
-    // 预设下拉（随规则，按情感分组；manual/pure 无预设隐藏）
-    const presetWrap=byId<HTMLElement>('baodianPresetWrap');
-    const pack=FORM_PACKS[draft.seriesRelation??'manual'];
-    if(!pack){presetWrap.style.display='none';}
-    else{
-      presetWrap.style.display='block';
-      const byEmotion:Record<string,{i:number;n:number[]}[]>={};
-      pack.forEach((c,i)=>(byEmotion[c.e]||(byEmotion[c.e]=[])).push({i,n:c.n}));
-      const presetSel=byId<HTMLSelectElement>('baodianPresetSelect');
-      presetSel.innerHTML=Object.entries(byEmotion).map(([e,items])=>`<optgroup label="${escapeHtml(e)}">${items.map(it=>`<option value="${it.i}">${it.n.join('+')}</option>`).join('')}</optgroup>`).join('');
-    }
-    // 模式信息
-    const relDef=getSeriesRelationDef(draft.seriesRelation??'manual',draft.seriesMode??'dual');
-    const info=byId<HTMLElement>('seriesInfo');
-    info.textContent=draft.seriesMode==='single'
-      ?t('p11.series.info.single')
-      :`${relDef.name}——${relDef.note}`;
-    // 成员卡（装配后的真实成员）——可拖拽互换（维护者要求：主色系成员调整顺序/互换，最好拖动）。
-    // <lang zh-CN>拖 A 到 B 位 = 两角色色值互换（角色语义不变，颜色对调）；single 模式不拖（单成员无意义）。</lang>
-    // <lang en>Dragging A onto B swaps the two roles' colors; single mode has nothing to swap.</lang>
-    const members:RoleColor[]=[current.primary,current.secondary];
-    if(current.thirdColor)members.push(current.thirdColor);
-    const fromLabels=[t('p11.member.primary'),draft.seriesMode==='single'?t('p11.member.variant'):t('p11.member.secondary')];
-    if(current.thirdColor)fromLabels.push(t('p11.member.third'));
-    byId<HTMLElement>('seriesMembers').innerHTML=members.map((m,i)=>`<div class="pp-member" draggable="true" data-member-idx="${i}"><div class="pp-swatch" style="background:${m.value}"></div><div class="pp-role">${escapeHtml(m.name)}</div><div class="pp-rolehex">${m.value}</div><div class="pp-rolefrom">${escapeHtml(fromLabels[i]||'')}${members.length>1?' · ⬌':''}</div></div>`).join('');
-    // 拖拽互换写回：角色位交换（primary/secondary/thirdColor 按新序重挂）。
-    // <lang zh-CN>swap 语义保角色名不变（主色位永远是"主色"），仅颜色对调。</lang>
-    // <lang en>Swap keeps role names in place; only the colors trade positions.</lang>
-    const memberWrap=byId<HTMLElement>('seriesMembers');
-    let dragSrc=-1;
-    memberWrap.querySelectorAll<HTMLElement>('[data-member-idx]').forEach(card=>{
-      card.addEventListener('dragstart',e=>{dragSrc=+(card.dataset.memberIdx||-1);e.dataTransfer?.setData('text/plain',String(dragSrc));});
-      card.addEventListener('dragover',e=>{e.preventDefault();card.style.outline='2px dashed var(--p400)';});
-      card.addEventListener('dragleave',()=>{card.style.outline='';});
-      card.addEventListener('drop',e=>{
-        e.preventDefault();card.style.outline='';
-        const dst=+(card.dataset.memberIdx||-1);
-        if(dragSrc<0||dst===dragSrc||dragSrc>=members.length)return;
-        const colors=members.map(m=>({name:m.name,value:m.value}));
-        const tmp=colors[dragSrc]!;colors[dragSrc]=colors[dst]!;colors[dst]=tmp;
-        draft.primary=colors[0]!.value;draft.primaryName=colors[0]!.name;
-        draft.secondary=colors[1]!.value;draft.secondaryName=colors[1]!.name;
-        draft.thirdColor=colors[2]?{name:colors[2].name,value:colors[2].value,scale:tonalScale(colors[2].value),on:bestOnColor(colors[2].value).hex}:undefined;
-        syncInputs();applyCurrentTheme(false);renderHarmony();
-      });
-      card.addEventListener('dragend',()=>{card.style.outline='';});
-    });
-    // 辅助槽位卡（维护者要求：显示 + 编辑 + 重新排列，最好拖动）：
-    //   行内编辑（color/名称 input，change 即更新）+ 拖拽重排 + 上移/下移按钮 + 删除。
+    syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();
+  }
+  // 渲染配色关系面板：规则下拉/按钮可用性/派生模式信息/成员卡/辅助槽位。
+  // <lang zh-CN>每次主体色或模式变化后调用；成员卡色块=行内取色器（点击重选色），X 删除（仅剩 1 色隐藏）。</lang>
+  // <lang en>Re-rendered on any series change; member swatches are inline color inputs, X removes (hidden at one member).</lang>
+  function renderHarmony(){
+    // 规则补色下拉：九规则（除 manual）；当前值非法时归 complement。
+    const relSel=byId<HTMLSelectElement>('seriesRuleSelect');
+    const defs=SERIES_RELATION_DEFS.filter(r=>r.id!=='manual');
+    if(!defs.some(r=>r.id===draft.seriesRelation))draft.seriesRelation='complement';
+    const relation:SeriesRelationId=draft.seriesRelation??'complement';
+    relSel.innerHTML=defs.map(r=>`<option value="${r.id}"${r.id===relation?' selected':''}>${escapeHtml(t(r.name))}</option>`).join('');
+    byId<HTMLButtonElement>('completeSecondaryBtn').disabled=!ruleCanSecondary(relation);
+    byId<HTMLButtonElement>('completeThirdBtn').disabled=!ruleCanThird(relation);
+    // 第三色自动匹配规则下拉：三色可用规则。
+    const matchSel=byId<HTMLSelectElement>('thirdMatchRule');
+    const thirdDefs=defs.filter(r=>ruleCanThird(r.id));
+    matchSel.innerHTML=thirdDefs.map(r=>`<option value="${r.id}">${escapeHtml(t(r.name))}</option>`).join('');
+    // 派生模式信息。
+    const members=seriesMemberList();
+    byId<HTMLElement>('seriesInfo').textContent=members.length===1?t('p12.mode.single'):members.length===2?t('p12.mode.dual'):t('p12.mode.triad');
+    // 成员卡（色块行内取色 + X 删除）。
+    const roleLabels=[t('p11.member.primary'),t('p11.member.secondary'),t('p11.member.third')];
+    byId<HTMLElement>('seriesMembers').innerHTML=members.map((m,i)=>`<div class="pp-member" data-member-idx="${i}"><div class="pp-slot-head"><input type="color" class="pp-swatch-input" value="${m.value}" data-member-recolor="${i}" aria-label="${escapeHtml(t('p12.member.recolorAria'))}">${members.length>1?`<button class="pp-member-del" data-member-del="${i}" type="button" aria-label="${escapeHtml(t('p12.member.delAria'))}">×</button>`:''}</div><div class="pp-role">${escapeHtml(m.name)}</div><div class="pp-rolehex">${m.value}</div><div class="pp-rolefrom">${escapeHtml(roleLabels[i]||'')}</div></div>`).join('');
+    all<HTMLInputElement>('[data-member-recolor]').forEach(inp=>inp.addEventListener('change',()=>{
+      const list=seriesMemberList();const idx=+(inp.dataset.memberRecolor??-1);
+      if(idx<0||!list[idx])return;
+      list[idx]!.value=normalizeHex(inp.value);
+      commitSeriesMembers(list);
+    }));
+    all<HTMLButtonElement>('[data-member-del]').forEach(btn=>btn.addEventListener('click',()=>{
+      const list=seriesMemberList();const idx=+(btn.dataset.memberDel??-1);
+      if(idx<=0||list.length<=1)return;
+      list.splice(idx,1);
+      commitSeriesMembers(list);
+    }));
+    // 辅助槽位（显示+编辑+重排）：行内编辑（color/名称）+ 拖拽重排 + 上移/下移按钮 + 删除。
     // <lang zh-CN>编辑经 makeRoleColor 重建（色阶/前景自动）；重排影响 aux<N> token 编号。</lang>
     // <lang en>Inline edits rebuild via makeRoleColor; reorder renumbers aux<N> tokens.</lang>
     const auxWrap=byId<HTMLElement>('auxSlots');
-    auxWrap.innerHTML=draft.auxiliary!.map((aux,i)=>`<div class="pp-slot" draggable="true" data-aux-idx="${i}"><div class="pp-slot-head"><input type="color" class="pp-swatch" value="${aux.value}" data-aux-color="${i}" data-tooltip="编辑颜色" aria-label="${t('p11.aux.colorAria',{i})}"><input class="pp-slot-name" value="${escapeHtml(aux.name)}" data-aux-name="${i}" aria-label="${t('p11.aux.nameAria',{i})}"><button class="pp-slot-del" data-aux-del="${i}" type="button">${t('p11.aux.delete')}</button></div><div class="pp-slot-hex">${aux.value} · ${t('p11.aux.slotMeta',{i})}</div><div class="pp-mini-actions"><button class="pp-slot-del" data-aux-up="${i}" type="button" ${i===0?'disabled':''}>↑</button><button class="pp-slot-del" data-aux-down="${i}" type="button" ${i===draft.auxiliary!.length-1?'disabled':''}>↓</button><span class="pp-drag-hint">⠿ ${t('p11.aux.dragHint')}</span></div></div>`).join('');
+    auxWrap.innerHTML=draft.auxiliary!.map((aux,i)=>`<div class="pp-slot" draggable="true" data-aux-idx="${i}"><div class="pp-slot-head"><input type="color" class="pp-aux-color" value="${aux.value}" data-aux-color="${i}" data-tooltip="${escapeHtml(t('p11.aux.colorAria',{i}))}" aria-label="${escapeHtml(t('p11.aux.colorAria',{i}))}"><input class="pp-slot-name" value="${escapeHtml(aux.name)}" data-aux-name="${i}" aria-label="${escapeHtml(t('p11.aux.nameAria',{i}))}"><button class="pp-slot-del" data-aux-del="${i}" type="button">${t('p11.aux.delete')}</button></div><div class="pp-slot-hex">${aux.value} · ${t('p11.aux.slotMeta',{i})}</div><div class="pp-mini-actions"><button class="pp-slot-del" data-aux-up="${i}" type="button" ${i===0?'disabled':''}>↑</button><button class="pp-slot-del" data-aux-down="${i}" type="button" ${i===draft.auxiliary!.length-1?'disabled':''}>↓</button><span class="pp-drag-hint">⠿ ${t('p11.aux.dragHint')}</span></div></div>`).join('');
     byId<HTMLElement>('auxEmptyHint').style.display=draft.auxiliary!.length?'none':'block';
-    // 行内编辑：颜色/名称/修饰语
+    // 行内编辑：颜色/名称。
     all<HTMLInputElement>('[data-aux-color]',auxWrap).forEach(inp=>inp.addEventListener('change',()=>{
-      const i=+(inp.dataset.auxColor||-1);const item=draft.auxiliary![i]!;
+      const i=+(inp.dataset.auxColor||-1);const item=draft.auxiliary![i];
+      if(!item)return;
       const rebuilt=makeRoleColor(inp.value,item.name);draft.auxiliary![i]=rebuilt;
-      saveAuxiliary();renderHarmony();applyRuntimeTheme();updateTokenOutputs();
+      saveAuxiliary();renderHarmony();renderGradients();applyRuntimeTheme();updateTokenOutputs();
     }));
     all<HTMLInputElement>('[data-aux-name]',auxWrap).forEach(inp=>inp.addEventListener('change',()=>{
-      const i=+(inp.dataset.auxName||-1);draft.auxiliary![i]!.name=inp.value.trim()||`辅助 ${i+1}`;
+      const i=+(inp.dataset.auxName||-1);if(draft.auxiliary![i])draft.auxiliary![i]!.name=inp.value.trim()||`辅助 ${i+1}`;
       saveAuxiliary();renderHarmony();
     }));
-    // 删除
+    // 删除。
     all<HTMLButtonElement>('[data-aux-del]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>{
       const idx=+(btn.dataset.auxDel ?? -1);
       if(idx>=0&&draft.auxiliary)draft.auxiliary.splice(idx,1);
       saveAuxiliary();renderHarmony();renderGradients();applyRuntimeTheme();updateTokenOutputs();
     }));
-    // 上移/下移
+    // 上移/下移。
     const moveAux=(from:number,to:number)=>{
       if(to<0||to>=draft.auxiliary!.length)return;
       const item=draft.auxiliary!.splice(from,1)[0]!;
       draft.auxiliary!.splice(to,0,item);
-      saveAuxiliary();renderHarmony();applyRuntimeTheme();updateTokenOutputs();
+      saveAuxiliary();renderHarmony();renderGradients();applyRuntimeTheme();updateTokenOutputs();
     };
     all<HTMLButtonElement>('[data-aux-up]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>moveAux(+(btn.dataset.auxUp||0),+(btn.dataset.auxUp||0)-1)));
     all<HTMLButtonElement>('[data-aux-down]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>moveAux(+(btn.dataset.auxDown||0),+(btn.dataset.auxDown||0)+1)));
-    // 拖拽重排（move 语义：拖到目标位插入）
+    // 拖拽重排（move 语义：拖到目标位插入）。
     let auxDragSrc=-1;
     auxWrap.querySelectorAll<HTMLElement>('[data-aux-idx]').forEach(card=>{
       card.addEventListener('dragstart',e=>{auxDragSrc=+(card.dataset.auxIdx||-1);e.dataTransfer?.setData('text/plain',String(auxDragSrc));});
@@ -988,58 +1027,76 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       card.addEventListener('dragend',()=>{card.style.outline='';});
     });
   }
-  // 应用主色系模式：写草稿、规则重置（single 无规则；dual/triad 回默认首项）、推导填充、全链刷新。
-  // <lang zh-CN>single 模式不改草稿 secondary（装配时自动取变体，切回 dual 恢复原副色）；triad 清显式第三色（装配推导新规则值）。</lang>
-  // <lang en>single leaves the draft secondary untouched (assembly derives the variant); triad clears an explicit third so the new rule derives it.</lang>
-  function applySeriesMode(mode:SeriesMode){
-    draft.seriesMode=mode;
-    const defs=SERIES_RELATION_DEFS.filter(r=>r.modes.includes(mode));
-    draft.seriesRelation=defs[0]!.id;
-    applySeriesRelation();renderGradients();
+  // 打开宝典弹层：收集情感（complement 首见序）→ 渲染菜单与 CHM 色卡区。
+  // <lang zh-CN>右侧按十形态分区展示所选情感的全部组合（色条=色号底+编号，照搬 CHM 版式）。</lang>
+  // <lang en>Right panel groups the selected emotion's combos by all ten forms, CHM-style swatch stacks.</lang>
+  function openBaodianModal(){
+    if(!baodianEmotions.length){
+      // 情感清单：complement 形态页序优先，其余形态并集补全（保 24 类完整）。
+      // <lang zh-CN>complement 缺某情感时（该页无补色组合）由其余形态补齐。</lang>
+      // <lang en>Complement page order first; remaining forms union to full 24.</lang>
+      const seen=new Set<string>();
+      for(const c of FORM_PACKS['complement']??[])seen.add(c.e);
+      for(const combos of Object.values(FORM_PACKS))for(const c of combos)seen.add(c.e);
+      baodianEmotions=[...seen];
+    }
+    if(!baodianEmotion||!baodianEmotions.includes(baodianEmotion))baodianEmotion=baodianEmotions[0]||'';
+    renderBaodianMenu();renderBaodianRight();
+    byId<HTMLElement>('baodianModal').hidden=false;
   }
-  // 应用关系规则：dual 推导值写入 secondary（可覆写）；triad 清显式第三色（装配推导）；刷新。
-  // <lang zh-CN>deriveSecondaryByRelation 返回 null（manual/pure）时不写 secondary。</lang>
-  // <lang en>Writes the derived secondary when the rule yields one; otherwise leaves the user color.</lang>
-  function applySeriesRelation(){
-    const relation:SeriesRelationId=getSeriesRelationDef(draft.seriesRelation??'manual',draft.seriesMode??'dual').id;
-    draft.seriesRelation=relation;
-    const derived=deriveSecondaryByRelation(draft.primary,relation);
-    if(derived){draft.secondary=derived;draft.secondaryName='规则推导（可覆写）';}
-    draft.thirdColor=undefined;
-    syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();
+  function renderBaodianMenu(){
+    const menu=byId<HTMLElement>('baodianMenu');
+    menu.innerHTML=baodianEmotions.map(e=>`<button type="button" class="baodian-emo${e===baodianEmotion?' active':''}" data-emo="${escapeHtml(e)}">${escapeHtml(e)}</button>`).join('');
+    all<HTMLButtonElement>('[data-emo]',menu).forEach(btn=>btn.addEventListener('click',()=>{baodianEmotion=btn.dataset.emo||baodianEmotion;renderBaodianMenu();renderBaodianRight();}));
   }
-  // 应用宝典预设：组合色号直用（主位=组合首色；1 色组合→single、2 色→dual、3 色→triad 自动匹配模式）。
-  // <lang zh-CN>主位色替换 draft.primary（预设是完整配色方案，定案允许）；成员名标注宝典来源。</lang>
-  // <lang en>Preset swatches replace the series members verbatim; the mode auto-matches the combo size.</lang>
-  function applyBaodianPreset(){
-    const pack=FORM_PACKS[draft.seriesRelation??'manual'];
-    if(!pack)return;
-    const combo=pack[+byId<HTMLSelectElement>('baodianPresetSelect').value];
-    if(!combo)return;
-    seriesSnapshot={primary:draft.primary,primaryName:draft.primaryName,secondary:draft.secondary,secondaryName:draft.secondaryName,thirdColor:draft.thirdColor,seriesMode:draft.seriesMode??'dual',seriesRelation:draft.seriesRelation??'manual'};
-    const hexes=combo.n.map((num:number)=>BAODIAN_PALETTE[num]||'#cccccc');
-    draft.primary=hexes[0];
-    draft.primaryName=`宝典 #${combo.n[0]}`;
-    if(hexes[1]){draft.secondary=hexes[1];draft.secondaryName=`宝典 #${combo.n[1]}`;}
-    draft.seriesMode=hexes.length===1?'single':hexes.length===2?'dual':'triad';
-    draft.thirdColor=hexes[2]?makeRoleColor(hexes[2],`宝典 #${combo.n[2]}`):undefined;
-    syncInputs();applyCurrentTheme(false);renderHarmony();
-    setText('generateStatus',t('p11.series.presetApplied',{combo:combo.n.join('+'),emotion:combo.e}));
+  function renderBaodianRight(){
+    const right=byId<HTMLElement>('baodianRight');
+    // 形态中文标题映射（BAODIAN_FORM_NAMES 反查）。
+    const titleOf=(id:string)=>Object.entries(BAODIAN_FORM_NAMES).find(([,v])=>v===id)?.[0]||id;
+    let html='';
+    for(const[formId,combos]of Object.entries(FORM_PACKS)){
+      const mine=combos.filter(c=>c.e===baodianEmotion);
+      if(!mine.length)continue;
+      html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(titleOf(formId))} · ${mine.length}</div><div class="bd-combos">`;
+      for(const c of mine){
+        html+=`<button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join('+'))}">`+c.n.map(num=>`<span class="bd-bar" style="background:${BAODIAN_PALETTE[num]||'#ccc'}">${num}</span>`).join('')+`</button>`;
+      }
+      html+='</div></div>';
+    }
+    right.innerHTML=html||`<div class="small">${t('p12.baodian.empty')}</div>`;
+    all<HTMLButtonElement>('.bd-combo',right).forEach(btn=>btn.addEventListener('click',()=>{
+      const nums=(btn.dataset.nums||'').split(',').filter(Boolean).map(Number);
+      if(nums.length)applyBaodianCombo(nums);
+    }));
   }
-  // 还原用户色：恢复预设应用前快照（无快照提示）。
-  // <lang zh-CN>快照含主副色名/第三色/模式与规则。</lang>
-  // <lang en>Restores names, third color, mode and relation from the snapshot.</lang>
+  // 应用宝典组合：记录快照 → 成员=组合色号（名字带 #编号）→ 模式派生成员数 → 关闭弹层。
+  // <lang zh-CN>1 色组合=single；2=dual；3=triad（主副/第三顺序=组合顺序）。</lang>
+  // <lang en>Combo size maps to mode; member order follows the combo order.</lang>
+  function applyBaodianCombo(nums:number[]){
+    seriesSnapshot={primary:draft.primary,primaryName:draft.primaryName,secondary:draft.secondary,secondaryName:draft.secondaryName,thirdColor:draft.thirdColor,seriesMode:draft.seriesMode,seriesRelation:draft.seriesRelation};
+    const list=nums.map(num=>({name:`宝典 #${num}`,value:BAODIAN_PALETTE[num]||'#cccccc'}));
+    byId<HTMLElement>('baodianModal').hidden=true;
+    commitSeriesMembers(list);
+    setText('generateStatus',t('p12.baodian.applied',{combo:nums.join('+')}));
+  }
+  // 还原快照：恢复成员与模式。
+  // <lang zh-CN>还原后清快照，避免重复回退。</lang>
+  // <lang en>Snapshot cleared after restore to avoid repeat rollback.</lang>
   function restoreSeriesSnapshot(){
     if(!seriesSnapshot){platform.alert(t('p11.series.noSnapshot'));return;}
-    draft.primary=seriesSnapshot.primary;
-    draft.primaryName=seriesSnapshot.primaryName;
-    draft.secondary=seriesSnapshot.secondary;
-    draft.secondaryName=seriesSnapshot.secondaryName;
-    draft.thirdColor=seriesSnapshot.thirdColor;
-    draft.seriesMode=seriesSnapshot.seriesMode??'dual';
-    draft.seriesRelation=seriesSnapshot.seriesRelation??'manual';
+    // 局部捕获：快照非空已由上方判空保证，断言以通过严格空检查。
+    // <lang zh-CN>快照字段在写入时均为已定义值。</lang>
+    // <lang en>Snapshot fields are all defined when written.</lang>
+    const snap=seriesSnapshot;
+    draft.primary=snap.primary;
+    draft.primaryName=snap.primaryName;
+    draft.secondary=snap.secondary;
+    draft.secondaryName=snap.secondaryName;
+    draft.thirdColor=snap.thirdColor;
+    draft.seriesMode=snap.seriesMode??'dual';
+    draft.seriesRelation=snap.seriesRelation??'complement';
     seriesSnapshot=null;
-    syncInputs();applyCurrentTheme(false);renderHarmony();
+    syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();
   }
   // 持久化辅助槽位（独立维度，随草稿存储由 presetFromDraft/serialize 承载）。
   // <lang zh-CN>auxiliary 存于草稿；库文件/分享导出已传导。</lang>
@@ -1068,7 +1125,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>显式清空（[]），不影响主色系成员。</lang>
   // <lang en>Explicit clear; series members untouched.</lang>
   function clearAuxiliary(){draft.auxiliary=[];saveAuxiliary();renderHarmony();renderGradients();}
-  // 更新关系推导链（v2）：规则/预设应用后由 applySeriesRelation/applyBaodianPreset 承载。
+  // 关系推导链（v2）：补副/补第三与宝典应用均由 completeSeriesMember/applyBaodianCombo 承载。
   // <lang zh-CN>取色应用后同样按模式推导（single 变体自动、triad 第三色推导、辅助不动）。</lang>
   // <lang en>Explore-apply follows the same semantics (single variant auto; triad third derived; auxiliary untouched).</lang>
 
@@ -1371,7 +1428,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       draft.secondaryName=secondary?'提取副色':'副色';
       draft.name=inputValue('themeNameInput').trim()||autoThemeName(draft.primaryName,draft.secondaryName);
       // 取色推导链（ADR-007 v2）：single 模式 secondary 变体与 triad 第三色由 buildTheme 装配按规则自动推导；
-      //   辅助色独立维度不动（定案 3）。规则推导值可手动覆写（applySeriesRelation 同语义）。
+      //   辅助色独立维度不动（定案 3）。规则推导值可手动覆写（completeSeriesMember 同语义）。
       // <lang zh-CN>取色应用后无需额外推导代码——装配语义已覆盖。</lang>
       // <lang en>Assembly semantics cover derivation on explore-apply; no extra code needed.</lang>
       syncInputs();applyCurrentTheme(false);
@@ -1488,7 +1545,18 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         preferred=primaryMeta&&normalizeHex(primaryMeta.hex)===hex?{hex:primaryMeta.secondaryHex,name:primaryMeta.secondaryName,scheme:primaryMeta.secondaryScheme}:null;
       secondaryCandidates=generateSecondarySet(hex,preferred);
       renderSecondaryCandidates();
-      setText('generateStatus',`已针对 ${name} ${hex} 生成 ${secondaryCandidates.length} 个副色候选。`);
+      // 自动加载首位"推导候选"到操作台（维护者定案：preferred 预设置顶项除外）。
+      // <lang zh-CN>加载后同步输入并应用主题（不改名），状态行说明自动加载结果。</lang>
+      // <lang en>The first derived candidate (not the pinned preferred) auto-loads into the console.</lang>
+      const auto=secondaryCandidates.find(c=>c.id!=='preferred-secondary')??secondaryCandidates[0];
+      if(auto){
+        draft.secondary=normalizeHex(auto.hex);
+        draft.secondaryName=auto.name;
+        syncInputs();applyCurrentTheme(false);renderSecondaryCandidates();
+        setText('generateStatus',`已针对 ${name} ${hex} 生成 ${secondaryCandidates.length} 个副色候选，并自动加载首位「${auto.name} ${auto.hex}」。`);
+      }else{
+        setText('generateStatus',`已针对 ${name} ${hex} 生成 ${secondaryCandidates.length} 个副色候选。`);
+      }
     });
     // 应用主题：从输入读回并应用到界面（覆盖命名）。
     // <lang zh-CN>“应用”按钮，确保手填主题名生效。</lang>
@@ -1683,10 +1751,18 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 配色关系面板交互（`W-tb-P11`）：模式 segmented / 规则下拉 / 预设应用 / 辅助槽位按钮。
     // <lang zh-CN>仅接受合法枚举；辅助按钮见各 handler。</lang>
     // <lang en>Enum-validated; see handlers for auxiliary actions.</lang>
-    all<HTMLButtonElement>('#seriesModeSeg [data-series-mode]').forEach(btn=>btn.addEventListener('click',()=>{const mode=btn.dataset.seriesMode;if(mode==='single'||mode==='dual'||mode==='triad')applySeriesMode(mode);}));
-    byId<HTMLSelectElement>('seriesRelationSelect').addEventListener('change',()=>{draft.seriesRelation=byId<HTMLSelectElement>('seriesRelationSelect').value as SeriesRelationId;applySeriesRelation();});
-    byId('presetApplyBtn').addEventListener('click',applyBaodianPreset);
+    // 配色关系区（`W-tb-P12`）：宝典弹层 / 规则补色 / 补副补第三 / 第三色自动匹配与删除 / 辅助按钮。
+    // <lang zh-CN>segmented 移除，模式由成员数派生；成员卡行内重选色/删除在 renderHarmony 内绑定。</lang>
+    // <lang en>Segmented removed (mode derives); member inline recolor/delete bound inside renderHarmony.</lang>
+    byId('baodianPickBtn').addEventListener('click',openBaodianModal);
+    byId('baodianCloseBtn').addEventListener('click',()=>{byId<HTMLElement>('baodianModal').hidden=true;});
+    byId<HTMLElement>('baodianModal').addEventListener('click',e=>{if(e.target===e.currentTarget)byId<HTMLElement>('baodianModal').hidden=true;});
+    byId<HTMLSelectElement>('seriesRuleSelect').addEventListener('change',()=>{draft.seriesRelation=byId<HTMLSelectElement>('seriesRuleSelect').value as SeriesRelationId;renderHarmony();});
+    byId('completeSecondaryBtn').addEventListener('click',()=>completeSeriesMember('secondary'));
+    byId('completeThirdBtn').addEventListener('click',()=>completeSeriesMember('third'));
+    byId('thirdMatchBtn').addEventListener('click',()=>{completeSeriesMember('third',byId<HTMLSelectElement>('thirdMatchRule').value);});
     byId('seriesResetBtn').addEventListener('click',restoreSeriesSnapshot);
+    byId('thirdRemoveBtn').addEventListener('click',()=>{const list=seriesMemberList();if(list.length>1){list.pop();commitSeriesMembers(list);}});
     byId('auxAddBtn').addEventListener('click',addAuxiliary);
     byId('auxGenBtn').addEventListener('click',generateAuxiliary);
     byId('auxClearBtn').addEventListener('click',clearAuxiliary);
