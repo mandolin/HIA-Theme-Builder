@@ -36,12 +36,6 @@
   <div style="min-width:0"><div class="label" data-i18n="p12.rule.pick">规则补色</div><select id="seriesRuleSelect" class="select" style="min-width:210px"></select></div>
   <div style="display:flex;gap:8px"><button id="completeSecondaryBtn" class="btn soft" data-i18n="p12.rule.completeSecondary">补副色</button><button id="completeThirdBtn" class="btn soft" data-i18n="p12.rule.completeThird">补第三色</button><button id="seriesResetBtn" class="btn ghost" data-i18n="p11.series.reset">还原用户色</button></div>
 </div>
-<div id="baodianModal" class="baodian-modal" hidden>
-  <div class="baodian-pop" role="dialog" aria-modal="true" aria-label="宝典选色">
-    <div class="baodian-head"><b data-i18n="p12.baodian.title">配色宝典 · 情感分类与组合</b><button id="baodianCloseBtn" class="picker-x" type="button" aria-label="关闭">×</button></div>
-    <div class="baodian-body"><div class="baodian-menu" id="baodianMenu"></div><div class="baodian-right" id="baodianRight"></div></div>
-  </div>
-</div>
 <div class="pp-info" id="seriesInfo" style="margin-top:10px;padding:9px 11px;border-radius:8px;background:linear-gradient(90deg,#EFF6FF,#DBEAFE 68%,#EFF6FF);border:1px solid #BFDBFE;font-size:12px;line-height:1.6;color:#1E40AF"></div>
 <div class="pp-members" id="seriesMembers" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"></div>
 </section>
@@ -151,6 +145,19 @@
 <section class="panel" id="classicPreviewPanel" hidden><div class="preview-controls"><div><div class="section-title" style="margin:0"><div><h2 data-i18n="p9.classic.title">经典支持场景预览</h2><p data-i18n="p9.classic.desc">以真实目标场景（WordPress 前台/后台、Tailwind 落地页）注入当前主题令牌，验证主题在经典栈上的落地效果。</p></div><span class="badge">Classic Target</span></div></div><div class="toolbar"><span class="small" id="classicTargetLabel"></span></div></div><div class="preview-wrap"><div id="classicPreviewBody"></div></div></section>
 <section class="panel" id="tdonPreviewPanel" hidden><div class="preview-controls"><div><div class="section-title" style="margin:0"><div><h2 data-i18n="p9.tdon.title">自定义支持（TDON）</h2><p data-i18n="p9.tdon.desc">连接 TDON 声明式适配文件（tdon-1.0-draft）后，Theme Builder 按其声明生成本目标的预览区与导出文件树。</p></div><span class="badge">TDON</span></div></div><div class="toolbar"><span class="small" id="tdonStatusLabel"></span></div></div><div class="preview-wrap"><div id="tdonPreviewBody"></div></div></section>
 </main></div></div>
+<!-- 宝典弹层挂 body 层（W-tb-P12 遮挡修复）：原挂 sticky 侧栏内，
+     侧栏 position:sticky 形成层叠上下文（z:auto≈0），弹层 z-index:80 被困其中；
+     主栏后续面板的自定义 combo（z-index:40，根层叠层）因此浮在弹层之上。
+     移出侧栏后弹层参与根层叠上下文，z-index:80 正确压过全部页面内容。 -->
+<!-- Baodian modal mounted at body level (occlusion fix): previously inside the sticky sidebar,
+     whose position:sticky creates a stacking context (z:auto≈0) trapping the modal's z-index:80,
+   letting later panels' custom combos (z-index:40 in the root context) paint above it. -->
+<div id="baodianModal" class="baodian-modal" hidden>
+  <div class="baodian-pop" role="dialog" aria-modal="true" aria-label="宝典选色">
+    <div class="baodian-head"><b data-i18n="p12.baodian.title">配色宝典 · 情感分类与组合</b><button id="baodianCloseBtn" class="picker-x" type="button" aria-label="关闭">×</button></div>
+    <div class="baodian-body"><div class="baodian-menu" id="baodianMenu"></div><div class="baodian-right" id="baodianRight"></div></div>
+  </div>
+</div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
