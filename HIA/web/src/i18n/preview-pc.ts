@@ -48,6 +48,8 @@ const PREVIEW_PC = make({
   '新建项目': 'New Project',
   '项目运行总览': 'Project Operations Overview',
   '首页 / 工作台': 'Home / Workbench',
+  '首页 / 工作台 /': 'Home / Workbench /',
+  '关键词搜索：姓名 / 编号 / 手机号': 'Search: name / ID / phone',
   // ---- 仪表盘页 ----
   '轮播图卡片 · 01 / 03': 'Carousel Card · 01 / 03',
   '用完整业务页面检验一套主题，而不只看几个色块': 'Evaluate a theme on full business pages, not just color swatches',
@@ -117,7 +119,6 @@ const PREVIEW_PC = make({
   '项目列表': 'Projects',
   '订单列表': 'Orders',
   '审计日志': 'Audit Logs',
-  '关键词搜索：姓名 / 编号 / 手机号': 'Search: name / ID / phone',
   '状态：全部': 'Status: All',
   '启用': 'Enabled',
   '停用': 'Disabled',

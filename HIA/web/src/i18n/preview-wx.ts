@@ -24,6 +24,7 @@ const PREVIEW_WX = make({
   '欢迎回来': 'Welcome Back',
   '当前主题已同步到小程序示例首页。': 'The current theme is synced to the Mini-Program home page.',
   '搜索项目、商品、文章、活动…': 'Search projects, products, articles, events…',
+  '张三': 'Zhang San',
   '项目': 'Projects',
   '报表': 'Reports',
   '订单': 'Orders',

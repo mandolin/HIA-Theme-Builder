@@ -396,17 +396,17 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     setText('activePresetName',t(draft.name));
     setText('activePresetMeta',`${catLabel} · ${draft.industry?t(draft.industry):t('未指定行业')}`);
     setText('activePresetColors',`${draft.primary} / ${draft.secondary}`);
-    setText('wxThemeBadge',draft.name);
-    setText('wxDetailThemeName',draft.name);
-    setText('detailThemeName',draft.name);
-    setText('settingsThemeName',draft.name);
+    setText('wxThemeBadge',t(draft.name));
+    setText('wxDetailThemeName',t(draft.name));
+    setText('detailThemeName',t(draft.name));
+    setText('settingsThemeName',t(draft.name));
     setText('settingsPrimary',draft.primary);
     setText('settingsSecondary',draft.secondary);
     // 布局/外观文案随模式切换更新。
     // <lang zh-CN>把枚举映射为中文标签。</lang>
     // <lang en>Maps enums to Chinese labels.</lang>
     setText('settingsLayout',layoutMode==='sidebar'?t('左右结构'):layoutMode==='top'?t('上下结构'):t('混合工作台'));
-    setText('settingsAppearance',appearanceMode==='light'?'浅色':'深色');
+    setText('settingsAppearance',appearanceMode==='light'?t('p12.appearance.light'):t('p12.appearance.dark'));
   }
 
   // 统一应用当前草稿到界面：读取输入→注入变量→同步表单→令牌/元信息→重渲染候选。
@@ -426,10 +426,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   const cardModes:Record<string,'dual'|'triad'|'full'>={};
   // 组合成员：按模式扩展（第三色用 analogous 规则推导；全色附两条规则辅助色）。
   function candidateCombo(c:PrimaryCandidate,mode:'dual'|'triad'|'full'):{members:{name:string;hex:string}[];auxes:{hex:string;name:string}[]}{
-    const members:{name:string;hex:string}[]=[{name:c.name,hex:c.hex},{name:c.secondaryName,hex:c.secondaryHex}];
+    const members:{name:string;hex:string}[]=[{name:t(c.name),hex:c.hex},{name:t(c.secondaryName),hex:c.secondaryHex}];
     if(mode!=='dual'){
       const third=deriveThirdByRelation(c.hex,c.secondaryHex,'analogous');
-      if(third)members.push({name:'第三色',hex:third});
+      if(third)members.push({name:t('p11.family.thirdShort'),hex:third});
     }
     const auxes=mode==='full'?generateAuxiliaryCandidates(c.hex).slice(0,2).map(a=>({hex:a.hex,name:a.name})):[];
     return{members,auxes};
@@ -445,16 +445,17 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 色条按模式渲染多段（每段一成员色，全色含辅助段）。
     // <lang zh-CN>active 类标记当前主色（normalizeHex 比较）。</lang>
     // <lang en>Div cards with role=button host mode chips without illegal nesting; bar shows per-member segments.</lang>
-    wrap.innerHTML=Object.entries(groups).map(([group,items])=>`<div class="group-title">${escapeHtml(group)} · ${items.length}</div><div class="grid-3">${items.map(c=>{
+    const en=getLocale()==='en';
+    wrap.innerHTML=Object.entries(groups).map(([group,items])=>`<div class="group-title">${escapeHtml(t(group))} · ${items.length}</div><div class="grid-3">${items.map(c=>{
       const isAward=c.category==='award'||group.includes('获奖');
       const mode=cardModes[c.id]??'dual';
       const combo=candidateCombo(c,mode);
       const bar=[...combo.members.map(m=>m.hex),...combo.auxes.map(a=>a.hex)];
       const stops=bar.map((hex,i)=>`${hex} ${Math.round(i*100/bar.length)}% ${Math.round((i+1)*100/bar.length)}%`).join(',');
       const modesList:('dual'|'triad'|'full')[]=isAward?['dual','triad','full']:['dual','triad'];
-      const chips=modesList.map(m=>`<button type="button" class="cm-chip${mode===m?' active':''}" data-card-mode="${m}" data-card-id="${escapeHtml(c.id)}" aria-label="${m==='dual'?t('p12.card.dual'):m==='triad'?t('p12.card.triad'):t('p12.card.full')}">${m==='dual'?'双':m==='triad'?'三':'全'}</button>`).join('');
+      const chips=modesList.map(m=>`<button type="button" class="cm-chip${mode===m?' active':''}" data-card-mode="${m}" data-card-id="${escapeHtml(c.id)}" aria-label="${m==='dual'?t('p12.card.dual'):m==='triad'?t('p12.card.triad'):t('p12.card.full')}">${m==='dual'?t('p12.card.dual'):m==='triad'?t('p12.card.triad'):t('p12.card.full')}</button>`).join('');
       const dots=combo.members.map(m=>`<i style="background:${m.hex}"></i>`).join('')+combo.auxes.map(a=>`<i class="cm-aux-dot" style="background:${a.hex}"></i>`).join('');
-      return`<div class="color-card ${normalizeHex(c.hex)===draft.primary?'active':''}" data-primary="${escapeHtml(c.id)}" role="button" tabindex="0" title="${escapeHtml(c.desc)}"><div class="color-top" style="background:linear-gradient(90deg,${stops})"><span>${escapeHtml(c.tag)}</span></div><h4>${escapeHtml(c.name)}</h4><div class="color-meta">${escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div><div class="cm-chips">${chips}</div><span class="pair-chip">${dots}${escapeHtml(c.secondaryName)}</span></div>`;
+      return`<div class="color-card ${normalizeHex(c.hex)===draft.primary?'active':''}" data-primary="${escapeHtml(c.id)}" role="button" tabindex="0" title="${escapeHtml(c.desc)}"><div class="color-top" style="background:linear-gradient(90deg,${stops})"><span>${escapeHtml(t(c.tag))}</span></div><h4>${escapeHtml(t(c.name))}</h4><div class="color-meta">${en?'':escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div><div class="cm-chips">${chips}</div><span class="pair-chip">${dots}${escapeHtml(t(c.secondaryName))}</span></div>`;
     }).join('')}</div>`).join('');
     // 模式芯片：切换该卡展示态（stopPropagation 防触发应用）。
     all<HTMLButtonElement>('[data-card-mode]',wrap).forEach(chip=>chip.addEventListener('click',e=>{
@@ -494,7 +495,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       if(mode==='full')draft.auxiliary=combo.auxes.map(a=>makeRoleColor(a.hex,a.name));
       secondaryCandidates=generateSecondarySet(c.hex,{hex:c.secondaryHex,name:c.secondaryName,scheme:c.secondaryScheme});
       syncInputs();applyCurrentTheme(false);renderSecondaryCandidates();renderPrimaryCandidates();renderHarmony();renderGradients();
-      setText('generateStatus',mode==='dual'?`主色已切换为 ${c.name} ${c.hex}，已自动套用预设副色 ${c.secondaryName} ${c.secondaryHex}。`:mode==='triad'?`已按三色组合套用「${c.name}」（含类比第三色）。`:`已按全色组合套用「${c.name}」（三色+两条规则辅助色）。`);
+      setText('generateStatus',mode==='dual'?t('p12.status.appliedDual',{name:t(c.name),hex:c.hex,sec:t(c.secondaryName),secHex:c.secondaryHex}):mode==='triad'?t('p12.status.appliedTriad',{name:t(c.name)}):t('p12.status.appliedFull',{name:t(c.name)}));
     };
     all<HTMLElement>('[data-primary]',wrap).forEach(btn=>{
       btn.addEventListener('click',()=>applyCard(btn));
@@ -510,7 +511,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 逐候选生成色卡，active 标记当前副色（normalizeHex 比较）。
     // <lang zh-CN>title 用 note 说明该副色来源/特点。</lang>
     // <lang en>title uses note to explain the candidate's origin/character.</lang>
-    wrap.innerHTML=secondaryCandidates.map(c=>`<button class="color-card ${normalizeHex(c.hex)===draft.secondary?'active':''}" data-secondary="${escapeHtml(c.id)}" title="${escapeHtml(c.note)}"><div class="color-top" style="background:${c.hex}"><span>${escapeHtml(c.scheme)}</span></div><h4>${escapeHtml(c.name)}</h4><div class="color-meta">${escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div></button>`).join('');
+    wrap.innerHTML=secondaryCandidates.map(c=>`<button class="color-card ${normalizeHex(c.hex)===draft.secondary?'active':''}" data-secondary="${escapeHtml(c.id)}" title="${escapeHtml(t(c.note))}"><div class="color-top" style="background:${c.hex}"><span>${escapeHtml(c.scheme.split('·').map(seg=>t(seg.trim())).join(' · '))}</span></div><h4>${escapeHtml(t(c.name))}</h4><div class="color-meta">${getLocale()==='en'?'':escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div></button>`).join('');
     // 点击副色：写回草稿并刷新界面（不覆盖主题名）。
     // <lang zh-CN>applyCurrentTheme(false) 保留当前主题名。</lang>
     // <lang en>applyCurrentTheme(false) keeps the current theme name.</lang>
@@ -722,7 +723,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         <span class="mock-label">${t('后台管理')}</span>
         <div class="mock-browser">
           <div class="mock-browser-bar" aria-hidden="true"><i></i><i></i><i></i><span class="mock-browser-url">https://example.com/wp-admin/</span></div>
-          <div class="mock-wp-adminbar"><span class="mock-wp-dot">W</span><span>${t('站点名称示例')}</span><span aria-hidden="true">＋ 新建</span><span style="margin-left:auto">Howdy, Admin</span></div>
+          <div class="mock-wp-adminbar"><span class="mock-wp-dot">W</span><span>${t('站点名称示例')}</span><span aria-hidden="true">＋ ${t('p12.admin.new')}</span><span style="margin-left:auto">Howdy, Admin</span></div>
           <div class="mock-wp-layout">
             <div class="mock-wp-menu"><div class="mock-wp-menu-group">Dashboard</div><div class="mock-wp-menu-item active">${t('仪表盘')}</div><div class="mock-wp-menu-item">${t('媒体')}</div><div class="mock-wp-menu-item">${t('页面')}</div><div class="mock-wp-menu-item">${t('外观')}</div><div class="mock-wp-menu-item">${t('插件')}</div><div class="mock-wp-menu-item">${t('用户')}</div><div class="mock-wp-menu-item">${t('设置')}</div></div>
             <div class="mock-wp-content">
@@ -1028,13 +1029,13 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const hex=d.id==='pure'?tonalScale(draft.primary)['700']!:(deriveSecondaryByRelation(draft.primary,rule as SeriesRelationId)??'');
       if(!hex)return;
       draft.secondary=normalizeHex(hex);
-      draft.secondaryName=`${t(d.name)} 推导`;
+      draft.secondaryName=`${t(d.name)} ${t('p12.rule.derived')}`;
       if(draft.seriesMode==='single')draft.seriesMode='dual';
     }else{
       if(!ruleCanThird(rule)){platform.alert(t('p12.rule.noThird'));return;}
       const hex=d.id==='pure'?(tonalScale(draft.primary)['300']??draft.secondary):(deriveThirdByRelation(draft.primary,draft.secondary,rule as SeriesRelationId)??'');
       if(!hex)return;
-      draft.thirdColor=makeRoleColor(hex,`${t(d.name)} 第三色`);
+      draft.thirdColor=makeRoleColor(hex,`${t(d.name)} ${t('p11.family.thirdShort')}`);
       draft.seriesMode='triad';
     }
     syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();
@@ -1060,7 +1061,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     byId<HTMLElement>('seriesInfo').textContent=members.length===1?t('p12.mode.single'):members.length===2?t('p12.mode.dual'):t('p12.mode.triad');
     // 成员卡（色块行内取色 + X 删除）。
     const roleLabels=[t('p11.member.primary'),t('p11.member.secondary'),t('p11.member.third')];
-    byId<HTMLElement>('seriesMembers').innerHTML=members.map((m,i)=>`<div class="pp-member" data-member-idx="${i}"><span class="pp-grip" draggable="true" aria-label="${escapeHtml(t('p12.drag.hint'))}">⠿</span><div class="pp-slot-head"><input type="color" class="pp-swatch-input" value="${m.value}" data-member-recolor="${i}" aria-label="${escapeHtml(t('p12.member.recolorAria'))}">${members.length>1?`<button class="pp-member-del" data-member-del="${i}" type="button" aria-label="${escapeHtml(t('p12.member.delAria'))}">×</button>`:''}</div><div class="pp-role">${escapeHtml(m.name)}</div><div class="pp-rolehex">${m.value}</div><div class="pp-rolefrom">${escapeHtml(roleLabels[i]||'')}</div></div>`).join('');
+    byId<HTMLElement>('seriesMembers').innerHTML=members.map((m,i)=>`<div class="pp-member" data-member-idx="${i}"><span class="pp-grip" draggable="true" aria-label="${escapeHtml(t('p12.drag.hint'))}">⠿</span><div class="pp-slot-head"><input type="color" class="pp-swatch-input" value="${m.value}" data-member-recolor="${i}" aria-label="${escapeHtml(t('p12.member.recolorAria'))}">${members.length>1?`<button class="pp-member-del" data-member-del="${i}" type="button" aria-label="${escapeHtml(t('p12.member.delAria'))}">×</button>`:''}</div><div class="pp-role">${escapeHtml(t(m.name))}</div><div class="pp-rolehex">${m.value}</div><div class="pp-rolefrom">${escapeHtml(roleLabels[i]||'')}</div></div>`).join('');
     all<HTMLInputElement>('[data-member-recolor]').forEach(inp=>inp.addEventListener('change',()=>{
       const list=seriesMemberList();const idx=+(inp.dataset.memberRecolor??-1);
       if(idx<0||!list[idx])return;
@@ -1162,7 +1163,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   }
   function renderBaodianMenu(){
     const menu=byId<HTMLElement>('baodianMenu');
-    menu.innerHTML=baodianEmotions.map(e=>`<button type="button" class="baodian-emo${e===baodianEmotion?' active':''}" data-emo="${escapeHtml(e)}">${escapeHtml(e)}</button>`).join('');
+    menu.innerHTML=baodianEmotions.map(e=>`<button type="button" class="baodian-emo${e===baodianEmotion?' active':''}" data-emo="${escapeHtml(e)}">${escapeHtml(t(e))}</button>`).join('');
     all<HTMLButtonElement>('[data-emo]',menu).forEach(btn=>btn.addEventListener('click',()=>{baodianEmotion=btn.dataset.emo||baodianEmotion;renderBaodianMenu();renderBaodianRight();}));
   }
   function renderBaodianRight(){
@@ -1173,7 +1174,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     for(const[formId,combos]of Object.entries(FORM_PACKS)){
       const mine=combos.filter(c=>c.e===baodianEmotion);
       if(!mine.length)continue;
-      html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(titleOf(formId))} · ${mine.length}</div><div class="bd-combos">`;
+      html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(t(titleOf(formId)))} · ${mine.length}</div><div class="bd-combos">`;
       for(const c of mine){
         html+=`<button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join('+'))}">`+c.n.map(num=>`<span class="bd-bar" style="background:${BAODIAN_PALETTE[num]||'#ccc'}">${num}</span>`).join('')+`</button>`;
       }
@@ -1190,7 +1191,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>Combo size maps to mode; member order follows the combo order.</lang>
   function applyBaodianCombo(nums:number[]){
     seriesSnapshot={primary:draft.primary,primaryName:draft.primaryName,secondary:draft.secondary,secondaryName:draft.secondaryName,thirdColor:draft.thirdColor,seriesMode:draft.seriesMode,seriesRelation:draft.seriesRelation};
-    const list=nums.map(num=>({name:`宝典 #${num}`,value:BAODIAN_PALETTE[num]||'#cccccc'}));
+    const list=nums.map(num=>({name:`${t('p12.baodian.tag')} #${num}`,value:BAODIAN_PALETTE[num]||'#cccccc'}));
     byId<HTMLElement>('baodianModal').hidden=true;
     commitSeriesMembers(list);
     setText('generateStatus',t('p12.baodian.applied',{combo:nums.join('+')}));
@@ -1268,7 +1269,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>value holds the full URL; label is a truncated display.</lang>
   function renderRemoteSources(){
     const sel=byId<HTMLSelectElement>('remoteSourceSelect');
-    sel.innerHTML=remoteSources.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u===DEFAULT_REMOTE_SOURCE?t('p10.tab.local')+' · HIA 官方':u.length>52?u.slice(0,52)+'…':u)}</option>`).join('');
+    sel.innerHTML=remoteSources.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u===DEFAULT_REMOTE_SOURCE?t('p10.tab.local')+' · '+t('p12.source.official'):u.length>52?u.slice(0,52)+'…':u)}</option>`).join('');
     sel.value=remoteSources[0]??'';
   }
   // 恢复持久化源列表（默认源恒在首位，去重）。
@@ -1322,7 +1323,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const list=filterPresets(remotePresets,inputValue('presetSearchInput'),inputValue('presetFilterSelect'));
     setText('remoteCountLabel',t('p10.remote.count',{count:String(list.length)}));
     const wrap=byId<HTMLElement>('remotePresetList');
-    wrap.innerHTML=list.map(p=>`<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(p.name)}</div><div class="small">${escapeHtml(p.category)} · ${escapeHtml(p.industry||t('未分类'))}</div></div></div>${presetSwatches(p)}<div class="small" style="margin-top:8px">${escapeHtml(p.primaryName)} / ${escapeHtml(p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(p.note||'')}</div><div class="preset-actions"><button class="btn primary" data-remote-import="${escapeHtml(p.id)}" style="padding:8px 10px">${t('p10.remote.importOne')}</button></div></div>`).join('');
+    wrap.innerHTML=list.map(p=>{const bdTag=t('p12.baodian.tag');return `<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(t(p.name))}</div><div class="small">${escapeHtml(t(p.category))} · ${escapeHtml(t(p.industry||t('未分类')))}</div></div></div>${presetSwatches(p)}<div class="small" style="margin-top:8px">${escapeHtml(t(p.primaryName).replace('宝典',bdTag))} / ${escapeHtml(t(p.secondaryName).replace('宝典',bdTag))}</div><div class="small" style="margin-top:4px">${escapeHtml(p.note?t(p.note):'')}</div><div class="preset-actions"><button class="btn primary" data-remote-import="${escapeHtml(p.id)}" style="padding:8px 10px">${t('p10.remote.importOne')}</button></div></div>`;}).join('');
     all<HTMLButtonElement>('[data-remote-import]',wrap).forEach(btn=>btn.addEventListener('click',()=>{
       const target=remotePresets.find(x=>x.id===btn.dataset.remoteImport);
       if(!target)return;
@@ -1417,7 +1418,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 逐预设生成卡片：头部（名/分类/行业 + 当前徽标）、双色板、名称、说明、操作按钮。
     // <lang zh-CN>动态文本经 escapeHtml；删除按钮仅自定义预设显示。</lang>
     // <lang en>Dynamic text escaped; delete button only for custom presets.</lang>
-    wrap.innerHTML=list.map(p=>{const bi=isBuiltinPresetId(p.id);const nm=bi?t(p.name):p.name;const ct=bi?t(p.category):p.category;const ind=bi&&p.industry?t(p.industry):p.industry;return `<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(nm)}</div><div class="small">${escapeHtml(ct)} · ${escapeHtml(ind||t('未分类'))}</div></div>${selectedPresetId===p.id?`<span class="badge">${t('当前')}</span>`:''}</div>${presetSwatches(p)}<div class="small" style="margin-top:8px">${escapeHtml(bi?t(p.primaryName):p.primaryName)} / ${escapeHtml(bi?t(p.secondaryName):p.secondaryName)}</div><div class="small" style="margin-top:4px">${escapeHtml(bi&&p.note?t(p.note):(p.note||''))}</div><div class="preset-actions"><button class="btn primary" data-apply-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('应用')}</button><button class="btn outline" data-load-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('载入操作台')}</button>${!bi?`<button class="btn ghost" data-delete-preset="${escapeHtml(p.id)}" style="padding:8px 10px;color:var(--danger)">${t('删除')}</button>`:''}</div></div>`;}).join('');
+    wrap.innerHTML=list.map(p=>{const bi=isBuiltinPresetId(p.id);const bdTag=t('p12.baodian.tag');const nm=t(p.name).replace('宝典',t('p12.baodian.tag'));const ct=t(p.category);const ind=p.industry?t(p.industry):p.industry;return `<div class="preset-card"><div class="preset-head"><div><div class="preset-name">${escapeHtml(nm)}</div><div class="small">${escapeHtml(ct)} · ${escapeHtml(ind||t('未分类'))}</div></div>${selectedPresetId===p.id?`<span class="badge">${t('当前')}</span>`:''}</div>${presetSwatches(p)}<div class="small" style="margin-top:8px">${escapeHtml(t(p.primaryName).replace('宝典',bdTag))} / ${escapeHtml(t(p.secondaryName).replace('宝典',bdTag))}</div><div class="small" style="margin-top:4px">${escapeHtml(p.note?t(p.note):'')}</div><div class="preset-actions"><button class="btn primary" data-apply-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('应用')}</button><button class="btn outline" data-load-preset="${escapeHtml(p.id)}" style="padding:8px 10px">${t('载入操作台')}</button>${!bi?`<button class="btn ghost" data-delete-preset="${escapeHtml(p.id)}" style="padding:8px 10px;color:var(--danger)">${t('删除')}</button>`:''}</div></div>`;}).join('');
     // 应用按钮：直接套用预设到当前主题。
     // <lang zh-CN>改变界面与草稿，但不保存为新预设。</lang>
     // <lang en>Changes UI and draft but does not save a new preset.</lang>
@@ -1608,8 +1609,8 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     all<HTMLElement>('.pc-page').forEach(el=>el.style.display='none');
     byId<HTMLElement>('pcPage-'+page).style.display='block';
     const titles:Record<typeof page,[string,string]>={dashboard:['项目运行总览','仪表盘'],list:['用户与业务列表','列表页'],form:['主题表单示例','表单页'],detail:['项目详情','详情页'],analytics:['分析页示例','分析页'],settings:['系统设置','设置页']};
-    setText('pcPageTitle',titles[page][0]);
-    setText('pcPageCrumb',titles[page][1]);
+    setText('pcPageTitle',t(titles[page][0]));
+    setText('pcPageCrumb',t(titles[page][1]));
   }
   // 切换小程序预览页面：高亮激活段、隐藏其余、显示目标页。
   // <lang zh-CN>home/list/detail/profile/form 五个小程序页面。</lang>
