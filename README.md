@@ -2,6 +2,20 @@
 
 HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具，以 TypeScript + 组件化的方式重构为一套可复用、可发布的主题管理体系，并抽离公共核心（`core`），在其基础上派生出网页版、Electron 版与 Tauri 版。
 
+**当前版本 [v0.2.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.2.0)**（2026-11-09）：三端同构发布 · [在线版（GitHub Pages）](https://mandolin.github.io/HIA-Theme-Builder/) · [桌面下载](https://github.com/mandolin/HIA-Theme-Builder/releases)
+
+## 功能总览
+
+- **主题操作台**：主色候选库（44 色）、副色候选区、名称/分类/行业元信息；一键应用/生成导入主题库。
+- **配色关系模式与辅助色**（ADR-007 v2）：主体色单色/双色/三色模式（成员数派生）；十种经典配色设计映射为关系规则（互补/冲突/中性/类比/分裂补色/三次色/原色组合/二次色组合/纯色/手动）；规则补副色/补第三色；辅助色独立槽位（0..8，手动添加/按规则生成/↔主副三互换/拖拽排序）。
+- **配色宝典选色**：弹层内置 24 情感分类 × 10 形态组合（1440 组合/3739 色条，逐页对账零缺失），点击组合一键套用主体色；情感行 ⚡ 快捷套用。
+- **取色探索**：桌面端输入网址真实渲染取色（多信号加权：主色/Logo/manifest 等），SSRF 双重校验（Electron 主进程 + Tauri Rust CDP 逐请求拦截）。
+- **预览**：PC 版企业后台完整预览（仪表盘/列表/表单/详情/分析/设置六页 × 左右/上下/混合三结构 × 明暗双模式）+ 小程序五页示例预览 + WordPress/Tailwind 经典场景注入预览。
+- **渐变**：8 渐变角色 × 色系来源（主/副/第三/辅助 N）× 色阶/角度/偏置，自定义下拉带色块预览。
+- **导出**：CSS 变量 / JSON Token / WordPress theme.json+子主题骨架 / Tailwind 配置；第三色与辅助色全量传导。
+- **主题市场**：本地库管理（搜索/分类/行业筛选）、导入导出主题包、分享链接（URL 还原主题）、远程预设源（官方示例源内置）。
+- **国际化与无障碍**：中/英双语界面（含演示内容翻译），ARIA/键盘可达基线。
+
 | 入口 | 说明 |
 | --- | --- |
 | 网页版 (`HIA/web`) | 在线主题构建与预览，发布到 GitHub Pages；共享渲染器为三端 UI 单一事实来源。 |
@@ -59,7 +73,14 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 - **Electron 版（`HIA/electron`）**：`npm install && npm run build` 编译；`npm run dist` 用 `electron-builder` 产出**便携版** `dist/HIA-Theme-Builder-Electron-<ver>-portable.exe`（内置运行时，双击即用）。
 - **Tauri 版（`HIA/tauri`）**：`npm install`（含 `@tauri-apps/cli`）→ `npm run build`（`build:front` + `tauri build`）；release 产物为独立便携 `exe`（`src-tauri/target/release/`，需系统 WebView2 Runtime）。
 
-桌面端产物为**未签名便携版**，运行时会提示"未知发布者"。GitHub Release 聚合桌面端产物，网页版经 Pages 分发。
+桌面端产物为**未签名便携版**（自签名证书签名，运行时可能提示发布者验证），运行时会提示"未知发布者"时选择"仍要运行"。GitHub Release 聚合桌面端产物（Electron 便携+安装器、Tauri 便携+MSI，附 SHA-256 校验和），网页版经 Pages 分发。
+
+### v0.2.0 发布内容（2026-11-09）
+
+- 配色关系模式与辅助色（十种设计规则、三模式派生、宝典选色弹层、辅助色槽位管理）；
+- 配色机制 UX 完善（操作台修正、成员卡管理、拖拽互换、候选卡双/三/全色三态、24 情感一键套用）；
+- 主题市场（分享链接/导入导出/远程源）与 CMS 适配产出（WP/Tailwind/TDON v0）；
+- 中英双语界面全面清查（0 残留）；三端哈希一致性保证（渲染器 SHA256 逐位一致）。
 
 ## 许可证
 

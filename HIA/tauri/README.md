@@ -26,4 +26,4 @@ Tauri 桌面版（MIT，轻量运行时：Rust 后端 + WebView）。在 `core` 
 ## 发布
 
 - 便携版：`npm run build` 后复制 `src-tauri/target/release/HIA Theme Builder.exe` 为 `HIA-Theme-Builder-Tauri-<ver>-portable.exe`。
-- 未签名；GitHub Release `v0.1.0-desktop` 已上传该产物。
+- GitHub Release `v0.2.0` 上传便携版 + MSI 安装包（WiX），附 SHA-256 校验和。
