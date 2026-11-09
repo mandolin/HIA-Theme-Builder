@@ -104,8 +104,14 @@ jobs:
         with:
           workspaces: HIA/tauri/src-tauri
       # render.rs include_str! 引用 extractor/dist/browser-scanner.bundle.js（编译期嵌入）；
-      #   本 job 独立 checkout，须先构建 extractor 产出 bundle，否则 cargo check 找不到文件（Pages 上一次运行失败根因）。
-      # <lang en>render.rs embeds the scanner via include_str!; build the extractor first so cargo check finds the bundle.</lang>
+      #   本 job 独立 checkout，须先构建 core（extractor 的 file: 依赖）再构建 extractor 产出 bundle，
+      #   否则 cargo check 找不到文件（Pages 上一次运行失败根因）。
+      # <lang en>render.rs embeds the scanner via include_str!; build core (extractor's file: dep) then extractor so cargo check finds the bundle.</lang>
+      - name: Build core (extractor dependency)
+        working-directory: HIA/core
+        run: |
+          npm install
+          npm run build
       - name: Build extractor (scanner bundle for include_str!)
         working-directory: HIA/extractor
         run: |
