@@ -402,6 +402,23 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     setText('settingsThemeName',t(draft.name));
     setText('settingsPrimary',draft.primary);
     setText('settingsSecondary',draft.secondary);
+    // 设置页主体色/辅助色体现（W-tb-P12 完善批③）：kv 行与色条按装配结果显隐渲染。
+    // <lang zh-CN>读取装配后的 theme()：第三色可能是规则推导产物；辅助槽位 0..n。</lang>
+    // <lang en>Reads the assembled theme(): third may be rule-derived; aux slots are 0..n.</lang>
+    const sth=theme();
+    // sth 装配主题；thirdOn 判定三色且第三色存在。
+    const thirdOn=sth.seriesMode==='triad'&&!!sth.thirdColor;
+    byId<HTMLElement>('settingsThirdLabel').hidden=!thirdOn;
+    byId<HTMLElement>('settingsThird').hidden=!thirdOn;
+    setText('settingsThird',thirdOn?sth.thirdColor!.value:'');
+    byId<HTMLElement>('settingsAuxLabel').hidden=!sth.auxiliary.length;
+    byId<HTMLElement>('settingsAuxCount').hidden=!sth.auxiliary.length;
+    setText('settingsAuxCount',t('p12.settings.auxCount',{n:String(sth.auxiliary.length)}));
+    // 色条：成员（主/副/三）在前、辅助在后；每个色块 title 带名称与色值。
+    const sstrip=byId<HTMLElement>('settingsSeriesStrip');
+    // swatch 生成单个色块（背景=色值，title=名称+色值）。
+    const swatch=(hex:string,label:string)=>`<span class="sss-swatch" style="background:${hex}" title="${escapeHtml(label)} ${hex}"></span>`;
+    sstrip.innerHTML=[swatch(sth.primary.value,sth.primary.name),swatch(sth.secondary.value,sth.secondary.name),...(thirdOn?[swatch(sth.thirdColor!.value,sth.thirdColor!.name)]:[]),...sth.auxiliary.map(a=>swatch(a.value,a.name))].join('');
     // 布局/外观文案随模式切换更新。
     // <lang zh-CN>把枚举映射为中文标签。</lang>
     // <lang en>Maps enums to Chinese labels.</lang>
@@ -705,11 +722,19 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   //   (span/tabindex=-1) to avoid implying interactivity.</lang>
   function renderClassicPreview(){
     const wrap=byId<HTMLElement>('classicPreviewBody');
+    // 新契约色块（完善批③）：第三/辅助色按装配结果出现，背景取运行时色阶变量。
+    // <lang zh-CN>WP 与 Tailwind 两 mock 共用；无第三色/辅助时为空串。</lang>
+    // <lang en>Shared by both mocks; empty strings when absent.</lang>
+    const cth=theme();
+    // thirdChip 三色模式才产出的 third-500 标签。
+    const thirdChip=cth.seriesMode==='triad'?`<span class="mock-wp-chip" style="background:var(--t100);color:var(--t800)">third-500</span>`:'';
+    // auxChips 前三个辅助槽位色阶标签（槽位过多时保持 mock 克制）。
+    const auxChips=cth.auxiliary.slice(0,3).map((_,i)=>`<span class="mock-wp-chip" style="background:var(--a${i}100);color:var(--a${i}800)">aux${i}-500</span>`).join('');
     if(classicTargetId==='wordpress-child'){
       // WordPress 场景：前台（导航/主视觉/卡片网格）+ 后台（管理栏/侧边菜单/内容区）。
       // <lang zh-CN>主视觉用 --gradient-carousel，标题字号取 --hia-fs-h1，正文取 --hia-fs-body 与行高令牌。</lang>
       // <lang en>Hero uses --gradient-carousel; headings use --hia-fs-h1; body uses --hia-fs-body and the line-height token.</lang>
-      const card=(title:string,body:string,chips=true)=>`<div class="mock-wp-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(body)}</p>${chips?`<div class="mock-wp-chip-row"><span class="mock-wp-chip">primary-500</span><span class="mock-wp-chip alt">secondary-500</span></div>`:''}</div>`;
+      const card=(title:string,body:string,chips=true)=>`<div class="mock-wp-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(body)}</p>${chips?`<div class="mock-wp-chip-row"><span class="mock-wp-chip">primary-500</span><span class="mock-wp-chip alt">secondary-500</span>${thirdChip}${auxChips}</div>`:''}</div>`;
       wrap.innerHTML=`
         <div class="classic-mock-note">${t('p9.classic.wp.note')}</div>
         <span class="mock-label">${t('前台首页')}</span>
@@ -746,6 +771,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
           <div class="mock-tw-nav"><b>HIA Tailwind</b><a href="javascript:void(0)" tabindex="-1">${t('产品服务')}</a><a href="javascript:void(0)" tabindex="-1">${t('解决方案')}</a><a href="javascript:void(0)" tabindex="-1">${t('关于我们')}</a><span class="mock-wp-btn" aria-hidden="true">${t('开始使用')}</span></div>
           <div class="mock-tw-hero"><h2>${t('构建一致的设计系统')}</h2><p>${t('字体族经 fontFamily 透传（body / heading / mono），色阶类名即时可用。')}</p><div class="mock-tw-cta-row"><span class="mock-wp-btn" aria-hidden="true">${t('开始使用')}</span><span class="mock-wp-btn alt" aria-hidden="true">${t('查看文档')}</span></div></div>
           <div class="mock-tw-cards">${twCard(t('功能卡片一'))}${twCard(t('功能卡片二'))}${twCard(t('功能卡片三'))}</div>
+          ${thirdChip||auxChips?`<div class="mock-wp-chip-row" style="padding:0 12px 14px">${thirdChip.replace('third-500','bg-third-500')}${auxChips.replace(/aux(\d)-500/g,'bg-aux$1-500')}</div>`:''}
           <div class="mock-tw-footer"><span>${t('由 HIA Theme Builder 生成')}</span><span>${escapeHtml(theme().name)}</span></div>
         </div>`;
     }
@@ -1163,8 +1189,39 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   }
   function renderBaodianMenu(){
     const menu=byId<HTMLElement>('baodianMenu');
-    menu.innerHTML=baodianEmotions.map(e=>`<button type="button" class="baodian-emo${e===baodianEmotion?' active':''}" data-emo="${escapeHtml(e)}">${escapeHtml(t(e))}</button>`).join('');
+    // 一键套用（完善批④）：⚡ = 该情感"补色"形态首个组合；该情感无补色组合时回退任一形态首组。
+    // <lang zh-CN>24 情感逐个可点；套用走快照+applyBaodianCombo 既有链路（含弹层关闭，与点组合卡一致）。</lang>
+    // <lang en>Per-mood lightning button applies its first complement combo (fallback: any form),
+    //   keeping the modal open and reusing the snapshot-backed apply path.</lang>
+    const quickCombo=(emo:string):number[]|null=>{
+      // 首选该情感在 complement 形态的第一组合。
+      const comp=(FORM_PACKS['complement']||[]).find(c=>c.e===emo);
+      if(comp)return comp.n;
+      // 回退：按形态表顺序取该情感首个可用组合。
+      for(const list of Object.values(FORM_PACKS)){const c=list.find(x=>x.e===emo);if(c)return c.n;}
+      return null;
+    };
+    menu.innerHTML=baodianEmotions.map(e=>{
+      // q：该情感的首个可套用组合（null 则不渲染快捷钮）。
+      const q=quickCombo(e);
+      return `<button type="button" class="baodian-emo${e===baodianEmotion?' active':''}" data-emo="${escapeHtml(e)}">${escapeHtml(t(e))}${q?`<span class="bd-quick" role="button" tabindex="0" data-bd-quick="${escapeHtml(e)}" title="${escapeHtml(t('p12.baodian.quick'))}">⚡</span>`:''}</button>`;
+    }).join('');
     all<HTMLButtonElement>('[data-emo]',menu).forEach(btn=>btn.addEventListener('click',()=>{baodianEmotion=btn.dataset.emo||baodianEmotion;renderBaodianMenu();renderBaodianRight();}));
+    // 快捷钮事件：阻断冒泡避免同时触发情感切换的重复渲染；键盘可达（Enter/Space）。
+    // <lang en>stopPropagation keeps quick-apply from double-firing the mood-select handler.</lang>
+    all<HTMLElement>('[data-bd-quick]',menu).forEach(sp=>{
+      // go：选中该情感并套用其首个组合。
+      const go=(ev:Event)=>{
+        ev.stopPropagation();
+        const emo=sp.getAttribute('data-bd-quick')||baodianEmotion;
+        const combo=quickCombo(emo);
+        if(!combo)return;
+        baodianEmotion=emo;renderBaodianMenu();renderBaodianRight();
+        applyBaodianCombo(combo);
+      };
+      sp.addEventListener('click',go);
+      sp.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go(ev);}});
+    });
   }
   function renderBaodianRight(){
     const right=byId<HTMLElement>('baodianRight');
@@ -1572,7 +1629,13 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>On hit, primaryMeta is non-null so secondary candidates align with the preset.</lang>
     primaryMeta=findMatchingPrimaryCandidate(draft,primaryCandidates)||null;
     secondaryCandidates=secondarySetForDraft(draft,primaryMeta);
-    syncInputs();applyRuntimeTheme();renderGradients();updateTokenOutputs();updatePreviewMeta();
+    // 刷新链补 renderHarmony：预设携带的 seriesMode/relation/third/auxiliary 须同步关系区
+    //   （规则下拉、成员卡、辅助槽位）——缺失时载入预设后这些控件停留在旧状态（W-tb-P12 完善批②修复）。
+    // <lang en>renderHarmony is required so preset-carried v2 fields repaint the relation block.</lang>
+    syncInputs();applyRuntimeTheme();renderHarmony();renderGradients();updateTokenOutputs();updatePreviewMeta();
+    // 经典 mock 同步刷新：预设可携带第三/辅助色（完善批③补链，与批②同类的链路缺失）。
+    // <lang en>Repaint the classic mock since presets may carry third/aux colors.</lang>
+    renderClassicPreview();
     renderPrimaryCandidates();renderSecondaryCandidates();renderPresetList();
   }
 

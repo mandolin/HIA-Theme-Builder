@@ -242,6 +242,10 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .mock-wp-chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .mock-wp-chip{padding:3px 9px;border-radius:999px;background:var(--p100);color:var(--p800);font-size:10px;font-weight:800}
 .mock-wp-chip.alt{background:var(--s100);color:var(--s800)}
+/* 设置页主体色/辅助色条（W-tb-P12 完善批③）：成员在前、辅助在后的小色块预览。 */
+/* <lang en>Settings-page series/aux swatch strip (batch ③).</lang> */
+.settings-series-strip{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px 2px}
+.sss-swatch{width:22px;height:22px;border-radius:7px;border:1px solid rgba(15,23,42,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
 .mock-tw-nav{display:flex;align-items:center;gap:14px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line);font-size:var(--hia-fs-small,12.8px)}
 .mock-tw-nav b{font-family:var(--hia-font-heading,inherit);color:var(--primary);margin-right:auto;font-size:var(--hia-fs-h3,19px)}
 .mock-tw-nav a{color:var(--muted)}
@@ -334,6 +338,11 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .baodian-emo{display:block;width:100%;text-align:left;border:0;background:none;border-radius:6px;padding:8px 10px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;margin-bottom:2px}
 .baodian-emo:hover{background:var(--p50)}
 .baodian-emo.active{background:var(--primary);color:var(--on-primary)}
+/* 宝典菜单一键套用（W-tb-P12 完善批④）：情感行内 ⚡ 快捷钮，hover 显现避免视觉噪音。 */
+/* <lang en>Per-mood quick-apply button inside the Baodian menu (batch ④); hover-revealed.</lang> */
+.bd-quick{float:right;margin-left:4px;padding:0 3px;font-size:11px;line-height:1.4;opacity:.55;cursor:pointer;border-radius:4px}
+.baodian-emo:hover .bd-quick,.bd-quick:focus-visible{opacity:1}
+.bd-quick:hover{transform:scale(1.18)}
 .baodian-right{flex:1;overflow:auto;padding:12px;min-width:0}
 .bd-form{margin-bottom:14px}
 .bd-form-title{font-size:11px;font-weight:900;color:var(--muted);margin-bottom:6px}

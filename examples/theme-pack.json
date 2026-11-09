@@ -55,6 +55,50 @@
       "primaryName": "石墨深空",
       "secondaryName": "晴空蓝",
       "note": "深灰主色降低视觉疲劳，晴空蓝副色负责关键操作与数据强调。"
+    },
+    {
+      "id": "example-triad-orchid",
+      "name": "翡翠·兰紫·鎏金三色",
+      "category": "creative",
+      "industry": "AI / 创意",
+      "primary": "#0F7C86",
+      "secondary": "#A755B5",
+      "primaryName": "翡翠",
+      "secondaryName": "兰紫",
+      "note": "三色主体色：翡翠为主、兰紫与鎏金三等分，适合活泼的创意与活动场景。",
+      "seriesMode": "triad",
+      "seriesRelation": "tertiary",
+      "thirdColor": {
+        "name": "鎏金",
+        "value": "#C9A227"
+      }
+    },
+    {
+      "id": "example-graphite-crew",
+      "name": "墨夜·晴空蓝·陶橙（带辅助）",
+      "category": "dark",
+      "industry": "开发者工具",
+      "primary": "#1F2937",
+      "secondary": "#38BDF8",
+      "primaryName": "墨夜",
+      "secondaryName": "晴空蓝",
+      "note": "分裂互补三色 + 两条独立辅助槽位：辅助色承担数据强调与状态语义，演示完整新契约。",
+      "seriesMode": "triad",
+      "seriesRelation": "split-complement",
+      "thirdColor": {
+        "name": "陶橙",
+        "value": "#F2793B"
+      },
+      "auxiliary": [
+        {
+          "name": "强调琥",
+          "value": "#F59E0B"
+        },
+        {
+          "name": "翡翠绿",
+          "value": "#1F9E6E"
+        }
+      ]
     }
   ]
 }

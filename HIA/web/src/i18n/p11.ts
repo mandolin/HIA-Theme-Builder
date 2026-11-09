@@ -114,4 +114,11 @@ registerStrings({
   'p12.card.dual': { zh: '双色', en: 'Dual' },
   'p12.card.triad': { zh: '三色', en: 'Triad' },
   'p12.card.full': { zh: '全色', en: 'Full' },
+  // 设置页新契约体现（完善批③）：辅助槽位计数与色条无障碍名。
+  // <lang en>Settings-page v2 surfacing: aux slot count label and strip aria name.</lang>
+  'p12.settings.auxCount': { zh: '{n} 个槽位', en: '{n} slot(s)' },
+  'p12.settings.stripAria': { zh: '主体色与辅助色预览', en: 'Body and auxiliary colors preview' },
+  // 宝典菜单一键套用（完善批④）：⚡ 快捷钮提示。
+  // <lang en>Quick-apply hint on the per-mood lightning button (batch ④).</lang>
+  'p12.baodian.quick': { zh: '一键套用该情感首个补色组合', en: 'Quick-apply the first complement combo of this mood' },
 });

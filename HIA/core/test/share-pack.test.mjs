@@ -84,6 +84,38 @@ test('主题包: 合法源解析 + 脏条目丢弃计数（sanitize with drop co
   assert.match(result.presets[1].id, /^pack-\d+$/, '缺省 id 占位');
 });
 
+// ADR-007 v2：远程主题包/导入文件的 seriesMode/seriesRelation/thirdColor/auxiliary 清洗。
+// <lang zh-CN>合法白名单保留并重建色阶；非法值静默省略字段（回落默认语义）；辅助槽位截断上限 8。</lang>
+// <lang en>V2 contract fields survive sanitizing; invalid values drop to defaults; aux capped at 8.</lang>
+test('主题包: 配色关系新契约字段清洗（v2 contract sanitize）', () => {
+  const base={id:'x',name:'三色源',primary:'#0047AB',secondary:'#00A8D3'};
+  const ok=sanitizePreset({...base,
+    seriesMode:'triad',seriesRelation:'tertiary',
+    thirdColor:{name:'第三',value:'#70C884',scale:{'50':'#fff'},on:'#000'},
+    auxiliary:[{name:'辅一',value:'#FFB000'},{name:'坏辅',value:'#ZZZZZZ'}]});
+  assert.ok(ok);
+  assert.equal(ok.seriesMode,'triad');
+  assert.equal(ok.seriesRelation,'tertiary');
+  assert.equal(ok.thirdColor.value,'#70C884');
+  // scale/on 由 HEX 重建（不信任远端自算值）
+  assert.ok(ok.thirdColor.scale['500'],'色阶已重建');
+  assert.ok(/^#[0-9A-F]{6}$/.test(ok.thirdColor.on),'前景已重建');
+  assert.equal(ok.auxiliary.length,1,'非法辅助条目丢弃');
+  assert.equal(ok.auxiliary[0].value,'#FFB000');
+  assert.ok(ok.auxiliary[0].scale['700']);
+  // 非法 mode/relation/结构 → 字段省略（缺省=现行 dual/manual 语义）
+  const dirty=sanitizePreset({...base,seriesMode:'quad',seriesRelation:'nonsense',
+    thirdColor:'垃圾',auxiliary:[{value:'bad'}]});
+  assert.ok(dirty);
+  assert.equal('seriesMode'in dirty,false);
+  assert.equal('seriesRelation'in dirty,false);
+  assert.equal('thirdColor'in dirty,false);
+  assert.equal('auxiliary'in dirty,false);
+  // 槽位上限截断：10 条合法 → 保 8
+  const many=sanitizePreset({...base,auxiliary:Array.from({length:10},(_,i)=>({name:'a'+i,value:'#0A0B0C'}))});
+  assert.equal(many.auxiliary.length,8);
+});
+
 test('主题包: 非法 JSON/未知版本/非对象返回 null（parse failures）', () => {
   assert.equal(parseThemePack('not-json'), null);
   assert.equal(parseThemePack(JSON.stringify({ schemaVersion: 9, presets: [] })), null);

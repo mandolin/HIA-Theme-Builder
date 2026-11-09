@@ -242,6 +242,8 @@ const PREVIEW_PC = make({
   '主题名称': 'Theme Name',
   '主色': 'Primary',
   '副色': 'Secondary',
+  '第三色': 'Third',
+  '辅助色': 'Auxiliary',
   '预览结构': 'Preview Layout',
   '显示模式': 'Display Mode',
   '浅色': 'Light'

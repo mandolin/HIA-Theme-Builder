@@ -7,9 +7,12 @@
  *   "an exported file can be hosted as a source directly". Security boundary: JSON-only, never executed;
  *   dirty entries are dropped with a count; never silently overwrites local presets.
  */
-import type{Preset,GradientSettings}from'./types.js';
+import type{AuxiliaryModifier,GradientSettings,Preset,RoleColor,SeriesMode,SeriesRelationId}from'./types.js';
 import{normalizeHex,validHex}from'./color/convert.js';
 import{cloneGradientSettings}from'./data/gradients.js';
+import{tonalScale}from'./color/scale.js';
+import{bestOnColor}from'./color/contrast.js';
+import{SERIES_RELATION_DEFS}from'./color/harmony.js';
 
 // 单条预设字段上限：与 share.ts LIMITS 同口径（外界输入一律截断）。
 // <lang zh-CN>name/note/taxonomy 分别 80/200/40。</lang>
@@ -25,6 +28,24 @@ export const THEME_PACK_MAX_PRESETS=200;
 // <lang en>Same semantics as share.ts's sanitizeText; kept separate to avoid coupling.</lang>
 function sanitizeText(value:unknown,max:number):string{
   return typeof value==='string'?value.trim().slice(0,max):'';
+}
+
+// 新契约白名单（ADR-007 v2 / `W-tb-P12`）：远程源/导入文件的配色关系字段合法值集。
+// <lang zh-CN>seriesMode 三值、seriesRelation 取规则表 id 集；辅助槽位数上限 8。</lang>
+// <lang en>Whitelists for the v2 contract fields; max 8 auxiliary slots.</lang>
+export const SERIES_MODES:SeriesMode[]=['single','dual','triad'];
+export const SERIES_RELATION_IDS:SeriesRelationId[]=SERIES_RELATION_DEFS.map(r=>r.id);
+export const AUXILIARY_MAX=8;
+
+// 角色色清洗：value 必须合法 HEX；色阶与前景由 HEX 重建（远端数据不携带自算 scale 的正确性保证）。
+// <lang zh-CN>name 截断回退；非对象/非法 HEX 返回 null（调用方丢弃计数）。</lang>
+// <lang en>Rebuilds scale/foreground from the validated hex; null on invalid input.</lang>
+export function sanitizeRole(raw:unknown):RoleColor|null{
+  if(!raw||typeof raw!=='object')return null;
+  const r=raw as Record<string,unknown>;
+  const value=normalizeHex(sanitizeText(r.value,16));
+  if(!validHex(value))return null;
+  return{name:sanitizeText(r.name,LIMITS.taxonomy)||'角色色',value,scale:tonalScale(value),on:bestOnColor(value).hex};
 }
 
 // 单条预设清洗：字段级校验/截断/回退，非法返回 null（由调用方计数丢弃）。
@@ -67,7 +88,18 @@ export function sanitizePreset(raw:unknown,index:number):Preset|null{
     primaryName:sanitizeText(r.primaryName,LIMITS.taxonomy)||'主色',
     secondaryName:sanitizeText(r.secondaryName,LIMITS.taxonomy)||'副色',
     note:sanitizeText(r.note,LIMITS.note),
-    ...(gradients?{gradients}:{})
+    ...(gradients?{gradients}:{}),
+    // 配色关系新契约（ADR-007 v2）：仅当值为合法白名单才保留（缺省=现行 dual/manual 语义）。
+    // <lang zh-CN>thirdColor 仅三色系；auxiliary 逐条清洗并截断到上限——脏条目丢弃计数由上层合并处理。</lang>
+    // <lang en>Keeps only whitelisted values; third/aux entries are role-sanitized.</lang>
+    ...(SERIES_MODES.includes(r.seriesMode as SeriesMode)?{seriesMode:r.seriesMode as SeriesMode}:{}),
+    ...(SERIES_RELATION_IDS.includes(r.seriesRelation as SeriesRelationId)?{seriesRelation:r.seriesRelation as SeriesRelationId}:{}),
+    ...(()=>{const t=sanitizeRole(r.thirdColor);return t?{thirdColor:t}:{};})(),
+    ...(()=>{
+      if(!Array.isArray(r.auxiliary)||!r.auxiliary.length)return {};
+      const cleaned=r.auxiliary.slice(0,AUXILIARY_MAX).map(sanitizeRole).filter((x):x is RoleColor=>!!x);
+      return cleaned.length?{auxiliary:cleaned}:{};
+    })()
   };
 }
 

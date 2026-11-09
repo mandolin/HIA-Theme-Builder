@@ -116,10 +116,14 @@ export function t(key: string, params?: Record<string, string | number>): string
     out = key;
   }
   // 参数插值：{name} 形式。
-  // <lang zh-CN>替换 {name} 占位符。</lang>
-  // <lang en>Substitute {name} placeholders.</lang>
+  // <lang zh-CN>全局替换同名占位符（`p11.aux.slotMeta` 含两处 {i}，首轮 replace 只换第一处
+  //   导致 "on-aux{i}" 字面残留——W-tb-P12 完善批②修复）。</lang>
+  // <lang en>Replace all occurrences of a placeholder (aux slotMeta carries {i} twice;
+  //   the original single replace() left the second literal — W-tb-P12 batch ② fix).</lang>
   if (params) {
-    for (const name of Object.keys(params)) out = out.replace(`{${name}}`, String(params[name]!));
+    for (const name of Object.keys(params)) {
+      out = out.replace(new RegExp(`\\{${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}`, 'g'), String(params[name]!));
+    }
   }
   return out;
 }
