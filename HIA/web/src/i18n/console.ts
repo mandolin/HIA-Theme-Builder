@@ -36,6 +36,16 @@ const CONSOLE: Record<string, StringEntry> = {
   'explore.url.label': { zh: '目标网址', en: 'Target URL' },
   'explore.action': { zh: '探索并分析', en: 'Explore & Analyze' },
   'explore.stage.idle': { zh: '等待输入网址', en: 'Waiting for a URL' },
+  // 应用范围复选框与提示（W-tb-P14）：取色结果按勾选范围落到操作台。
+  // <lang en>Apply-scope checkboxes for the explore result (base pair / auxiliary slots).</lang>
+  'explore.apply.scopeAria': { zh: '取色应用范围', en: 'Apply scope' },
+  'explore.apply.base': { zh: '应用主副色', en: 'Apply primary & secondary' },
+  'explore.apply.aux': { zh: '应用其它色到辅助色', en: 'Apply other colors to auxiliary' },
+  'explore.apply.none': { zh: '未选择任何应用范围——请至少勾选一项。', en: 'No apply scope selected — check at least one.' },
+  'explore.auxName': { zh: '取色辅助', en: 'Explore aux' },
+  // 顶部站点链接（W-tb-P14）：GitHub 仓库与文档子站。
+  // <lang en>Top-right site links (repo / docs subsite).</lang>
+  'top.docs': { zh: '文档', en: 'Docs' },
 
   // ---- 主题操作台 ----
   'console.title': { zh: '当前主题操作台', en: 'Theme Console' },

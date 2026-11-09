@@ -115,6 +115,11 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .explore-tag{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:6px;background:#E0E7FF;color:#3730A3;font-size:10px;font-weight:700;vertical-align:middle}
 .explore-logo-tag{position:absolute;top:3px;left:3px;padding:1px 5px;border-radius:5px;background:rgba(15,23,42,.78);color:#fff;font-size:9px;font-weight:800;font-style:normal;letter-spacing:.04em}
 .explore-actions{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+/* 应用范围复选框（W-tb-P14）：操作按钮上方的两枚选项，行内紧凑排布。 */
+/* Apply-scope checkboxes (W-tb-P14): two options above the apply button, compact inline. */
+.explore-apply-opts{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#F8FAFC}
+.explore-opt{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer}
+.explore-opt input{width:15px;height:15px;accent-color:var(--primary);cursor:pointer}
 /* W-tb-P7 无障碍：深色外观下补齐次要文字对比度（#9EB1C4 on #111827 = 8.06:1，WCAG AA 达标）。
    W-tb-P7 a11y: dark-appearance secondary text contrast fixes (8.06:1, WCAG AA compliant). */
 .pc-shell.dark .pc-nav-title{color:#93A8BC}

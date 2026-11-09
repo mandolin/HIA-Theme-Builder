@@ -85,10 +85,18 @@ jobs:
           npm run build:front
           npm test
 
+      # 组装站点：web 应用 + docs/ 文档子站（W-tb-P14）——同一 Pages 产物、同一域名路径。
+      # <lang en>Assemble site: web app plus docs/ subsite in one Pages artifact.</lang>
+      - name: Assemble site (app + docs subsite)
+        shell: bash
+        run: |
+          mkdir -p stage/docs
+          cp -r HIA/web/dist/* stage/
+          cp -r docs-site/* stage/docs/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: HIA/web/dist
+          path: stage
 
   # ----- tauri Rust 静态检查（C7）：windows runner 无需 webkit2gtk 系统依赖，cargo check 覆盖编译正确性 -----
   # <lang zh-CN>不运行需要系统 Chrome 的集成测试（目标环境复验）；仅 cargo check 保证 Rust 侧随每次改动可编译。

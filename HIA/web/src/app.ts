@@ -13,7 +13,7 @@ import{
   gradientCss,isBuiltinPresetId,mergeImportedPresets,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,parseThemePack,
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
-  BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,
+  BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
@@ -1579,6 +1579,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       <div class="explore-block"><div class="explore-sub">推荐理由（前 ${reasons.length} 条）</div><ul class="explore-reasons">${reasonHtml}</ul></div>
       <div class="explore-block"><div class="explore-sub">备选颜色（${a.alternatives.length} 个，点击设为副色）</div><div class="explore-swatches">${altHtml}</div></div>
       <div class="explore-block"><div class="explore-sub">注意事项</div><ul class="explore-warnings">${warnHtml}</ul></div>
+      <!-- 应用范围复选框（W-tb-P14）：应用主副色 / 其它候选色进辅助色，均默认勾选；两者皆不选时按钮给出提示。 -->
+      <!-- Apply-scope checkboxes (W-tb-P14): both default-checked; button hints when neither selected. -->
+      <div class="explore-apply-opts" role="group" aria-label="${escapeHtml(t('explore.apply.scopeAria'))}">
+        <label class="explore-opt"><input type="checkbox" id="exploreApplyBase" checked> ${escapeHtml(t('explore.apply.base'))}</label>
+        <label class="explore-opt"><input type="checkbox" id="exploreApplyAux" checked> ${escapeHtml(t('explore.apply.aux'))}</label>
+      </div>
       <div class="explore-actions"><button class="btn primary" id="exploreApplyBtn">${high?'确认并应用到操作台':'应用到操作台'}</button><span class="explore-muted">${high?'高置信度，请确认后覆盖当前主副色':'置信度偏低，建议人工校正后再应用'}</span></div>
     `;
     // 候选点击：写入副色输入框并同步拾色器（不自动应用）。
@@ -1591,22 +1597,42 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       draft.secondary=hex;setInputValue('secondaryNameInput','副色');
       applyCurrentTheme(false);
     }));
-    // 应用按钮：用推荐主副色覆盖草稿并刷新全界面（显式点击，遵循高置信不静默覆盖）。
-    // <lang zh-CN>始终需用户主动确认；应用后仍可被后续“取色器/候选”改动撤销。</lang>
-    // <lang en>Always an explicit confirm; later picker/candidate edits can still override.</lang>
+    // 应用按钮：按两个范围复选框组装应用内容（显式点击，遵循高置信不静默覆盖）。
+    // <lang zh-CN>①应用主副色=原行为；②其它色到辅助色=候选色剔除推荐主/副后取前 8 槽（AUXILIARY_MAX），
+    //   整组替换辅助槽位（命名"取色辅助 N"）；两者皆不选 → 状态行提示不动作。刷新链含关系区与经典 mock。</lang>
+    // <lang en>(1) base = previous behavior; (2) aux = alternatives minus recommended pair, first 8 slots
+    //   (AUXILIARY_MAX), replacing the auxiliary set ("Explore aux N"). Refresh chain mirrors applyPreset.</lang>
     byId<HTMLButtonElement>('exploreApplyBtn').addEventListener('click',()=>{
       if(!primary)return;
-      draft.primary=normalizeHex(primary.hex);
-      if(secondary)draft.secondary=normalizeHex(secondary.hex);
-      draft.primaryName=primary.role==='brand'?'提取主色':'提取主色';
-      draft.secondaryName=secondary?'提取副色':'副色';
-      draft.name=inputValue('themeNameInput').trim()||autoThemeName(draft.primaryName,draft.secondaryName);
+      const applyBase=byId<HTMLInputElement>('exploreApplyBase').checked;
+      const applyAux=byId<HTMLInputElement>('exploreApplyAux').checked;
+      if(!applyBase&&!applyAux){setText('generateStatus',t('explore.apply.none'));return;}
+      if(applyBase){
+        draft.primary=normalizeHex(primary.hex);
+        if(secondary)draft.secondary=normalizeHex(secondary.hex);
+        draft.primaryName=primary.role==='brand'?'提取主色':'提取主色';
+        draft.secondaryName=secondary?'提取副色':'副色';
+        draft.name=inputValue('themeNameInput').trim()||autoThemeName(draft.primaryName,draft.secondaryName);
+      }
+      if(applyAux){
+        // 辅助候选：剔除推荐主/副色（避免与主体色重复），截断到槽位上限后整组替换。
+        const auxList=a.alternatives
+          .filter(c=>c.hex!==primary?.hex&&c.hex!==secondary?.hex)
+          .slice(0,AUXILIARY_MAX)
+          .map((c,i)=>makeRoleColor(normalizeHex(c.hex),`${t('explore.auxName')} ${i+1}`));
+        draft.auxiliary=auxList;
+      }
       // 取色推导链（ADR-007 v2）：single 模式 secondary 变体与 triad 第三色由 buildTheme 装配按规则自动推导；
-      //   辅助色独立维度不动（定案 3）。规则推导值可手动覆写（completeSeriesMember 同语义）。
-      // <lang zh-CN>取色应用后无需额外推导代码——装配语义已覆盖。</lang>
-      // <lang en>Assembly semantics cover derivation on explore-apply; no extra code needed.</lang>
-      syncInputs();applyCurrentTheme(false);
-      setText('generateStatus',`已应用网址取色结果（主色 ${draft.primary}${secondary?` / 副色 ${draft.secondary}`:''}）。`);
+      //   仅勾辅助色时不动主副色（独立维度互不覆盖）。规则推导值可手动覆写（completeSeriesMember 同语义）。
+      // <lang zh-CN>装配语义已覆盖推导；辅助色整组替换后走 applyPreset 同款刷新链（关系区/渐变/经典 mock/设置页）。
+      //   auxCount 局部捕获：草稿辅助槽位数（applyAux 已写入，避免可空收窄噪音）。</lang>
+      // <lang en>Assembly semantics cover derivation; aux-only apply keeps base colors untouched. auxCount is a local
+      //   snapshot of the slot count after the aux write (avoids optional-narrowing noise).</lang>
+      const auxCount=applyAux?draft.auxiliary?.length??0:0;
+      syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();updatePreviewMeta();
+      setText('generateStatus',applyBase
+        ?`已应用网址取色结果（主色 ${draft.primary}${secondary?` / 副色 ${draft.secondary}`:''}${applyAux?` / 辅助色 ${auxCount} 槽`:''}）。`
+        :`已将 ${auxCount} 个取色候选写入辅助色槽位。`);
     });
   }
 

@@ -71,7 +71,7 @@ export{DEFAULT_THEME_DRAFT,autoThemeName,createThemeDraft,draftFromPreset,buildT
 // <lang en>All pure (no DOM/network in core); fetching belongs to the web layer.</lang>
 export type{SharePayload}from'./share.js';
 export{buildSharePayload,encodeShareHash,decodeShareHash}from'./share.js';
-export{parseThemePack,mergeImportedPresets,sanitizePreset,THEME_PACK_MAX_PRESETS}from'./pack.js';
+export{parseThemePack,mergeImportedPresets,sanitizePreset,THEME_PACK_MAX_PRESETS,AUXILIARY_MAX}from'./pack.js';
 export{exportThemeCss}from'./token/css.js';
 export{exportThemeJson}from'./token/json.js';
 // 导出适配器：虚拟文件树目标注册表与三个内置适配器（`ADR-005` / `W-tb-P9`）。

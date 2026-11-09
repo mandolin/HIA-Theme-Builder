@@ -1,0 +1,35 @@
+/* 文档子站样式（W-tb-P14）：沿用品牌钴蓝 #0047AB / 清透青 #00A8D3 与松树意象，静态无依赖。
+   Docs subsite stylesheet: brand cobalt/clear-cyan palette, static, no dependencies. */
+:root{--primary:#0047AB;--primary-deep:#003378;--cyan:#00A8D3;--pine:#1B4332;--text:#1E2B3A;--muted:#5B6B7C;--line:#DCE6EF;--bg:#F4F8FB;--panel:#FFFFFF}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--text);background:var(--bg);line-height:1.75}
+.site-head{display:flex;align-items:center;gap:14px;padding:14px 28px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.site-head .logo{display:flex;align-items:center;gap:10px;font-weight:900;color:var(--primary);text-decoration:none;font-size:16px}
+.site-head .logo img{width:28px;height:28px}
+.site-head nav{margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+.site-head nav a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:700}
+.site-head nav a:hover,.site-head nav a.active{color:var(--primary)}
+.site-head .gh{color:var(--muted);text-decoration:none;font-size:14px;font-weight:700}
+.wrap{max-width:920px;margin:0 auto;padding:36px 24px 80px}
+.hero-doc{background:linear-gradient(135deg,#EAF3FB,#DFF0F8);border:1px solid var(--line);border-radius:14px;padding:30px 34px;margin-bottom:34px}
+.hero-doc h1{margin:0 0 8px;color:var(--primary-deep);font-size:26px}
+.hero-doc p{margin:0;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:40px}
+.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;text-decoration:none;color:var(--text);transition:border-color .15s}
+.card:hover{border-color:var(--primary)}
+.card h3{margin:0 0 6px;color:var(--primary);font-size:16px}
+.card p{margin:0;font-size:13px;color:var(--muted)}
+.doc h2{color:var(--primary-deep);font-size:20px;margin:34px 0 10px;border-bottom:2px solid #E3EDF5;padding-bottom:6px}
+.doc h3{color:var(--text);font-size:16px;margin:24px 0 8px}
+.doc p,.doc li{font-size:14.5px;color:#2C3E52}
+.doc code{background:#EDF3F9;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:13px;font-family:Consolas,Menlo,monospace;color:var(--primary-deep)}
+.doc pre{background:#0F2233;color:#DCE9F5;border-radius:10px;padding:14px 16px;overflow:auto;font-size:13px;line-height:1.6}
+.doc pre code{background:none;border:0;color:inherit;padding:0}
+.doc table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+.doc th,.doc td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+.doc th{background:#EDF3F9;color:var(--primary-deep)}
+.doc .tip{background:#EFF8F3;border:1px solid #CBE7D8;border-left:4px solid var(--pine);border-radius:8px;padding:10px 14px;font-size:13.5px;margin:14px 0}
+.doc .download-note{background:#EDF4FB;border:1px solid var(--line);border-left:4px solid var(--primary);border-radius:8px;padding:10px 14px;font-size:13.5px;margin:14px 0}
+footer.site-foot{max-width:920px;margin:0 auto;padding:0 24px 60px;color:#8B9AA9;font-size:12.5px}
+footer.site-foot a{color:var(--primary);text-decoration:none}
+@media (max-width:640px){.site-head{padding:12px 16px}.wrap{padding:24px 16px 60px}}

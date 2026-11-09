@@ -24,6 +24,9 @@ use std::env;
 use std::net::ToSocketAddrs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+// 超时护栏（W-tb-P14 Chromium 残留修复）：close/handler 等待限时，防 CDP 卡死致函数永不返回。
+// <lang en>Timeout guard for close/handler waits so the function always returns (child killed on drop).</lang>
+use tokio::time::{timeout, Duration};
 
 /// @lang zh-CN 统一日志：打到 stderr，Tauri 运行时捕获到应用日志，便于排查渲染/代理/CDP 问题。
 /// @lang en Unified logging to stderr; Tauri runtime captures it for diagnosing render/proxy/CDP issues.
@@ -200,6 +203,10 @@ async fn launch_browser() -> Result<(Browser, chromiumoxide::Handler), String> {
         "--no-sandbox".into(),
         "--disable-gpu".into(),
         "--disable-dev-shm-usage".into(),
+        // 显式无头（W-tb-P14）：此前未传 --headless，launch 出的 Chrome 带可见窗口——
+        //   采集出错且 close 挂死时即维护者看到的"独立 Chromium 残留窗口"本体。
+        // <lang en>Explicit headless: previously launched a visible Chrome window (the leftover seen on error).</lang>
+        "--headless=new".into(),
         format!("--window-size={VIEWPORT_W},{VIEWPORT_H}"),
     ];
     let no_proxy = env::var("HIA_CHROME_NO_PROXY").map(|v| v == "1").unwrap_or(false);
@@ -555,8 +562,15 @@ pub async fn render_collect_impl(url: &str, emulate_dark: bool) -> Result<Value,
     if is_connect_mode {
         browser_handle.abort();
     } else {
-        let _ = browser.close().await;
-        let _ = browser_handle.await;
+        // 超时护栏（W-tb-P14）：close/(handler 收尾) 任一卡死时限时放行——函数返回后 Browser Drop
+        //   经 kill_on_drop 强杀子进程，根除"错误后残留 Chromium 窗口"。
+        // <lang en>Bounded waits: after timeout we proceed; returning drops the Browser, killing the child via kill_on_drop.</lang>
+        if timeout(Duration::from_secs(5), browser.close()).await.is_err() {
+            rlog!("WARN browser.close timed out (5s); relying on Drop kill");
+        }
+        if timeout(Duration::from_secs(5), browser_handle).await.is_err() {
+            rlog!("WARN handler loop did not finish (5s); aborting");
+        }
     }
 
     result

@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- @lang zh-CN 入门教程：5 分钟最小闭环（选主色 → 生成配色 → 预览 → 导出）。
+     @lang en Getting started: minimal loop in 5 minutes. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>入门教程 · HIA-Theme-Builder</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="site-head">
+  <a class="logo" href="../"><img src="../favicon.svg" alt="">HIA-Theme-Builder 文档</a>
+  <nav>
+    <a href="../">文档首页</a>
+    <a class="active" href="./">入门教程</a>
+    <a href="../manual/">使用手册</a>
+    <a href="../reference/">参考及开发文档</a>
+  </nav>
+  <a class="gh" href="https://github.com/mandolin/HIA-Theme-Builder" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+</header>
+<main class="wrap doc">
+  <h1>入门教程：5 分钟做出第一套主题</h1>
+  <p>本教程带你走完最小闭环：<b>选主色 → 生成配色体系 → 预览确认 → 导出使用</b>。全程无需安装（在线版即可）。</p>
+
+  <h2>第 1 步：选一个主色</h2>
+  <p>在<b>主色候选库</b>（44 个候选）中点击任意主色卡，或直接在操作台的拾色器中输入品牌色 HEX（如 <code>#0047AB</code>）。选择后系统自动套用预设副色并生成完整色阶（50–900 十档）。</p>
+  <div class="tip">没有明确主色？试试桌面端的"网址取色探索"：输入目标网址，由真实渲染页面分析出推荐主副色与置信度。</div>
+
+  <h2>第 2 步：生成配色体系</h2>
+  <p>在<b>按配色关系模式生成</b>面板中：</p>
+  <ul>
+    <li><b>宝典选色</b>：从 24 种情感 × 10 种形态的配色组合中直接挑选（点击色条卡套用到主体色）；</li>
+    <li><b>规则补色</b>：选择互补/类比/三次色等十种经典设计规则，一键"补副色 / 补第三色"；</li>
+    <li><b>辅助色</b>：主体色之外的独立强调色槽位（手动添加或按规则生成），用于数据强调、状态语义等。</li>
+  </ul>
+
+  <h2>第 3 步：预览确认</h2>
+  <p>右侧预览区实时联动：<b>PC 版企业后台</b>（仪表盘/列表/表单/详情/分析/设置六页，可切换左右、上下、混合三种结构与明暗模式）与<b>小程序示例</b>（五页）。所有颜色、字号、间距、渐变随操作台即时变化。</p>
+
+  <h2>第 4 步：导出使用</h2>
+  <p>在<b>主题 Token 导出</b>面板选择目标：</p>
+  <table>
+    <tr><th>目标</th><th>产物</th></tr>
+    <tr><td>CSS 变量</td><td><code>--hia-primary-*</code> 等全套变量与运行时快照，直接引入项目样式。</td></tr>
+    <tr><td>JSON Token</td><td>结构化色阶/渐变/字体/间距令牌，供设计系统消费。</td></tr>
+    <tr><td>WordPress</td><td><code>theme.json</code> + 子主题骨架，可打包启用。</td></tr>
+    <tr><td>Tailwind</td><td>完整 <code>tailwind.config</code> 色族映射。</td></tr>
+  </table>
+
+  <h2>第 5 步：保存与分享</h2>
+  <p>点击"生成并导入主题库"保存为主题预设；在<b>主题库管理</b>中可搜索、分类、导出主题包（JSON），或生成<b>分享链接</b>——对方打开链接即还原整套主题。远程预设源支持从 URL 订阅团队配色方案。</p>
+
+  <div class="download-note">桌面版增强：网址取色探索（真实渲染 + SSRF 双重防护）为 Electron / Tauri 端专属，见 <a href="../manual/">使用手册</a>。</div>
+  <p>下一步 → <a href="../manual/">使用手册</a>（配色体系、宝典、市场全功能讲解）。</p>
+</main>
+<footer class="site-foot">HIA-Theme-Builder · <a href="https://github.com/mandolin/HIA-Theme-Builder">GitHub</a></footer>
+</body>
+</html>
