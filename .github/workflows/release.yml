@@ -78,8 +78,8 @@ jobs:
           npm run build
 
       # 收集产物并生成 SHA-256
-      # <lang zh-CN>四件产物复制到 artifacts/ 目录，生成 SHA256SUMS.txt。</lang>
-      # <lang en>Copy four artifacts to artifacts/ directory, generate SHA256SUMS.txt.</lang>
+      # <lang zh-CN>四件产物复制到 artifacts/ 目录，生成 SHA256SUMS.txt。版本号从 electron package.json 动态读取（封版升版不再改工作流——v0.2.0 发版时硬编码 0.1.0 致 Collect 步失败的修复）。</lang>
+      # <lang en>Copy four artifacts to artifacts/, generate SHA256SUMS.txt. Version is read from electron package.json dynamically (fixes the hardcoded 0.1.0 that failed Collect on v0.2.0).</lang>
       - name: Collect artifacts
         shell: pwsh
         run: |
@@ -88,13 +88,16 @@ jobs:
           Copy-Item "HIA\electron\dist\HIA-Theme-Builder-Electron-*-setup.exe" artifacts\
           Copy-Item "HIA\tauri\src-tauri\target\release\bundle\msi\HIA Theme Builder_*_x64_en-US.msi" artifacts\
           Copy-Item "HIA\tauri\src-tauri\target\release\HIA Theme Builder.exe" artifacts\HIA-Theme-Builder-Tauri-portable.exe
+          # 版本号动态读取（electron/tauri 四包版本封版时同步）。
+          $ver = (Get-Content "HIA\electron\package.json" | ConvertFrom-Json).version
+          Write-Host "sealed version: $ver"
           # 验证产物存在且非空
           # <lang zh-CN>确保四件产物都已构建。</lang>
           # <lang en>Verify all four artifacts exist and are non-empty.</lang>
           $expected = @(
-            "artifacts\HIA-Theme-Builder-Electron-0.1.0-portable.exe",
-            "artifacts\HIA-Theme-Builder-Electron-0.1.0-setup.exe",
-            "artifacts\HIA Theme Builder_0.1.0_x64_en-US.msi",
+            "artifacts\HIA-Theme-Builder-Electron-$ver-portable.exe",
+            "artifacts\HIA-Theme-Builder-Electron-$ver-setup.exe",
+            "artifacts\HIA Theme Builder_${ver}_x64_en-US.msi",
             "artifacts\HIA-Theme-Builder-Tauri-portable.exe"
           )
           foreach ($f in $expected) {
