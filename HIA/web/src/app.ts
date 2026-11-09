@@ -964,6 +964,53 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     else{draft.seriesMode='triad';draft.primary=normalizeHex(list[0]!.value);if(list[0]!.name)draft.primaryName=list[0]!.name;draft.secondary=normalizeHex(list[1]!.value);if(list[1]!.name)draft.secondaryName=list[1]!.name;draft.thirdColor=makeRoleColor(list[2]!.value,list[2]!.name||'第三色');}
     syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();
   }
+  // 交换两个主体色成员位（0主/1副/2第三）：{name,value} 互换后按现有成员数写回。
+  // <lang zh-CN>single/dual 下 index2 不存在→等同"把该色升为第三色"（commit 会补齐前置位）。</lang>
+  // <lang en>Swapping into a non-existent slot promotes the color (commit fills prerequisites).</lang>
+  function swapMemberPair(a:number,b:number){
+    const list=seriesMemberList();
+    const get=(i:number)=>list[i]??null;
+    const va=get(a),vb=get(b);
+    // 目标位超出当前成员数：把源色移动到目标位（补齐中间位为现值）。
+    if(!va||!vb){
+      const from=va?a:b, to=va?b:a, moving=va??vb;
+      if(!moving)return;
+      // 补齐到 to 长度
+      while(list.length<=to)list.push({name:'占位',value:normalizeHex(draft.secondary)});
+      list[to]={name:moving.name,value:moving.value};
+      list.splice(from,1);
+    }else{
+      const tmp=list[a]!;list[a]=list[b]!;list[b]=tmp;
+    }
+    // 清理中间可能产生的占位（保留真实成员）。
+    commitSeriesMembers(list.filter(x=>x.name!=='占位'));
+    // 若过滤后掉成员（少见），仍至少保留主色。
+    if(!byId<HTMLElement>('seriesMembers').children.length)commitSeriesMembers([{name:draft.primaryName,value:draft.primary}]);
+  }
+  // 交换辅助槽位与某主体色成员位（0主/1副/2第三）：两侧 {name,value} 互换；
+  //   若目标成员不存在（如 dual 下"与第三色互换"），辅助色升为该成员并从槽位移除。
+  // <lang zh-CN>满足维护者"辅助加三互换按钮"诉求。</lang>
+  // <lang en>Aux↔member swap; promoting aux into a missing member slot when needed.</lang>
+  function swapAuxWithMember(auxIdx:number,memberIdx:number){
+    const aux=draft.auxiliary?.[auxIdx];
+    if(!aux)return;
+    const list=seriesMemberList();
+    if(memberIdx>=list.length){
+      // 成员位空缺：aux 升为该成员并移除槽位。
+      draft.auxiliary!.splice(auxIdx,1);
+      if(memberIdx===1){draft.seriesMode='dual';draft.secondary=normalizeHex(aux.value);draft.secondaryName=aux.name;}
+      else if(memberIdx===2){draft.seriesMode='triad';draft.thirdColor=makeRoleColor(aux.value,aux.name);}
+    }else{
+      const m=list[memberIdx]!;
+      list[memberIdx]={name:aux.name,value:normalizeHex(aux.value)};
+      // aux 槽位取成员原色。
+      draft.auxiliary![auxIdx]=makeRoleColor(m.value,m.name);
+      commitSeriesMembers(list);
+      return;
+    }
+    saveAuxiliary();syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();
+  }
+
   // 规则可用性判定：可补副色=有 secondAngle 或 pure（变体）；可补第三色=有 thirdFromSecondary/thirdCombo 或 pure。
   // <lang zh-CN>manual 不可补（排除在下拉外）；不适用按钮置灰（维护者确认：置灰不适用）。</lang>
   // <lang en>manual excluded; inapplicable buttons are disabled.</lang>
@@ -1013,7 +1060,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     byId<HTMLElement>('seriesInfo').textContent=members.length===1?t('p12.mode.single'):members.length===2?t('p12.mode.dual'):t('p12.mode.triad');
     // 成员卡（色块行内取色 + X 删除）。
     const roleLabels=[t('p11.member.primary'),t('p11.member.secondary'),t('p11.member.third')];
-    byId<HTMLElement>('seriesMembers').innerHTML=members.map((m,i)=>`<div class="pp-member" data-member-idx="${i}"><div class="pp-slot-head"><input type="color" class="pp-swatch-input" value="${m.value}" data-member-recolor="${i}" aria-label="${escapeHtml(t('p12.member.recolorAria'))}">${members.length>1?`<button class="pp-member-del" data-member-del="${i}" type="button" aria-label="${escapeHtml(t('p12.member.delAria'))}">×</button>`:''}</div><div class="pp-role">${escapeHtml(m.name)}</div><div class="pp-rolehex">${m.value}</div><div class="pp-rolefrom">${escapeHtml(roleLabels[i]||'')}</div></div>`).join('');
+    byId<HTMLElement>('seriesMembers').innerHTML=members.map((m,i)=>`<div class="pp-member" data-member-idx="${i}"><span class="pp-grip" draggable="true" aria-label="${escapeHtml(t('p12.drag.hint'))}">⠿</span><div class="pp-slot-head"><input type="color" class="pp-swatch-input" value="${m.value}" data-member-recolor="${i}" aria-label="${escapeHtml(t('p12.member.recolorAria'))}">${members.length>1?`<button class="pp-member-del" data-member-del="${i}" type="button" aria-label="${escapeHtml(t('p12.member.delAria'))}">×</button>`:''}</div><div class="pp-role">${escapeHtml(m.name)}</div><div class="pp-rolehex">${m.value}</div><div class="pp-rolefrom">${escapeHtml(roleLabels[i]||'')}</div></div>`).join('');
     all<HTMLInputElement>('[data-member-recolor]').forEach(inp=>inp.addEventListener('change',()=>{
       const list=seriesMemberList();const idx=+(inp.dataset.memberRecolor??-1);
       if(idx<0||!list[idx])return;
@@ -1026,11 +1073,29 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       list.splice(idx,1);
       commitSeriesMembers(list);
     }));
+    // 成员卡拖拽互换（维护者：三色成员卡拖拽也要生效）：grip 承载 dragstart，卡承载 drop。
+    // <lang zh-CN>与操作台拾色器同一"抓手"根因修复。</lang>
+    // <lang en>Same grip fix as console pickers.</lang>
+    let memDragSrc=-1;
+    all<HTMLElement>('#seriesMembers .pp-member').forEach(card=>{
+      const grip=card.querySelector<HTMLElement>('.pp-grip');
+      if(!grip)return;
+      grip.addEventListener('dragstart',e=>{memDragSrc=+(card.dataset.memberIdx??-1);e.dataTransfer?.setData('text/plain',String(memDragSrc));});
+      card.addEventListener('dragover',e=>{e.preventDefault();if(memDragSrc>=0&&memDragSrc!==+(card.dataset.memberIdx??-1))card.style.outline='2px dashed var(--p400)';});
+      card.addEventListener('dragleave',()=>{card.style.outline='';});
+      card.addEventListener('drop',e=>{
+        e.preventDefault();card.style.outline='';
+        const dst=+(card.dataset.memberIdx??-1);
+        const src=memDragSrc;memDragSrc=-1;
+        if(src<0||dst<0||src===dst)return;
+        swapMemberPair(src,dst);
+      });
+    });
     // 辅助槽位（显示+编辑+重排）：行内编辑（color/名称）+ 拖拽重排 + 上移/下移按钮 + 删除。
     // <lang zh-CN>编辑经 makeRoleColor 重建（色阶/前景自动）；重排影响 aux<N> token 编号。</lang>
     // <lang en>Inline edits rebuild via makeRoleColor; reorder renumbers aux<N> tokens.</lang>
     const auxWrap=byId<HTMLElement>('auxSlots');
-    auxWrap.innerHTML=draft.auxiliary!.map((aux,i)=>`<div class="pp-slot" draggable="true" data-aux-idx="${i}"><div class="pp-slot-head"><input type="color" class="pp-aux-color" value="${aux.value}" data-aux-color="${i}" data-tooltip="${escapeHtml(t('p11.aux.colorAria',{i}))}" aria-label="${escapeHtml(t('p11.aux.colorAria',{i}))}"><input class="pp-slot-name" value="${escapeHtml(aux.name)}" data-aux-name="${i}" aria-label="${escapeHtml(t('p11.aux.nameAria',{i}))}"><button class="pp-slot-del" data-aux-del="${i}" type="button">${t('p11.aux.delete')}</button></div><div class="pp-slot-hex">${aux.value} · ${t('p11.aux.slotMeta',{i})}</div><div class="pp-mini-actions"><button class="pp-slot-del" data-aux-up="${i}" type="button" ${i===0?'disabled':''}>↑</button><button class="pp-slot-del" data-aux-down="${i}" type="button" ${i===draft.auxiliary!.length-1?'disabled':''}>↓</button><span class="pp-drag-hint">⠿ ${t('p11.aux.dragHint')}</span></div></div>`).join('');
+    auxWrap.innerHTML=draft.auxiliary!.map((aux,i)=>`<div class="pp-slot" draggable="true" data-aux-idx="${i}"><div class="pp-slot-head"><input type="color" class="pp-aux-color" value="${aux.value}" data-aux-color="${i}" data-tooltip="${escapeHtml(t('p11.aux.colorAria',{i}))}" aria-label="${escapeHtml(t('p11.aux.colorAria',{i}))}"><input class="pp-slot-name" value="${escapeHtml(aux.name)}" data-aux-name="${i}" aria-label="${escapeHtml(t('p11.aux.nameAria',{i}))}"><button class="pp-slot-del" data-aux-del="${i}" type="button">${t('p11.aux.delete')}</button></div><div class="pp-slot-hex">${aux.value} · ${t('p11.aux.slotMeta',{i})}</div><div class="pp-mini-actions"><button class="pp-swap-btn" data-aux-swap="0" data-aux-i="${i}" type="button">${t('p12.aux.swapP')}</button><button class="pp-swap-btn" data-aux-swap="1" data-aux-i="${i}" type="button">${t('p12.aux.swapS')}</button><button class="pp-swap-btn" data-aux-swap="2" data-aux-i="${i}" type="button">${t('p12.aux.swapT')}</button><button class="pp-slot-del" data-aux-up="${i}" type="button" ${i===0?'disabled':''}>↑</button><button class="pp-slot-del" data-aux-down="${i}" type="button" ${i===draft.auxiliary!.length-1?'disabled':''}>↓</button><span class="pp-drag-hint">⠿ ${t('p11.aux.dragHint')}</span></div></div>`).join('');
     byId<HTMLElement>('auxEmptyHint').style.display=draft.auxiliary!.length?'none':'block';
     // 行内编辑：颜色/名称。
     all<HTMLInputElement>('[data-aux-color]',auxWrap).forEach(inp=>inp.addEventListener('change',()=>{
@@ -1056,6 +1121,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       draft.auxiliary!.splice(to,0,item);
       saveAuxiliary();renderHarmony();renderGradients();applyRuntimeTheme();updateTokenOutputs();
     };
+    all<HTMLButtonElement>('[data-aux-swap]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>{
+      const i=+(btn.dataset.auxI??-1);const m=+(btn.dataset.auxSwap??-1);
+      if(i<0||m<0)return;
+      swapAuxWithMember(i,m);
+    }));
     all<HTMLButtonElement>('[data-aux-up]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>moveAux(+(btn.dataset.auxUp||0),+(btn.dataset.auxUp||0)-1)));
     all<HTMLButtonElement>('[data-aux-down]',auxWrap).forEach(btn=>btn.addEventListener('click',()=>moveAux(+(btn.dataset.auxDown||0),+(btn.dataset.auxDown||0)+1)));
     // 拖拽重排（move 语义：拖到目标位插入）。
@@ -1635,11 +1705,29 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Applied via the Apply button, consistent with primary/secondary.</lang>
     byId<HTMLInputElement>('thirdPicker').addEventListener('input',e=>setInputValue('thirdHexInput',(e.currentTarget as HTMLInputElement).value.toUpperCase()));
     byId<HTMLInputElement>('thirdHexInput').addEventListener('input',e=>{const target=e.currentTarget as HTMLInputElement,v=normalizeHex(target.value);if(v.length<=7)target.value=v;if(validHex(v))byId<HTMLInputElement>('thirdPicker').value=v;});
-    // 操作台三拾色器拖拽互换已降级移除（`W-tb-P12`：维护者实测拖拽 Bug，先记 Bug 后处置）。
-    // 成员顺序/颜色管理改由按钮式交互承担：宝典选色整体替换、补副色/补第三色追加、
-    // 成员卡 X 删除与行内重选色、第三色自动匹配与操作台 X。
-    // <lang zh-CN>拖拽 affordance 移除以避免坏交互；按钮路径覆盖同等的成员管理能力。</lang>
-    // <lang en>Drag affordance removed (buggy per maintainer test); button-based flows cover the same member management.</lang>
+    // 操作台三拾色器拖拽互换（`W-tb-P12` 修复）：改用专用"抓手"承载 draggable——
+    //   根因：格子内 input[type=color]/text 会吞掉 HTML5 拖拽的 dragstart，使整组 draggable 无效；
+    //   现由 grip 单独 draggable，拖到另一组即两成员 {name,value} 互换（swapMemberPair）。
+    // <lang zh-CN>拖拽失效根因是嵌套可编辑元素吞事件，抓手是最小可靠修复。</lang>
+    // <lang en>The failure was inputs swallowing dragstart; a dedicated grip is the minimal reliable fix.</lang>
+    let pickDragSrc:string|null=null;
+    const pickerIndex=(p:string|null)=>p==='primary'?0:p==='secondary'?1:p==='third'?2:-1;
+    all<HTMLElement>('#seriesPickers [data-picker]').forEach(group=>{
+      const grip=group.querySelector<HTMLElement>('[data-grip]');
+      if(!grip)return;
+      grip.setAttribute('draggable','true');
+      grip.addEventListener('dragstart',e=>{pickDragSrc=group.dataset.picker??null;e.dataTransfer?.setData('text/plain',pickDragSrc??'');});
+      group.addEventListener('dragover',e=>{e.preventDefault();if(pickDragSrc&&pickDragSrc!==group.dataset.picker)group.style.outline='2px dashed var(--p400)';});
+      group.addEventListener('dragleave',()=>{group.style.outline='';});
+      group.addEventListener('drop',e=>{
+        e.preventDefault();group.style.outline='';
+        const dst=pickerIndex(group.dataset.picker??null);
+        const src=pickerIndex(pickDragSrc);
+        pickDragSrc=null;
+        if(src<0||dst<0||src===dst)return;
+        swapMemberPair(src,dst);
+      });
+    });
     // HEX 输入 → 取色器：实时规范化并回填，合法时同步拾色器。
     // <lang zh-CN>限制长度避免溢出，validHex 通过才更新拾色器值。</lang>
     // <lang en>Caps length to avoid overflow; only updates the picker when validHex passes.</lang>
