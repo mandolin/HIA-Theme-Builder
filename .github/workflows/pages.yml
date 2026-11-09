@@ -117,6 +117,14 @@ jobs:
         run: |
           npm install
           npm run build
+      # tauri.conf.json devPath="dist"：generate_context! 宏在编译期要求该目录存在；
+      #   本 job 不跑前端复制（build job 已覆盖），创建占位目录即可（本地产物已在库内但 CI 全新 checkout 无）。
+      # <lang en>generate_context! requires devPath to exist at compile time; create a placeholder (front-end is verified in the build job).</lang>
+      - name: Ensure tauri devPath placeholder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "HIA\tauri\src-tauri\dist" -Force
+          Set-Content -Path "HIA\tauri\src-tauri\dist\index.html" -Value "<!doctype html><title>placeholder</title>"
       - name: Cargo check (tauri src-tauri)
         working-directory: HIA/tauri/src-tauri
         run: cargo check --locked
