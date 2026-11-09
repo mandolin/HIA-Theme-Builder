@@ -1016,8 +1016,8 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>manual 不可补（排除在下拉外）；不适用按钮置灰（维护者确认：置灰不适用）。</lang>
   // <lang en>manual excluded; inapplicable buttons are disabled.</lang>
   function ruleDef(id:string){return SERIES_RELATION_DEFS.find(r=>r.id===id)!;}
-  function ruleCanSecondary(id:string):boolean{const d=ruleDef(id);return d.secondAngle!==undefined||d.id==='pure';}
-  function ruleCanThird(id:string):boolean{const d=ruleDef(id);return !!d.thirdFromSecondary||!!d.thirdCombo||d.id==='pure';}
+  function ruleCanSecondary(id:string):boolean{return id!=='manual';}
+  function ruleCanThird(id:string):boolean{const d=ruleDef(id);return !!d.sideAngles||!!d.thirdCombo||d.id==='pure';}
   // 规则补色（补副色/补第三色）：pure 走主色明暗变体（700/300 档），其余走 core 推导。
   // <lang zh-CN>结果写入对应成员（名字标注规则来源，可再手动改）。</lang>
   // <lang en>Result fills the member slot with a rule-tagged name; manually editable afterwards.</lang>

@@ -1,5 +1,6 @@
 import type{AuxiliaryModifier,SeriesMode,SeriesRelationId,HarmonyDef}from'../types.js';
 import{clamp,gamutMapOklch,hexToOklch,normalizeHex}from'./convert.js';
+import{tonalScale}from'./scale.js';
 
 // 副色和谐方案库：每项为一种由主色推导副色的色彩理论策略。
 // <lang zh-CN>offset 为相对主色相的角差；L/C 为目标亮度与彩度（缺失时按主色推算）。</lang>
@@ -74,7 +75,7 @@ export function generateSecondarySet(primaryHex:string,preferred:{hex:string;nam
 // <lang en>Maps the ten classic designs onto series modes (single has no rule — always the primary-series variant).</lang>
 export interface SeriesRelationDef{id:SeriesRelationId;name:string;en:string;modes:SeriesMode[];
   secondAngle?:number;secondChromaScale?:number;
-  thirdFromSecondary?:boolean;thirdAngle?:number;thirdCombo?:number[];thirdChromaScale?:number;note:string;}
+  sideAngles?:number[];thirdCombo?:number[];thirdChromaScale?:number;note:string;}
 
 // 关系规则表（十种设计全映射）：thirdAngle 为相对主色的角差；thirdCombo 为组合型（绝对色相）。
 // <lang zh-CN>角度核对：补色 180°、冲突 150°（补色±30°）、类比 ±30°、分裂补色 150°/210°、三元 120°/240°、
@@ -85,9 +86,9 @@ export const SERIES_RELATION_DEFS:SeriesRelationDef[]=[
   {id:'complement',name:'互补 complement',en:'Complement',modes:['dual'],secondAngle:180,note:'色相环上全然相反的两色（180°）。'},
   {id:'clash',name:'冲突 clash',en:'Clash',modes:['dual'],secondAngle:150,note:'主色补色的左/右侧（+150°，半冲突）。'},
   {id:'neutral',name:'中性 neutral',en:'Neutral',modes:['dual'],secondAngle:180,secondChromaScale:.4,note:'主色 + 其补色或黑色（彩度 ×0.4），中性过渡；宝典中另有三色形态（预设数据承载）。'},
-  {id:'analogous',name:'类比 analogous',en:'Analogous',modes:['triad'],thirdFromSecondary:true,note:'主色相两侧连续色（第二/第三色分居 ±30°，按副色相位取另一侧）。'},
-  {id:'split-complement',name:'分裂补色 split-complement',en:'Split Complement',modes:['triad'],thirdFromSecondary:true,note:'主色补色两侧（150°/210°），副色占一侧时第三色取另一侧。'},
-  {id:'tertiary',name:'三次色三色 tertiary',en:'Tertiary Triad',modes:['triad'],thirdFromSecondary:true,note:'等距三色（120°/240°），副色占一侧时第三色取剩余等距位。'},
+  {id:'analogous',name:'类比 analogous',en:'Analogous',modes:['triad'],sideAngles:[-30,30],note:'主色相两侧连续色（第二/第三色分居 ±30°，按副色相位取另一侧）。'},
+  {id:'split-complement',name:'分裂补色 split-complement',en:'Split Complement',modes:['triad'],sideAngles:[150,210],note:'主色补色两侧（150°/210°），副色占一侧时第三色取另一侧。'},
+  {id:'tertiary',name:'三次色三色 tertiary',en:'Tertiary Triad',modes:['triad'],sideAngles:[120,240],note:'等距三色（120°/240°），副色占一侧时第三色取剩余等距位。'},
   {id:'primary-combo',name:'原色组合 primary',en:'Primary Combo',modes:['triad'],thirdCombo:[25,100,250],note:'纯红、黄、蓝固定组合；主位取与主色相最近者，副色占次近位。'},
   {id:'secondary-combo',name:'二次色组合 secondary',en:'Secondary Combo',modes:['triad'],thirdCombo:[30,140,290],note:'绿、橙、紫固定组合；主位/副色位同上。'},
   {id:'pure',name:'纯色 pure',en:'Pure',modes:['single','dual','triad'],note:'单色系 1-3 色递变（无新色相；成员取主色系明暗变体）。'}];
@@ -108,17 +109,28 @@ function hueDistance(a:number,b:number):number{
   return Math.min(d,360-d);
 }
 
-// dual 模式：按规则推导第二色 HEX（manual 返回 null=用户手动色）。
-// <lang zh-CN>角度/彩度按规则定义；complement 180°、clash 150°、neutral 180°+彩度×0.4。</lang>
-// <lang en>Derives the secondary hex per rule; manual yields null (user-picked).</lang>
+// 按规则推导第二色 HEX（manual 返回 null=保持用户手动色）。
+// <lang zh-CN>dual 规则用 secondAngle；triad 角度规则用 sideAngles[0]；组合规则取组合自然序次位；
+//   pure 取主色系深档变体（700）——三色规则下"补副色"同样有效（维护者定案）。</lang>
+// <lang en>All non-manual rules can fill the secondary: dual angles, triad sideAngles[0],
+//   combo natural-order remaining slot, pure = primary 700 variant (maintainer decision).</lang>
 export function deriveSecondaryByRelation(primaryHex:string,relation:SeriesRelationId):string|null{
-  const def=getSeriesRelationDef(relation,'dual');
-  if(def.id==='manual'||def.secondAngle===undefined)return null;
+  const def=SERIES_RELATION_DEFS.find(r=>r.id===relation);
+  if(!def||def.id==='manual')return null;
   const src=hexToOklch(primaryHex);
+  // pure 变体：主色 700 档（与 single 模式装配变体同源）。
+  if(def.id==='pure')return tonalScale(normalizeHex(primaryHex))['700'];
   const L=clamp(src.L+.08,.6,.76),
-    C=clamp(src.C*(def.secondChromaScale??.88),.05,.16),
-    hue=(src.h+def.secondAngle+360)%360;
-  return gamutMapOklch(L,C,hue).hex;
+    C=clamp(src.C*(def.secondChromaScale??.88),.05,.16);
+  if(def.secondAngle!==undefined)return gamutMapOklch(L,C,(src.h+def.secondAngle+360)%360).hex;
+  if(def.sideAngles)return gamutMapOklch(L,C,(src.h+def.sideAngles[0]!+360)%360).hex;
+  if(def.thirdCombo){
+    // 组合型：主位=最近主色相者；第二色=其余按组合自然序的第一位（对齐宝典卡片 主,次,末 顺序）。
+    const primarySlot=def.thirdCombo.reduce((best,h)=>hueDistance(src.h,h)<hueDistance(src.h,best)?h:best,def.thirdCombo[0]!);
+    const rest=def.thirdCombo.filter(h=>h!==primarySlot);
+    return gamutMapOklch(L,C,(rest[0]!+360)%360).hex;
+  }
+  return null;
 }
 
 // triad 模式：按规则推导第三色 HEX（manual/pure 返回 null——pure 的第三色走主色系变体路径）。
@@ -146,9 +158,9 @@ export function deriveThirdByRelation(primaryHex:string,secondaryHex:string,rela
   // 角度型（thirdFromSecondary）：候选两侧取"副色未占用的一侧"。
   // <lang zh-CN>analogous ±30：副色近 -30 则第三色 +30，反之亦然；split 150/210 与 tertiary 120/240 同理。</lang>
   // <lang en>For ±30 / 150-210 / 120-240 pairs, the third takes the side the secondary does not occupy.</lang>
-  if(def.thirdFromSecondary){
+  if(def.sideAngles){
     const sec=hexToOklch(secondaryHex);
-    const candidates=def.id==='analogous'?[-30,30]:def.id==='split-complement'?[150,210]:[120,240];
+    const candidates=def.sideAngles;
     const used=candidates.reduce((best,h)=>hueDistance(sec.h,(src.h+h+360)%360)<hueDistance(sec.h,(src.h+best+360)%360)?h:best,candidates[0]!);
     const thirdHue=candidates.find(h=>h!==used)??candidates[0]!;
     return gamutMapOklch(L,C,(src.h+thirdHue+360)%360).hex;

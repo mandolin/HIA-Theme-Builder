@@ -337,7 +337,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .baodian-right{flex:1;overflow:auto;padding:12px;min-width:0}
 .bd-form{margin-bottom:14px}
 .bd-form-title{font-size:11px;font-weight:900;color:var(--muted);margin-bottom:6px}
-.bd-combos{display:flex;flex-wrap:wrap;gap:8px}
+.bd-combos{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px}
 .bd-combo{display:grid;gap:1px;border:1px solid var(--line);border-radius:6px;overflow:hidden;padding:0;cursor:pointer;background:none}
 .bd-combo:hover{border-color:var(--primary)}
 .bd-bar{display:flex;align-items:flex-start;justify-content:flex-start;height:26px;width:70px;padding:2px 4px;font-size:10px;font-weight:700;color:rgba(0,0,0,.6);text-shadow:0 0 2px rgba(255,255,255,.4)}
