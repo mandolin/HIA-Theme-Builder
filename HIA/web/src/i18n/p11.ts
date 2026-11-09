@@ -22,6 +22,10 @@ registerStrings({
   'p11.aux.dragHint': { zh: '拖动排序', en: 'Drag to reorder' },
   'p11.card.auxGroup': { zh: '辅助色组', en: 'Auxiliary group' },
   'p11.console.dragHint': { zh: '拖动互换位置', en: 'Drag to swap positions' },
+  'p12.drag.hint': { zh: '拖到另一格=互换', en: 'Drag onto another slot to swap' },
+  'p12.aux.swapP': { zh: '↔主', en: '↔Pri' },
+  'p12.aux.swapS': { zh: '↔副', en: '↔Sec' },
+  'p12.aux.swapT': { zh: '↔三', en: '↔3rd' },
   // 面板标题。
   // <lang zh-CN>操作台内配色关系面板。</lang>
   // <lang en>Harmony panel inside the console.</lang>
