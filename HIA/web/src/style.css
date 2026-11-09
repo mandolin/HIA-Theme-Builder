@@ -338,3 +338,9 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .bd-combo{display:grid;gap:1px;border:1px solid var(--line);border-radius:6px;overflow:hidden;padding:0;cursor:pointer;background:none}
 .bd-combo:hover{border-color:var(--primary)}
 .bd-bar{display:flex;align-items:flex-start;justify-content:flex-start;height:26px;width:70px;padding:2px 4px;font-size:10px;font-weight:700;color:rgba(0,0,0,.6);text-shadow:0 0 2px rgba(255,255,255,.4)}
+/* W-tb-P12 候选卡模式芯片（双/三/全切换）与全色辅助点。 */
+.cm-chips{display:flex;gap:4px;margin-top:7px}
+.cm-chip{border:1px solid var(--line);background:#fff;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:800;color:#51636E;cursor:pointer}
+.cm-chip:hover{border-color:var(--p300)}
+.cm-chip.active{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.cm-aux-dot{opacity:.85;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2) !important;border-radius:50%}

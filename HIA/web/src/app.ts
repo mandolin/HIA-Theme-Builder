@@ -419,8 +419,21 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   }
 
   // 渲染主色候选面板：按 group 分组，生成可点击色卡；当前主色高亮。
-  // <lang zh-CN>色卡含色样、标签、中英文名、HEX 与推荐副色配对；所有动态文本经 escapeHtml。</lang>
-  // <lang en>Cards show swatch, tag, zh/en names, HEX and recommended secondary; all dynamic text is escaped.</lang>
+  // <lang zh-CN>卡片支持展示态切换（W-tb-P12 需求四 B/C）：普通候选 双色/三色，获奖候选 双色/三色/全色；
+  //   应用时按当前态载入主体色成员（三色=类比第三色；全色=三色+两条规则辅助色）。</lang>
+  // <lang en>Cards expose display modes (B/C): dual/triad for library cards, plus full for award cards;
+  //   applying loads the body-color members per the current mode (triad=analogous third; full=triad+two rule auxes).</lang>
+  const cardModes:Record<string,'dual'|'triad'|'full'>={};
+  // 组合成员：按模式扩展（第三色用 analogous 规则推导；全色附两条规则辅助色）。
+  function candidateCombo(c:PrimaryCandidate,mode:'dual'|'triad'|'full'):{members:{name:string;hex:string}[];auxes:{hex:string;name:string}[]}{
+    const members:{name:string;hex:string}[]=[{name:c.name,hex:c.hex},{name:c.secondaryName,hex:c.secondaryHex}];
+    if(mode!=='dual'){
+      const third=deriveThirdByRelation(c.hex,c.secondaryHex,'analogous');
+      if(third)members.push({name:'第三色',hex:third});
+    }
+    const auxes=mode==='full'?generateAuxiliaryCandidates(c.hex).slice(0,2).map(a=>({hex:a.hex,name:a.name})):[];
+    return{members,auxes};
+  }
   function renderPrimaryCandidates(){
     // 按 group 把候选分组，便于展示“蓝色基准/获奖网站”等区块。
     // <lang zh-CN>分组键来自候选数据的 group 字段。</lang>
@@ -428,15 +441,36 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const groups:Record<string,PrimaryCandidate[]>={};
     primaryCandidates.forEach(c=>(groups[c.group]||(groups[c.group]=[])).push(c));
     const wrap=byId<HTMLElement>('primaryCandidatesWrap');
-    // 逐组拼出标题与色卡网格；active 类标记当前选中的主色。
-    // <lang zh-CN>normalizeHex 比较保证大小写/格式差异下高亮正确。</lang>
-    // <lang en>normalizeHex comparison keeps highlighting correct despite case/format differences.</lang>
-    wrap.innerHTML=Object.entries(groups).map(([group,items])=>`<div class="group-title">${escapeHtml(group)} · ${items.length}</div><div class="grid-3">${items.map(c=>`<button class="color-card ${normalizeHex(c.hex)===draft.primary?'active':''}" data-primary="${escapeHtml(c.id)}" title="${escapeHtml(c.desc)}"><div class="color-top" style="background:${c.hex}"><span>${escapeHtml(c.tag)}</span></div><h4>${escapeHtml(c.name)}</h4><div class="color-meta">${escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div><span class="pair-chip"><i style="background:${c.hex}"></i><i style="background:${c.secondaryHex}"></i>${escapeHtml(c.secondaryName)}</span></button>`).join('')}</div>`).join('');
-    // 每个色卡绑定点击：切主色、套用其推荐副色并刷新全局面板。
-    // <lang zh-CN>点击后更新 primaryMeta、草稿基色与名称，并生成副色候选集。</lang>
-    // <lang en>On click updates primaryMeta, draft base colors and name, then regenerates secondary candidates.</lang>
-    all<HTMLButtonElement>('[data-primary]',wrap).forEach(btn=>btn.addEventListener('click',()=>{
+    // 逐组拼出标题与色卡网格；色卡为 div+role=button（内含模式芯片，避免 button 嵌套非法）；
+    // 色条按模式渲染多段（每段一成员色，全色含辅助段）。
+    // <lang zh-CN>active 类标记当前主色（normalizeHex 比较）。</lang>
+    // <lang en>Div cards with role=button host mode chips without illegal nesting; bar shows per-member segments.</lang>
+    wrap.innerHTML=Object.entries(groups).map(([group,items])=>`<div class="group-title">${escapeHtml(group)} · ${items.length}</div><div class="grid-3">${items.map(c=>{
+      const isAward=c.category==='award'||group.includes('获奖');
+      const mode=cardModes[c.id]??'dual';
+      const combo=candidateCombo(c,mode);
+      const bar=[...combo.members.map(m=>m.hex),...combo.auxes.map(a=>a.hex)];
+      const stops=bar.map((hex,i)=>`${hex} ${Math.round(i*100/bar.length)}% ${Math.round((i+1)*100/bar.length)}%`).join(',');
+      const modesList:('dual'|'triad'|'full')[]=isAward?['dual','triad','full']:['dual','triad'];
+      const chips=modesList.map(m=>`<button type="button" class="cm-chip${mode===m?' active':''}" data-card-mode="${m}" data-card-id="${escapeHtml(c.id)}" aria-label="${m==='dual'?t('p12.card.dual'):m==='triad'?t('p12.card.triad'):t('p12.card.full')}">${m==='dual'?'双':m==='triad'?'三':'全'}</button>`).join('');
+      const dots=combo.members.map(m=>`<i style="background:${m.hex}"></i>`).join('')+combo.auxes.map(a=>`<i class="cm-aux-dot" style="background:${a.hex}"></i>`).join('');
+      return`<div class="color-card ${normalizeHex(c.hex)===draft.primary?'active':''}" data-primary="${escapeHtml(c.id)}" role="button" tabindex="0" title="${escapeHtml(c.desc)}"><div class="color-top" style="background:linear-gradient(90deg,${stops})"><span>${escapeHtml(c.tag)}</span></div><h4>${escapeHtml(c.name)}</h4><div class="color-meta">${escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div><div class="cm-chips">${chips}</div><span class="pair-chip">${dots}${escapeHtml(c.secondaryName)}</span></div>`;
+    }).join('')}</div>`).join('');
+    // 模式芯片：切换该卡展示态（stopPropagation 防触发应用）。
+    all<HTMLButtonElement>('[data-card-mode]',wrap).forEach(chip=>chip.addEventListener('click',e=>{
+      e.stopPropagation();
+      const id=chip.dataset.cardId;const m=chip.dataset.cardMode as 'dual'|'triad'|'full'|undefined;
+      if(!id||!m)return;
+      cardModes[id]=m;
+      renderPrimaryCandidates();
+    }));
+    // 色卡应用：按当前模式载入主体色成员（三色附第三色；全色再替换辅助色为两条规则色）。
+    // <lang zh-CN>div 卡 click+Enter/Space keydown 保持键盘可达。</lang>
+    // <lang en>Click plus Enter/Space keydown keeps div cards keyboard-accessible.</lang>
+    const applyCard=(btn:HTMLElement)=>{
       const c=primaryCandidates.find(x=>x.id===btn.dataset.primary);if(!c)return;
+      const mode=cardModes[c.id]??'dual';
+      const combo=candidateCombo(c,mode);
       primaryMeta=c;
       draft.primary=normalizeHex(c.hex);
       draft.secondary=normalizeHex(c.secondaryHex);
@@ -447,13 +481,25 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       // <lang zh-CN>避免强制覆盖用户手动命名的主题。</lang>
       // <lang en>Avoids forcing over a user-typed theme name.</lang>
       draft.name=inputValue('themeNameInput').trim()||autoThemeName(c.name,c.secondaryName);
-      // 以候选的推荐副色作为置顶项生成副色候选集。
-      // <lang zh-CN>保证选主色后副色候选与预设配对一致。</lang>
-      // <lang en>Keeps secondary candidates aligned with the preset pairing after picking a primary.</lang>
+      // 三色/全色：派生模式 triad 并载入第三色成员；否则保持 dual。
+      if(mode!=='dual'&&combo.members[2]){
+        draft.seriesMode='triad';
+        draft.seriesRelation='analogous';
+        draft.thirdColor=makeRoleColor(combo.members[2].hex,combo.members[2].name);
+      }else{
+        draft.seriesMode='dual';
+        draft.thirdColor=undefined;
+      }
+      // 全色：辅助槽位替换为该候选的两条规则强调色。
+      if(mode==='full')draft.auxiliary=combo.auxes.map(a=>makeRoleColor(a.hex,a.name));
       secondaryCandidates=generateSecondarySet(c.hex,{hex:c.secondaryHex,name:c.secondaryName,scheme:c.secondaryScheme});
-      syncInputs();applyCurrentTheme(false);renderSecondaryCandidates();renderPrimaryCandidates();
-      setText('generateStatus',`主色已切换为 ${c.name} ${c.hex}，已自动套用预设副色 ${c.secondaryName} ${c.secondaryHex}。`);
-    }));
+      syncInputs();applyCurrentTheme(false);renderSecondaryCandidates();renderPrimaryCandidates();renderHarmony();renderGradients();
+      setText('generateStatus',mode==='dual'?`主色已切换为 ${c.name} ${c.hex}，已自动套用预设副色 ${c.secondaryName} ${c.secondaryHex}。`:mode==='triad'?`已按三色组合套用「${c.name}」（含类比第三色）。`:`已按全色组合套用「${c.name}」（三色+两条规则辅助色）。`);
+    };
+    all<HTMLElement>('[data-primary]',wrap).forEach(btn=>{
+      btn.addEventListener('click',()=>applyCard(btn));
+      btn.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();applyCard(btn);}});
+    });
   }
 
   // 渲染副色候选面板：展示当前副色候选集，当前副色高亮，点击即应用。
@@ -1589,28 +1635,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Applied via the Apply button, consistent with primary/secondary.</lang>
     byId<HTMLInputElement>('thirdPicker').addEventListener('input',e=>setInputValue('thirdHexInput',(e.currentTarget as HTMLInputElement).value.toUpperCase()));
     byId<HTMLInputElement>('thirdHexInput').addEventListener('input',e=>{const target=e.currentTarget as HTMLInputElement,v=normalizeHex(target.value);if(v.length<=7)target.value=v;if(validHex(v))byId<HTMLInputElement>('thirdPicker').value=v;});
-    // 操作台三格拖动互换（维护者要求）：拖 A 组到 B 组 = 两角色色值对调（角色语义不变）。
-    // <lang zh-CN>字段映射 primary/secondary/third；swap 后全链刷新；single 模式无意义（一格）。</lang>
-    // <lang en>Drag A onto B swaps the two role colors; single mode has nothing to swap.</lang>
-    let pickDragSrc:string|null=null;
-    all<HTMLElement>('#seriesPickers [data-picker]').forEach(group=>{
-      group.addEventListener('dragstart',e=>{pickDragSrc=group.dataset.pick||null;e.dataTransfer?.setData('text/plain',pickDragSrc!);});
-      group.addEventListener('dragover',e=>{e.preventDefault();group.style.outline='2px dashed var(--p400)';});
-      group.addEventListener('dragleave',()=>{group.style.outline='';});
-      group.addEventListener('drop',e=>{
-        e.preventDefault();group.style.outline='';
-        const dst=group.dataset.pick||null;
-        if(!pickDragSrc||!dst||pickDragSrc===dst)return;
-        const get=(p:string)=>p==='primary'?draft.primary:p==='secondary'?draft.secondary:draft.thirdColor?.value??null;
-        const getName=(p:string)=>p==='primary'?draft.primaryName:p==='secondary'?draft.secondaryName:draft.thirdColor?.name??null;
-        const a=get(pickDragSrc),b=get(dst),an=getName(pickDragSrc),bn=getName(dst);
-        if(a===null||b===null)return;
-        const set=(p:string,val:string,name:string)=>{if(p==='primary'){draft.primary=val;draft.primaryName=name;}else if(p==='secondary'){draft.secondary=val;draft.secondaryName=name;}else{draft.thirdColor={name,value:val,scale:tonalScale(val),on:bestOnColor(val).hex};}};
-        set(dst,a,an!);set(pickDragSrc,b,bn!);
-        syncInputs();applyCurrentTheme(false);renderHarmony();
-      });
-      group.addEventListener('dragend',()=>{group.style.outline='';});
-    });
+    // 操作台三拾色器拖拽互换已降级移除（`W-tb-P12`：维护者实测拖拽 Bug，先记 Bug 后处置）。
+    // 成员顺序/颜色管理改由按钮式交互承担：宝典选色整体替换、补副色/补第三色追加、
+    // 成员卡 X 删除与行内重选色、第三色自动匹配与操作台 X。
+    // <lang zh-CN>拖拽 affordance 移除以避免坏交互；按钮路径覆盖同等的成员管理能力。</lang>
+    // <lang en>Drag affordance removed (buggy per maintainer test); button-based flows cover the same member management.</lang>
     // HEX 输入 → 取色器：实时规范化并回填，合法时同步拾色器。
     // <lang zh-CN>限制长度避免溢出，validHex 通过才更新拾色器值。</lang>
     // <lang en>Caps length to avoid overflow; only updates the picker when validHex passes.</lang>
