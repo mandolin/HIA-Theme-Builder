@@ -5,6 +5,10 @@
 //   Registers extract_signals: after Rust SSRF check, calls the render module to launch headless chromium for real
 //   render+collect, returning V2 signal JSON (evidence + screenshot base64 + finalUrl); front scores via core.analyzeThemeV2.
 
+
+// 隐藏 release 控制台窗口（W-tb-P14 维护者反馈）：缺此属性时 release exe 附带命令行窗（[render] 日志即打在窗内）。
+// <lang en>Hide the console window in release builds; without it the exe spawns a console pane carrying [render] logs.</lang>
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod render;
 
 use serde::Serialize;

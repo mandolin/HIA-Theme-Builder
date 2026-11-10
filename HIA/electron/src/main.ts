@@ -22,6 +22,9 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1180,
     height: 820,
+    // 窗口图标（W-tb-P14 维护者反馈）：松树 favicon.ico 随 web dist 复制到 renderer/，任务栏/标题栏一致。
+    // <lang en>Window icon: pine favicon.ico shipped inside dist/renderer via copy-renderer.</lang>
+    icon: join(__dirname, 'renderer/favicon.ico'),
     webPreferences: {
       // <lang zh-CN>允许渲染进程通过预加载桥接调用主进程取色。</lang>
       // <lang en>Allow renderer to call main extraction via preload bridge.</lang>

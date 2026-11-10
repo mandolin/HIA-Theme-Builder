@@ -1523,6 +1523,14 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // 渲染网址取色探索面板（指令十五节）：阶段状态、推荐主副色、置信度、reasons、8~12 候选、warnings、应用入口。
   // <lang zh-CN>无 explorer 能力时隐藏面板；无结果时仅显示状态；有结果时展开完整报告。</lang>
   // <lang en>Hidden without explorer; only status when empty; full report when a result exists.</lang>
+  // 文档子站链接语言同步（W-tb-P14 维护者反馈）：href 携带 ?lang=，文档站按参数切换语言；
+  //   <html> 内静态链接在 bind() 时与语言切换时各调一次。
+  // <lang en>Keeps the docs link in step with the UI locale via a ?lang= param the docs site honors.</lang>
+  function syncDocsLink(){
+    const a=document.querySelector<HTMLAnchorElement>('a[data-i18n="top.docs"]');
+    if(!a)return;
+    a.href=`https://mandolin.github.io/HIA-Theme-Builder/docs/?lang=${getLocale()==='en'?'en':'zh'}`;
+  }
   function renderExplore(){
     const wrap=byId<HTMLElement>('explorePanel');
     // 无探索能力（纯浏览器）则隐藏整块面板，保持界面整洁。
@@ -1598,9 +1606,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       applyCurrentTheme(false);
     }));
     // 应用按钮：按两个范围复选框组装应用内容（显式点击，遵循高置信不静默覆盖）。
-    // <lang zh-CN>①应用主副色=原行为；②其它色到辅助色=候选色剔除推荐主/副后取前 8 槽（AUXILIARY_MAX），
+    // <lang zh-CN>①应用主副色=原行为；②其它色到辅助色=候选色剔除推荐主/副后按 AUXILIARY_MAX(=12) 填满，
     //   整组替换辅助槽位（命名"取色辅助 N"）；两者皆不选 → 状态行提示不动作。刷新链含关系区与经典 mock。</lang>
-    // <lang en>(1) base = previous behavior; (2) aux = alternatives minus recommended pair, first 8 slots
+    // <lang en>(1) base = previous behavior; (2) aux = alternatives minus recommended pair, up to AUXILIARY_MAX(=12)
     //   (AUXILIARY_MAX), replacing the auxiliary set ("Explore aux N"). Refresh chain mirrors applyPreset.</lang>
     byId<HTMLButtonElement>('exploreApplyBtn').addEventListener('click',()=>{
       if(!primary)return;
@@ -1738,6 +1746,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       renderRemoteSources();renderRemoteList();renderHarmony();
       byId<HTMLButtonElement>('langToggleBtn').textContent=t('lang.switch');
       document.documentElement.lang=next;
+      // 文档链接随界面语言同步（W-tb-P14 维护者反馈：从首页进入文档站应保持当前语言）。
+      // <lang en>Docs link follows the UI locale (maintainer feedback): the docs site opens in the same language.</lang>
+      syncDocsLink();
     });
     // 生成副色：以当前主色（若有匹配候选则用其推荐副色置顶）生成候选集并刷新。
     // <lang zh-CN>点击“生成副色”按钮触发，不改动草稿基色。</lang>

@@ -1,57 +1,68 @@
 <!doctype html>
-<!-- @lang zh-CN HIA-Theme-Builder 文档子站首页：三入口（入门教程/使用手册/参考及开发文档）。
+<!-- @lang zh-CN HIA-Theme-Builder 文档子站首页（双语）：三入口（入门教程/使用手册/参考及开发文档）+ 语言切换。
      静态页，随 GitHub Pages 部署在 /HIA-Theme-Builder/docs/（pages.yml 组装）。
-     @lang en HIA-Theme-Builder docs subsite home: three entries (getting started / manual / reference).
+     @lang en HIA-Theme-Builder docs subsite home (bilingual): three entries + language switch.
      Static pages deployed under /HIA-Theme-Builder/docs/ via the Pages workflow assembly. -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>文档 · HIA-Theme-Builder</title>
-<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<title>文档 · Docs · HIA-Theme-Builder</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="stylesheet" href="assets/style.css">
+<script src="assets/lang.js" defer></script>
 </head>
 <body>
 <header class="site-head">
-  <a class="logo" href="./"><img src="../favicon.svg" alt="">HIA-Theme-Builder 文档</a>
+  <a class="logo" href="./"><img src="assets/favicon-32.png" alt="">HIA-Theme-Builder 文档</a>
   <nav>
-    <a class="active" href="./">文档首页</a>
-    <a href="getting-started/">入门教程</a>
-    <a href="manual/">使用手册</a>
-    <a href="reference/">参考及开发文档</a>
+    <a class="active" href="./"><span class="zh">文档首页</span><span class="en">Docs Home</span></a>
+    <a href="getting-started/"><span class="zh">入门教程</span><span class="en">Getting Started</span></a>
+    <a href="manual/"><span class="zh">使用手册</span><span class="en">Manual</span></a>
+    <a href="reference/"><span class="zh">参考及开发文档</span><span class="en">Reference</span></a>
   </nav>
+  <button id="docLangBtn" class="lang-switch" type="button" aria-label="Switch language / 切换语言">EN</button>
   <a class="gh" href="https://github.com/mandolin/HIA-Theme-Builder" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 </header>
 <main class="wrap">
   <section class="hero-doc">
-    <h1>HIA-Theme-Builder 文档</h1>
-    <p>主题构建器 · 从取色到配色体系再到多端产出的完整工作流。当前版本 v0.2.x，文档随 v0.3 持续完善（英文版排期中）。</p>
+    <h1><span class="zh">HIA-Theme-Builder 文档</span><span class="en">HIA-Theme-Builder Docs</span></h1>
+    <p><span class="zh">主题构建器 · 从取色到配色体系再到多端产出的完整工作流。当前版本 v0.2.x，文档随 v0.3 持续完善。</span><span class="en">A theme builder — a complete workflow from color extraction to a full color system to multi-end token output. Current release v0.2.x; docs keep improving with v0.3.</span></p>
   </section>
   <div class="cards">
     <a class="card" href="getting-started/">
-      <h3>🚀 入门教程</h3>
-      <p>5 分钟上手：选一个主色 → 生成配色 → 应用到预览 → 导出 Token。第一次使用从这里开始。</p>
+      <h3>🚀 <span class="zh">入门教程</span><span class="en">Getting Started</span></h3>
+      <p><span class="zh">5 分钟上手：选一个主色 → 生成配色 → 应用到预览 → 导出 Token。第一次使用从这里开始。</span><span class="en">Up and running in 5 minutes: pick a primary → generate the system → preview → export tokens. Start here.</span></p>
     </a>
     <a class="card" href="manual/">
-      <h3>📘 使用手册</h3>
-      <p>全功能讲解：操作台、配色关系与辅助色、配色宝典、渐变、主题市场、取色探索、预览区。</p>
+      <h3>📘 <span class="zh">使用手册</span><span class="en">Manual</span></h3>
+      <p><span class="zh">全功能讲解：操作台、配色关系与辅助色、配色宝典、渐变、主题市场、取色探索、预览区。</span><span class="en">Every feature explained: console, harmony &amp; auxiliary colors, the combo baodian, gradients, theme market, URL extraction and previews.</span></p>
     </a>
     <a class="card" href="reference/">
-      <h3>🛠 参考及开发文档</h3>
-      <p>core API、主题模型契约（ADR-007）、Token 结构、导出适配器、桌面端架构与二次开发指南。</p>
+      <h3>🛠 <span class="zh">参考及开发文档</span><span class="en">Reference &amp; Dev Docs</span></h3>
+      <p><span class="zh">core API、主题模型契约（ADR-007）、Token 结构、导出适配器、桌面端架构与二次开发指南。</span><span class="en">core API, the theme contract (ADR-007), token structure, export adapters, desktop architecture and contribution guide.</span></p>
     </a>
   </div>
   <section class="doc">
-    <h2>快速链接</h2>
+    <h2><span class="zh">快速链接</span><span class="en">Quick Links</span></h2>
     <table>
-      <tr><th>入口</th><th>说明</th></tr>
-      <tr><td><a href="https://mandolin.github.io/HIA-Theme-Builder/">在线版</a></td><td>无需安装，浏览器直接使用全部主题能力（取色探索需桌面端）。</td></tr>
-      <tr><td><a href="https://github.com/mandolin/HIA-Theme-Builder/releases">桌面版下载</a></td><td>Electron / Tauri 双实现，Windows 便携版与安装器，附 SHA-256 校验。</td></tr>
-      <tr><td><a href="https://github.com/mandolin/HIA-Theme-Builder">源码仓库</a></td><td>MIT/Apache-2.0 开源，mono-repo：core 公共核心 + web/electron/tauri 三端。</td></tr>
+      <tr><th><span class="zh">入口</span><span class="en">Entry</span></th><th><span class="zh">说明</span><span class="en">Description</span></th></tr>
+      <tr>
+        <td><a href="https://mandolin.github.io/HIA-Theme-Builder/"><span class="zh">在线版</span><span class="en">Web app</span></a></td>
+        <td><span class="zh">无需安装，浏览器直接使用全部主题能力（取色探索需桌面端）。</span><span class="en">No install needed — the full studio in your browser (URL extraction is desktop-only).</span></td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/mandolin/HIA-Theme-Builder/releases"><span class="zh">桌面版下载</span><span class="en">Desktop downloads</span></a></td>
+        <td><span class="zh">Electron / Tauri 双实现，Windows 便携版与安装器，附 SHA-256 校验。</span><span class="en">Electron / Tauri builds for Windows — portable and installer artifacts with SHA-256 checksums.</span></td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/mandolin/HIA-Theme-Builder"><span class="zh">源码仓库</span><span class="en">Source repository</span></a></td>
+        <td><span class="zh">MIT/Apache-2.0 开源，mono-repo：core 公共核心 + web/electron/tauri 三端。</span><span class="en">MIT / Apache-2.0 monorepo: a shared core plus web/electron/tauri ends.</span></td>
+      </tr>
     </table>
-    <div class="tip">浏览器在线版与桌面端的界面完全一致（共享同一渲染器）；仅"网址取色探索"能力为桌面端专属（需要真实渲染环境与 SSRF 防护）。</div>
+    <div class="tip"><span class="zh">浏览器在线版与桌面端的界面完全一致（共享同一渲染器）；仅"网址取色探索"能力为桌面端专属（需要真实渲染环境与 SSRF 防护）。</span><span class="en">The web app and desktop builds share one renderer, so the UI is identical everywhere; only URL color extraction is desktop-only (it needs a real rendering environment plus SSRF protection).</span></div>
   </section>
 </main>
-<footer class="site-foot">HIA-Theme-Builder · <a href="https://github.com/mandolin/HIA-Theme-Builder">GitHub</a> · 文档随版本演进，以仓库为准</footer>
+<footer class="site-foot">HIA Studio @2026- · <a href="https://github.com/mandolin/HIA-Theme-Builder">GitHub</a> · <span class="zh">文档随版本演进，以仓库为准</span><span class="en">Docs evolve with releases; the repository is authoritative.</span></footer>
 </body>
 </html>

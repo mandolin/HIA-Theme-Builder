@@ -31,11 +31,11 @@ function sanitizeText(value:unknown,max:number):string{
 }
 
 // 新契约白名单（ADR-007 v2 / `W-tb-P12`）：远程源/导入文件的配色关系字段合法值集。
-// <lang zh-CN>seriesMode 三值、seriesRelation 取规则表 id 集；辅助槽位数上限 8。</lang>
+// <lang zh-CN>seriesMode 三值、seriesRelation 取规则表 id 集；辅助槽位数上限 12（v0.3：原 8 上限致取色应用候选被截——W-tb-P14 维护者反馈上调）。</lang>
 // <lang en>Whitelists for the v2 contract fields; max 8 auxiliary slots.</lang>
 export const SERIES_MODES:SeriesMode[]=['single','dual','triad'];
 export const SERIES_RELATION_IDS:SeriesRelationId[]=SERIES_RELATION_DEFS.map(r=>r.id);
-export const AUXILIARY_MAX=8;
+export const AUXILIARY_MAX=12;
 
 // 角色色清洗：value 必须合法 HEX；色阶与前景由 HEX 重建（远端数据不携带自算 scale 的正确性保证）。
 // <lang zh-CN>name 截断回退；非对象/非法 HEX 返回 null（调用方丢弃计数）。</lang>

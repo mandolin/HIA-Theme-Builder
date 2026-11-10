@@ -1,69 +1,71 @@
 <!doctype html>
-<!-- @lang zh-CN 使用手册：全功能讲解（操作台/配色关系/宝典/渐变/市场/取色/预览/i18n）。
-     @lang en User manual: full feature walkthrough. -->
+<!-- @lang zh-CN 使用手册（双语）：全功能讲解（操作台/配色关系/宝典/渐变/市场/取色/预览/i18n）。
+     @lang en Manual (bilingual): full feature walkthrough. -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>使用手册 · HIA-Theme-Builder</title>
-<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<title>使用手册 · Manual · HIA-Theme-Builder</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/lang.js" defer></script>
 </head>
 <body>
 <header class="site-head">
-  <a class="logo" href="../"><img src="../favicon.svg" alt="">HIA-Theme-Builder 文档</a>
+  <a class="logo" href="../"><img src="../assets/favicon-32.png" alt="">HIA-Theme-Builder 文档</a>
   <nav>
-    <a href="../">文档首页</a>
-    <a href="../getting-started/">入门教程</a>
-    <a class="active" href="./">使用手册</a>
-    <a href="../reference/">参考及开发文档</a>
+    <a href="../"><span class="zh">文档首页</span><span class="en">Docs Home</span></a>
+    <a href="../getting-started/"><span class="zh">入门教程</span><span class="en">Getting Started</span></a>
+    <a class="active" href="./"><span class="zh">使用手册</span><span class="en">Manual</span></a>
+    <a href="../reference/"><span class="zh">参考及开发文档</span><span class="en">Reference</span></a>
   </nav>
+  <button id="docLangBtn" class="lang-switch" type="button" aria-label="Switch language / 切换语言">EN</button>
   <a class="gh" href="https://github.com/mandolin/HIA-Theme-Builder" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 </header>
 <main class="wrap doc">
-  <h1>使用手册</h1>
-  <p>面向日常使用的完整功能说明。基础流程见<a href="../getting-started/">入门教程</a>。</p>
+  <h1><span class="zh">使用手册</span><span class="en">Manual</span></h1>
+  <p><span class="zh">面向日常使用的完整功能说明。基础流程见<a href="../getting-started/">入门教程</a>。</span><span class="en">Complete day-to-day feature reference. For basics see <a href="../getting-started/">Getting Started</a>.</span></p>
 
-  <h2>1 · 主题操作台</h2>
-  <p>操作台是全站的控制中枢：<b>主色/副色</b>拾色器与 HEX 输入、名称与分类/行业元信息。所有修改即时生效并同步到预览、导出与令牌输出。副色区提供"自动适配生成"（按当前主色推导候选，首位候选自动加载）与"第三色自动匹配"（按规则以主色为基准生成第三色）。</p>
+  <h2><span class="zh">1 · 主题操作台</span><span class="en">1 · Theme Console</span></h2>
+  <p><span class="zh">操作台是全站的控制中枢：<b>主色/副色</b>拾色器与 HEX 输入、名称与分类/行业元信息。所有修改即时生效并同步到预览、导出与令牌输出。副色区提供"自动适配生成"（按当前主色推导候选，首位候选自动加载）与"第三色自动匹配"（按规则以主色为基准生成第三色）。</span><span class="en">The console is the control center: <b>primary/secondary</b> pickers and HEX inputs, name and category/industry metadata. Every edit applies instantly and syncs to previews, exports and token output. The secondary area offers auto-fit generation (candidates derived from the current primary; the first one auto-loads) and third-color auto-match (rule-based, anchored on the primary).</span></p>
 
-  <h2>2 · 配色关系模式与辅助色</h2>
-  <h3>主体色（主色系）</h3>
-  <p>主体色支持<b>单色 / 双色 / 三色</b>三种模式，模式由成员数自动派生（1/2/3 个色），无需手动切换：</p>
+  <h2><span class="zh">2 · 配色关系模式与辅助色</span><span class="en">2 · Harmony Modes &amp; Auxiliary Colors</span></h2>
+  <h3><span class="zh">主体色（主色系）</span><span class="en">Body color (the series)</span></h3>
+  <p><span class="zh">主体色支持<b>单色 / 双色 / 三色</b>三种模式，模式由成员数自动派生（1/2/3 个色），无需手动切换：</span><span class="en">The body color runs in <b>single / dual / triad</b> modes, derived automatically from the member count (1/2/3):</span></p>
   <ul>
-    <li>单色模式：副色取主色系深档变体，按钮/进度/标签等组件照常工作；</li>
-    <li>双色模式：主 + 副两色；</li>
-    <li>三色模式：增加<b>第三色</b>一等位（独立拾色器、X 删除、拖拽互换）。</li>
+    <li><span class="zh">单色模式：副色取主色系深档变体，按钮/进度/标签等组件照常工作；</span><span class="en">Single: the secondary becomes a deep primary variant — buttons/progress/tags keep working;</span></li>
+    <li><span class="zh">双色模式：主 + 副两色；</span><span class="en">Dual: primary + secondary;</span></li>
+    <li><span class="zh">三色模式：增加<b>第三色</b>一等位（独立拾色器、X 删除、拖拽互换）。</span><span class="en">Triad: adds a first-class <b>third color</b> (own picker, X to delete, drag to swap).</span></li>
   </ul>
-  <h3>十种关系规则</h3>
-  <p>"规则补色"下拉将十种经典配色设计映射为可执行规则：<b>互补、冲突、中性</b>（双色可用）与<b>类比、分裂补色、三次色、原色组合、二次色组合、纯色</b>（三色可用；纯色跨 1–3 色）。不适用于当前操作的规则会置灰。选中规则后可"补副色 / 补第三色"。</p>
-  <h3>辅助色（主体色之外）</h3>
-  <p>独立槽位 0..8，与主体色模式无关：手动添加、按规则生成、与主/副/第三一键互换（↔主/↔副/↔三）、上下移、拖拽排序。辅助色进入全部下游产物（CSS 变量、WordPress 色板、Tailwind 色族、渐变色源、分享链接、主题包）。</p>
+  <h3><span class="zh">十种关系规则</span><span class="en">Ten relation rules</span></h3>
+  <p><span class="zh">"规则补色"下拉将十种经典配色设计映射为可执行规则：<b>互补、冲突、中性</b>（双色可用）与<b>类比、分裂补色、三次色、原色组合、二次色组合、纯色</b>（三色可用；纯色跨 1–3 色）。不适用于当前操作的规则会置灰。选中规则后可"补副色 / 补第三色"。</span><span class="en">The "rule fill" dropdown maps ten classic designs to executable rules: <b>complement, clash, neutral</b> (dual) and <b>analogous, split-complement, tertiary, primary-combo, secondary-combo, pure</b> (triad; pure spans 1–3 members). Rules that don't apply are disabled. With a rule selected, fill the secondary / third in one click.</span></p>
+  <h3><span class="zh">辅助色（主体色之外）</span><span class="en">Auxiliary colors (outside the body)</span></h3>
+  <p><span class="zh">独立槽位 0..12，与主体色模式无关：手动添加、按规则生成、与主/副/第三一键互换（↔主/↔副/↔三）、上下移、拖拽排序。辅助色进入全部下游产物（CSS 变量、WordPress 色板、Tailwind 色族、渐变色源、分享链接、主题包）。</span><span class="en">Independent slots 0..12, unrelated to the body mode: add manually, generate by rule, swap with primary/secondary/third (↔Pri/↔Sec/↔3rd), move up/down, drag to reorder. Auxiliaries flow into every output (CSS vars, WordPress palette, Tailwind families, gradient sources, share links, theme packs).</span></p>
 
-  <h2>3 · 配色宝典选色</h2>
-  <p>点击"宝典选色"打开弹层：左侧 <b>24 种情感分类</b>，右侧按 CHM 原版式排布的 <b>10 形态 × 1440 组合</b>色卡。点击任意组合即套用到主体色（自动记录快照，"还原用户色"回退）；情感行内 ⚡ 一键套用该情感的首个补色组合。</p>
+  <h2><span class="zh">3 · 配色宝典选色</span><span class="en">3 · Color Baodian Picker</span></h2>
+  <p><span class="zh">点击"宝典选色"打开弹层：左侧 <b>24 种情感分类</b>，右侧按 CHM 原版式排布的 <b>10 形态 × 1440 组合</b>色卡。点击任意组合即套用到主体色（自动记录快照，"还原用户色"回退）；情感行内 ⚡ 一键套用该情感的首个补色组合。</span><span class="en">"Baodian pick" opens a modal: 24 <b>mood categories</b> on the left, combo cards in the original CHM layout on the right — <b>10 forms × 1,440 combos</b>. Clicking a combo applies it to the body color (a snapshot is recorded; "Restore my colors" rolls back). The ⚡ on each mood applies its first complement combo instantly.</span></p>
 
-  <h2>4 · 渐变设置</h2>
-  <p>8 个渐变角色（carousel/hero 等）均可配置：色系来源（主色/副色/第三色/辅助色 N）、色阶端点、角度、前色占比偏置。色系下拉为带<b>色块预览</b>的自定义组件，改一个参数立即反映到所有预览与导出。</p>
+  <h2><span class="zh">4 · 渐变设置</span><span class="en">4 · Gradients</span></h2>
+  <p><span class="zh">8 个渐变角色（carousel/hero 等）均可配置：色系来源（主色/副色/第三色/辅助色 N）、色阶端点、角度、前色占比偏置。色系下拉为带<b>色块预览</b>的自定义组件，改一个参数立即反映到所有预览与导出。</span><span class="en">Eight gradient roles (carousel/hero/…) are configurable: color source (primary/secondary/third/auxiliary N), shade endpoints, angle, and front-color bias. The source dropdown is a custom combo with <b>swatch previews</b>; every change lands in previews and exports immediately.</span></p>
 
-  <h2>5 · 主题市场</h2>
+  <h2><span class="zh">5 · 主题市场</span><span class="en">5 · Theme Market</span></h2>
   <ul>
-    <li><b>本地库</b>：内置预设 + 自定义预设，支持搜索、分类/行业筛选、应用、删除；</li>
-    <li><b>导入/导出</b>：主题包 JSON（id 冲突自动重命名合并），也可整库导出备份；</li>
-    <li><b>分享链接</b>：URL hash 承载完整主题（含三色/辅助色契约），打开即还原；</li>
-    <li><b>远程源</b>：添加 JSON URL 订阅远程预设（内置 HIA 官方示例源），支持多源管理与全部导入。</li>
+    <li><span class="zh"><b>本地库</b>：内置预设 + 自定义预设，支持搜索、分类/行业筛选、应用、删除；</span><span class="en"><b>Local library</b>: built-in and custom presets with search, category/industry filters, apply and delete;</span></li>
+    <li><span class="zh"><b>导入/导出</b>：主题包 JSON（id 冲突自动重命名合并），也可整库导出备份；</span><span class="en"><b>Import/export</b>: JSON theme packs (id clashes auto-renamed on merge); the whole library can be exported as a backup;</span></li>
+    <li><span class="zh"><b>分享链接</b>：URL hash 承载完整主题（含三色/辅助色契约），打开即还原；</span><span class="en"><b>Share links</b>: the URL hash carries the whole theme (including third/aux contract fields) and restores on open;</span></li>
+    <li><span class="zh"><b>远程源</b>：添加 JSON URL 订阅远程预设（内置 HIA 官方示例源），支持多源管理与全部导入。</span><span class="en"><b>Remote sources</b>: subscribe to remote presets via JSON URL (the official example source is built in), with multi-source management and bulk import.</span></li>
   </ul>
 
-  <h2>6 · 网址取色探索（桌面端专属）</h2>
-  <p>输入网址后由桌面端真实渲染页面并多信号加权分析（文本/边框/logo/manifest 等来源），输出推荐主副色、置信度、理由与 12 个备选色。应用范围可勾选：<b>应用主副色</b> 与 <b>应用其它色到辅助色</b>（候选色自动填充辅助槽位）。安全上内置 SSRF 双重防护（私网/保留地址拦截 + 逐请求 CDP 级裁决）。暗色双模式自动复采，失败时明确提示且不影响主结果。</p>
-  <div class="tip">高级用法：环境变量 <code>HIA_CHROME_WS</code> 可连接远程/多实例 Chrome CDP 端点（逗号分隔按序回退）；<code>HIA_CHROME_PATH</code> 指定本机浏览器路径。</div>
+  <h2><span class="zh">6 · 网址取色探索（桌面端专属）</span><span class="en">6 · URL Color Exploration (desktop only)</span></h2>
+  <p><span class="zh">输入网址后由桌面端真实渲染页面并多信号加权分析（文本/边框/logo/manifest 等来源），输出推荐主副色、置信度、理由与 12 个备选色。应用范围可勾选：<b>应用主副色</b> 与 <b>应用其它色到辅助色</b>（候选色自动填充辅助槽位）。安全上内置 SSRF 双重防护（私网/保留地址拦截 + 逐请求 CDP 级裁决）。暗色双模式自动复采，失败时明确提示且不影响主结果。</span><span class="en">Enter a URL and the desktop build renders the page for real, scoring it with weighted multi-signal analysis (text/borders/logo/manifest). You get recommended primaries/secondaries with confidence, reasons, and 12 candidates. Apply scope is checkbox-controlled: <b>apply primary &amp; secondary</b> and <b>apply other colors to auxiliary</b> (candidates fill the aux slots). Security includes dual-layer SSRF protection (private/reserved blocking + per-request CDP adjudication). Dark dual-mode rescans automatically; failures are reported explicitly without affecting the main result.</span></p>
+  <div class="tip"><span class="zh">高级用法：环境变量 <code>HIA_CHROME_WS</code> 可连接远程/多实例 Chrome CDP 端点（逗号分隔按序回退）；<code>HIA_CHROME_PATH</code> 指定本机浏览器路径。</span><span class="en">Advanced: <code>HIA_CHROME_WS</code> connects to remote/multi-instance Chrome CDP endpoints (comma-separated, tried in order); <code>HIA_CHROME_PATH</code> points at a local browser.</span></div>
 
-  <h2>7 · 预览区</h2>
-  <p><b>PC 版企业后台</b>：六页示例 × 左右/上下/混合三种结构 × 明暗双模式；设置页实时显示主题名称与主/副/第三/辅助色卡。<b>小程序示例</b>：首页/列表/详情/我的/表单五页。<b>经典支持预览</b>：WordPress 前后台与 Tailwind 落地页的真实场景注入。</p>
+  <h2><span class="zh">7 · 预览区</span><span class="en">7 · Preview Area</span></h2>
+  <p><span class="zh"><b>PC 版企业后台</b>：六页示例 × 左右/上下/混合三种结构 × 明暗双模式；设置页实时显示主题名称与主/副/第三/辅助色卡。<b>小程序示例</b>：首页/列表/详情/我的/表单五页。<b>经典支持预览</b>：WordPress 前后台与 Tailwind 落地页的真实场景注入。</span><span class="en"><b>Enterprise admin</b>: six pages × three layouts × dark/light; the settings page shows the theme name and primary/secondary/third/auxiliary swatches live. <b>Mini-program</b>: five sample pages. <b>Classic targets</b>: WordPress front/admin and a Tailwind landing page with your tokens injected.</span></p>
 
-  <h2>8 · 界面语言</h2>
-  <p>右上角 EN 按钮切换中/英界面；双语切换对演示内容往返无损。导出产物内容不随界面语言变化（数据确定性）。</p>
+  <h2><span class="zh">8 · 界面语言</span><span class="en">8 · Interface Language</span></h2>
+  <p><span class="zh">右上角 EN 按钮切换中/英界面；双语切换对演示内容往返无损。导出产物内容不随界面语言变化（数据确定性）。</span><span class="en">The EN button in the top-right toggles Chinese/English; demo content round-trips losslessly. Export artifacts never change with the UI language (data determinism).</span></p>
 </main>
-<footer class="site-foot">HIA-Theme-Builder · <a href="https://github.com/mandolin/HIA-Theme-Builder">GitHub</a></footer>
+<footer class="site-foot">HIA Studio @2026- · <a href="https://github.com/mandolin/HIA-Theme-Builder">GitHub</a></footer>
 </body>
 </html>

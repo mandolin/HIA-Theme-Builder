@@ -112,8 +112,8 @@ test('主题包: 配色关系新契约字段清洗（v2 contract sanitize）', (
   assert.equal('thirdColor'in dirty,false);
   assert.equal('auxiliary'in dirty,false);
   // 槽位上限截断：10 条合法 → 保 8
-  const many=sanitizePreset({...base,auxiliary:Array.from({length:10},(_,i)=>({name:'a'+i,value:'#0A0B0C'}))});
-  assert.equal(many.auxiliary.length,8);
+  const many=sanitizePreset({...base,auxiliary:Array.from({length:14},(_,i)=>({name:'a'+i,value:'#0A0B0C'}))});
+  assert.equal(many.auxiliary.length,12);
 });
 
 test('主题包: 非法 JSON/未知版本/非对象返回 null（parse failures）', () => {

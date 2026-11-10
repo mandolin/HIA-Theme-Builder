@@ -32,4 +32,11 @@ body{margin:0;font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,s
 .doc .download-note{background:#EDF4FB;border:1px solid var(--line);border-left:4px solid var(--primary);border-radius:8px;padding:10px 14px;font-size:13.5px;margin:14px 0}
 footer.site-foot{max-width:920px;margin:0 auto;padding:0 24px 60px;color:#8B9AA9;font-size:12.5px}
 footer.site-foot a{color:var(--primary);text-decoration:none}
+/* 语言切换（W-tb-P14 维护者反馈）：.zh/.en 双份内容按 data-docs-lang 显隐；按钮为头部描边样式。 */
+/* Language switch: .zh/.en pairs toggled by data-docs-lang; button styled as header outline. */
+[data-docs-lang="en"] .zh{display:none!important}
+[data-docs-lang="zh"] .en{display:none!important}
+.zh,.en{min-width:0}
+.lang-switch{margin-left:12px;padding:5px 14px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--primary);font-size:13px;font-weight:800;cursor:pointer}
+.lang-switch:hover{border-color:var(--primary)}
 @media (max-width:640px){.site-head{padding:12px 16px}.wrap{padding:24px 16px 60px}}

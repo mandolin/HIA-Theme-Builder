@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- @lang zh-CN HIA-Theme-Builder 松树主题图标：三层松冠（钴蓝基色系渐变）+ 树干，圆角方底。
+       松树取"常青/体系生长"意象，配色沿用品牌钴蓝 #0047AB 与清透青 #00A8D3。 -->
+  <!-- @lang en HIA-Theme-Builder pine-themed icon: three-tier pine crown (cobalt family gradient)
+       + trunk on a rounded-square tile. Pine = evergreen/system growth; colors follow the brand
+       cobalt #0047AB and clear-cyan #00A8D3. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EAF3FB"/>
+      <stop offset="1" stop-color="#D4E6F4"/>
+    </linearGradient>
+    <linearGradient id="crown" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E6FD1"/>
+      <stop offset="1" stop-color="#0047AB"/>
+    </linearGradient>
+  </defs>
+  <!-- 底板 tile -->
+  <rect x="1" y="1" width="30" height="30" rx="7" fill="url(#tile)"/>
+  <!-- 松冠三层：顶层小、底层大（层间留白出呼吸感） -->
+  <path d="M16 4 L21.5 12 H10.5 Z" fill="url(#crown)"/>
+  <path d="M16 9.5 L23 18.5 H9 Z" fill="url(#crown)" opacity=".92"/>
+  <path d="M16 15.5 L24.5 25 H7.5 Z" fill="url(#crown)" opacity=".85"/>
+  <!-- 树干 trunk -->
+  <rect x="14.7" y="23" width="2.6" height="5" rx="1.1" fill="#7A5A36"/>
+  <!-- 点缀：清透青雪顶（品牌第二色呼应） -->
+  <circle cx="16" cy="5.4" r="1.3" fill="#00A8D3"/>
+</svg>

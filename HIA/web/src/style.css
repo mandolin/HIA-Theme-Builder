@@ -120,6 +120,11 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .explore-apply-opts{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#F8FAFC}
 .explore-opt{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer}
 .explore-opt input{width:15px;height:15px;accent-color:var(--primary);cursor:pointer}
+/* 站点页脚（W-tb-P14 维护者反馈）：全站底部版权行，低调居中。 */
+/* Site footer (maintainer feedback): subtle centered copyright line. */
+.site-footer{padding:20px 24px 26px;text-align:center;color:#8B9AA9;font-size:12.5px;border-top:1px solid var(--line);margin-top:8px}
+.site-footer a{color:var(--primary);text-decoration:none;font-weight:700}
+.site-footer a:hover{text-decoration:underline}
 /* W-tb-P7 无障碍：深色外观下补齐次要文字对比度（#9EB1C4 on #111827 = 8.06:1，WCAG AA 达标）。
    W-tb-P7 a11y: dark-appearance secondary text contrast fixes (8.06:1, WCAG AA compliant). */
 .pc-shell.dark .pc-nav-title{color:#93A8BC}

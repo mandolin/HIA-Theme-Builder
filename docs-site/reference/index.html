@@ -1,52 +1,54 @@
 <!doctype html>
-<!-- @lang zh-CN 参考及开发文档：core API、主题模型契约、Token 结构、适配器、桌面端架构、二次开发。
-     @lang en Reference & development docs: core API, theme contract, tokens, adapters, desktop architecture. -->
+<!-- @lang zh-CN 参考及开发文档（双语）：core API、主题模型契约、Token 结构、适配器、桌面端架构、二次开发。
+     @lang en Reference & dev docs (bilingual): core API, theme contract, tokens, adapters, desktop architecture. -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>参考及开发文档 · HIA-Theme-Builder</title>
-<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<title>参考及开发文档 · Reference · HIA-Theme-Builder</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/lang.js" defer></script>
 </head>
 <body>
 <header class="site-head">
-  <a class="logo" href="../"><img src="../favicon.svg" alt="">HIA-Theme-Builder 文档</a>
+  <a class="logo" href="../"><img src="../assets/favicon-32.png" alt="">HIA-Theme-Builder 文档</a>
   <nav>
-    <a href="../">文档首页</a>
-    <a href="../getting-started/">入门教程</a>
-    <a href="../manual/">使用手册</a>
-    <a class="active" href="./">参考及开发文档</a>
+    <a href="../"><span class="zh">文档首页</span><span class="en">Docs Home</span></a>
+    <a href="../getting-started/"><span class="zh">入门教程</span><span class="en">Getting Started</span></a>
+    <a href="../manual/"><span class="zh">使用手册</span><span class="en">Manual</span></a>
+    <a class="active" href="./"><span class="zh">参考及开发文档</span><span class="en">Reference</span></a>
   </nav>
+  <button id="docLangBtn" class="lang-switch" type="button" aria-label="Switch language / 切换语言">EN</button>
   <a class="gh" href="https://github.com/mandolin/HIA-Theme-Builder" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 </header>
 <main class="wrap doc">
-  <h1>参考及开发文档</h1>
-  <p>面向二次开发者与集成方。完整架构决策（ADR）与过程材料见仓库内说明。</p>
+  <h1><span class="zh">参考及开发文档</span><span class="en">Reference &amp; Development Docs</span></h1>
+  <p><span class="zh">面向二次开发者与集成方。完整架构决策（ADR）与过程材料见仓库内说明。</span><span class="en">For integrators and contributors. Full ADRs and process records live in the repository.</span></p>
 
-  <h2>1 · 仓库结构</h2>
-  <p>mono-repo，四包各自独立构建、测试与发布：</p>
+  <h2><span class="zh">1 · 仓库结构</span><span class="en">1 · Repository Layout</span></h2>
+  <p><span class="zh">mono-repo，四包各自独立构建、测试与发布：</span><span class="en">A monorepo; the four packages build, test and release independently:</span></p>
   <table>
-    <tr><th>包</th><th>职责</th><th>许可证</th></tr>
-    <tr><td><code>HIA/core</code></td><td>公共核心：主题模型、配色算法（Oklch）、关系规则推导、Token 导出适配器、宝典数据。三端以本地包链接复用。</td><td>MIT</td></tr>
-    <tr><td><code>HIA/web</code></td><td>网页版（Vite），共享渲染器为三端 UI 单一事实来源，部署 GitHub Pages。</td><td>MIT</td></tr>
-    <tr><td><code>HIA/electron</code></td><td>Electron 桌面版：复用 web 渲染产物，隐藏 BrowserWindow 真实渲染取色。</td><td>Apache-2.0</td></tr>
-    <tr><td><code>HIA/tauri</code></td><td>Tauri 桌面版：Rust 后端 chromiumoxide 采集，CDP 逐请求 SSRF 拦截。</td><td>MIT</td></tr>
+    <tr><th><span class="zh">包</span><span class="en">Package</span></th><th><span class="zh">职责</span><span class="en">Responsibility</span></th><th><span class="zh">许可证</span><span class="en">License</span></th></tr>
+    <tr><td><code>HIA/core</code></td><td><span class="zh">公共核心：主题模型、配色算法（Oklch）、关系规则推导、Token 导出适配器、宝典数据。三端以本地包链接复用。</span><span class="en">Shared core: theme model, Oklch color math, harmony rule engine, token export adapters, baodian data. Reused by all ends via local package links.</span></td><td>MIT</td></tr>
+    <tr><td><code>HIA/web</code></td><td><span class="zh">网页版（Vite），共享渲染器为三端 UI 单一事实来源，部署 GitHub Pages。</span><span class="en">Web app (Vite); its shared renderer is the single source of truth for all UI, deployed to GitHub Pages.</span></td><td>MIT</td></tr>
+    <tr><td><code>HIA/electron</code></td><td><span class="zh">Electron 桌面版：复用 web 渲染产物，隐藏 BrowserWindow 真实渲染取色。</span><span class="en">Electron desktop: reuses the web renderer; hidden BrowserWindow performs real-render extraction.</span></td><td>Apache-2.0</td></tr>
+    <tr><td><code>HIA/tauri</code></td><td><span class="zh">Tauri 桌面版：Rust 后端 chromiumoxide 采集，CDP 逐请求 SSRF 拦截。</span><span class="en">Tauri desktop: Rust backend collects via chromiumoxide with per-request CDP SSRF interception.</span></td><td>MIT</td></tr>
   </table>
 
-  <h2>2 · 主题模型契约（摘要）</h2>
-  <p>完整契约见 <code>HIA/core/src/types.ts</code> 与 ADR-007（配色关系模式与辅助色）：</p>
+  <h2><span class="zh">2 · 主题模型契约（摘要）</span><span class="en">2 · Theme Model Contract (summary)</span></h2>
+  <p><span class="zh">完整契约见 <code>HIA/core/src/types.ts</code> 与 ADR-007（配色关系模式与辅助色）：</span><span class="en">The full contract is in <code>HIA/core/src/types.ts</code> and ADR-007 (harmony modes &amp; auxiliary colors):</span></p>
   <table>
-    <tr><th>字段</th><th>类型</th><th>语义</th></tr>
-    <tr><td><code>primary / secondary / thirdColor</code></td><td><code>RoleColor</code></td><td>主体色成员；RoleColor = { name, value, scale(50..900), on }，色阶由 HEX 重建。</td></tr>
-    <tr><td><code>seriesMode</code></td><td><code>'single'|'dual'|'triad'</code></td><td>主体色模式，由成员数派生（装配语义：缺省补默认）。</td></tr>
-    <tr><td><code>seriesRelation</code></td><td><code>SeriesRelationId</code></td><td>十种关系规则之一（manual/complement/clash/neutral/analogous/split-complement/tertiary/primary-combo/secondary-combo/pure）。</td></tr>
-    <tr><td><code>auxiliary</code></td><td><code>RoleColor[]</code></td><td>辅助色独立维度，0..8 槽位，与主体色模式无关。</td></tr>
-    <tr><td><code>gradients</code></td><td><code>GradientSettings</code></td><td>8 渐变角色；family 支持 <code>ColorFamily | 'third' | 'aux${number}'</code>。</td></tr>
+    <tr><th><span class="zh">字段</span><span class="en">Field</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">语义</span><span class="en">Semantics</span></th></tr>
+    <tr><td><code>primary / secondary / thirdColor</code></td><td><code>RoleColor</code></td><td><span class="zh">主体色成员；RoleColor = { name, value, scale(50..900), on }，色阶由 HEX 重建。</span><span class="en">Body-color members; RoleColor = { name, value, scale(50..900), on } with scales rebuilt from HEX.</span></td></tr>
+    <tr><td><code>seriesMode</code></td><td><code>'single'|'dual'|'triad'</code></td><td><span class="zh">主体色模式，由成员数派生（装配语义：缺省补默认）。</span><span class="en">Body mode, derived from member count (assembly semantics: missing → default).</span></td></tr>
+    <tr><td><code>seriesRelation</code></td><td><code>SeriesRelationId</code></td><td><span class="zh">十种关系规则之一（manual/complement/clash/neutral/analogous/split-complement/tertiary/primary-combo/secondary-combo/pure）。</span><span class="en">One of ten rules (manual/complement/clash/neutral/analogous/split-complement/tertiary/primary-combo/secondary-combo/pure).</span></td></tr>
+    <tr><td><code>auxiliary</code></td><td><code>RoleColor[]</code></td><td><span class="zh">辅助色独立维度，0..12 槽位，与主体色模式无关。</span><span class="en">Independent auxiliary dimension, 0..12 slots, unrelated to the body mode.</span></td></tr>
+    <tr><td><code>gradients</code></td><td><code>GradientSettings</code></td><td><span class="zh">8 渐变角色；family 支持 <code>ColorFamily | 'third' | 'auxN'</code>（N 为槽位索引）。</span><span class="en">Eight gradient roles; family accepts <code>ColorFamily | 'third' | 'auxN'</code> (N = slot index).</span></td></tr>
   </table>
-  <div class="tip">向后兼容原则：旧数据缺字段一律按 dual/manual/空辅助槽补默认；<code>ThemeInput</code> 与 <code>Preset</code> 均可选携带新字段，清洗层（<code>sanitizePreset</code>）做白名单校验并由 HEX 重建色阶。</div>
+  <div class="tip"><span class="zh">向后兼容原则：旧数据缺字段一律按 dual/manual/空辅助槽补默认；<code>ThemeInput</code> 与 <code>Preset</code> 均可选携带新字段，清洗层（<code>sanitizePreset</code>）做白名单校验并由 HEX 重建色阶。</span><span class="en">Backward compatibility: missing fields default to dual/manual/empty aux. <code>ThemeInput</code> and <code>Preset</code> carry the new fields optionally; the sanitize layer (<code>sanitizePreset</code>) whitelists values and rebuilds scales from HEX.</span></div>
 
-  <h2>3 · core API 速览</h2>
+  <h2><span class="zh">3 · core API 速览</span><span class="en">3 · core API Quick Tour</span></h2>
   <pre><code>import {
   buildTheme, createThemeDraft, presetFromDraft, draftFromPreset,
   deriveSecondaryByRelation, deriveThirdByRelation, generateAuxiliaryCandidates,
@@ -56,47 +58,47 @@
   FORM_PACKS, BAODIAN_PALETTE, SERIES_RELATION_DEFS,
 } from '@hia/theme-core';</code></pre>
   <ul>
-    <li><code>buildTheme(input)</code>：装配主题（推导第三色/副色变体/空辅助槽），全部色阶在此计算；</li>
-    <li><code>deriveSecondaryByRelation / deriveThirdByRelation</code>：按规则从主色推导副色与第三色；</li>
-    <li><code>encodeShareHash / decodeShareHash</code>：分享链接编码（紧凑位置数组，缺省字段省略）；</li>
-    <li><code>parseThemePack</code>：远程/导入主题包清洗（含 v2 契约字段白名单与截断）。</li>
+    <li><span class="zh"><code>buildTheme(input)</code>：装配主题（推导第三色/副色变体/空辅助槽），全部色阶在此计算；</span><span class="en"><code>buildTheme(input)</code>: assembles the theme (derives third/secondary variant/empty aux); all scales are computed here;</span></li>
+    <li><span class="zh"><code>deriveSecondaryByRelation / deriveThirdByRelation</code>：按规则从主色推导副色与第三色；</span><span class="en"><code>deriveSecondaryByRelation / deriveThirdByRelation</code>: rule-based secondary/third derivation from the primary;</span></li>
+    <li><span class="zh"><code>encodeShareHash / decodeShareHash</code>：分享链接编码（紧凑位置数组，缺省字段省略）；</span><span class="en"><code>encodeShareHash / decodeShareHash</code>: share-link codec (compact positional array, defaults omitted);</span></li>
+    <li><span class="zh"><code>parseThemePack</code>：远程/导入主题包清洗（含 v2 契约字段白名单与截断）。</span><span class="en"><code>parseThemePack</code>: remote/import pack sanitizing (v2 field whitelisting and truncation).</span></li>
   </ul>
 
-  <h2>4 · Token 结构（CSS 变量）</h2>
-  <p>导出的 CSS 变量遵循分层命名：</p>
-  <pre><code>--hia-primary-50 … --hia-primary-900   /* 主色十档 */
---hia-secondary-*, --hia-third-*        /* 副/第三色族 */
---hia-aux0-50 … --hia-auxN-900          /* 辅助色槽位（N 为索引） */
---hia-on-primary / --hia-on-aux0        /* 前景对比色（WCAG 自动选择） */
---hia-fs-h1 / --hia-line-height-body    /* 字号与行高令牌（ADR-006） */</code></pre>
-  <p>运行时（预览区）另有 <code>--p/--s/--t/--a{N}</code> 前缀的快捷变量供 mock 与渐变消费。</p>
+  <h2><span class="zh">4 · Token 结构（CSS 变量）</span><span class="en">4 · Token Structure (CSS variables)</span></h2>
+  <p><span class="zh">导出的 CSS 变量遵循分层命名：</span><span class="en">Exported variables follow layered naming:</span></p>
+  <pre><code>--hia-primary-50 … --hia-primary-900   /* primary, 10 shades */
+--hia-secondary-*, --hia-third-*        /* secondary / third families */
+--hia-aux0-50 … --hia-auxN-900          /* auxiliary slots (N = index) */
+--hia-on-primary / --hia-on-aux0        /* foregrounds (WCAG auto-picked) */
+--hia-fs-h1 / --hia-line-height-body    /* typography &amp; line-height tokens (ADR-006) */</code></pre>
+  <p><span class="zh">运行时（预览区）另有 <code>--p/--s/--t/--a{N}</code> 前缀的快捷变量供 mock 与渐变消费。</span><span class="en">At runtime the preview area also exposes <code>--p/--s/--t/--a{N}</code> shorthand variables for mocks and gradients.</span></p>
 
-  <h2>5 · 导出适配器</h2>
+  <h2><span class="zh">5 · 导出适配器</span><span class="en">5 · Export Adapters</span></h2>
   <ul>
-    <li><b>WordPress</b>：<code>theme.json</code>（v2+）色板含全部色族 + 子主题骨架 ZIP；</li>
-    <li><b>Tailwind</b>：<code>tailwind.config</code> 片段，colors 按 primary/secondary/third/aux{N} 族映射；</li>
-    <li><b>CSS/JSON</b>：通用令牌导出（默认/经典/TDON 三种支持模式，TDON 为声明式适配草稿规范）。</li>
+    <li><span class="zh"><b>WordPress</b>：<code>theme.json</code>（v2+）色板含全部色族 + 子主题骨架 ZIP；</span><span class="en"><b>WordPress</b>: <code>theme.json</code> (v2+) palette with all families plus a child-theme ZIP skeleton;</span></li>
+    <li><span class="zh"><b>Tailwind</b>：<code>tailwind.config</code> 片段，colors 按 primary/secondary/third/aux{N} 族映射；</span><span class="en"><b>Tailwind</b>: a <code>tailwind.config</code> snippet mapping colors into primary/secondary/third/aux{N} families;</span></li>
+    <li><span class="zh"><b>CSS/JSON</b>：通用令牌导出（默认/经典/TDON 三种支持模式，TDON 为声明式适配草稿规范）。</span><span class="en"><b>CSS/JSON</b>: generic token export (default / classic / TDON support modes; TDON is a declarative adaptation draft spec).</span></li>
   </ul>
 
-  <h2>6 · 桌面端架构与取色</h2>
-  <p>两端共享同一 scanner bundle（<code>HIA/extractor/dist/browser-scanner.bundle.js</code>，IIFE 自包含），保证评分一致；构建校验脚本断言三端内容哈希一致。</p>
+  <h2><span class="zh">6 · 桌面端架构与取色</span><span class="en">6 · Desktop Architecture &amp; Extraction</span></h2>
+  <p><span class="zh">两端共享同一 scanner bundle（<code>HIA/extractor/dist/browser-scanner.bundle.js</code>，IIFE 自包含），保证评分一致；构建校验脚本断言三端内容哈希一致。</span><span class="en">Both desktop ends share one scanner bundle (<code>HIA/extractor/dist/browser-scanner.bundle.js</code>, self-contained IIFE) so scores match; a build script asserts bundle hash equality across ends.</span></p>
   <ul>
-    <li><b>Electron</b>：隐藏隔离 BrowserWindow 加载目标页 → 稳定化（网络/渲染双重静默）→ 注入 scanner 采集 DOM 证据 → 量化评分；<code>finally</code> 销毁窗口；</li>
-    <li><b>Tauri</b>：Rust 后端 chromiumoxide launch（显式无头）→ CDP Fetch 域逐请求 SSRF 裁决（重定向每跳 DNS 深度校验，命中即阻断）→ 采集后 <code>Browser.close</code> 带超时护栏，函数返回经 Drop/kill_on_drop 强杀子进程，杜绝残留窗口；</li>
-    <li><b>SSRF 防线</b>：协议白名单 → 私网/保留 IP 字面量 → 连接时 DNS 深度解析（fail-closed）→ CDP 逐请求裁决（Electron 为 webRequest 同口径）。</li>
+    <li><span class="zh"><b>Electron</b>：隐藏隔离 BrowserWindow 加载目标页 → 稳定化（网络/渲染双重静默）→ 注入 scanner 采集 DOM 证据 → 量化评分；<code>finally</code> 销毁窗口；</span><span class="en"><b>Electron</b>: a hidden isolated BrowserWindow loads the page → stabilization (network/render) → scanner injection collects DOM evidence → quantified scoring; the window is destroyed in <code>finally</code>;</span></li>
+    <li><span class="zh"><b>Tauri</b>：Rust 后端 chromiumoxide launch（显式无头）→ CDP Fetch 域逐请求 SSRF 裁决（重定向每跳 DNS 深度校验，命中即阻断）→ 采集后 <code>Browser.close</code> 带超时护栏，函数返回经 Drop/kill_on_drop 强杀子进程，杜绝残留窗口；</span><span class="en"><b>Tauri</b>: Rust chromiumoxide launch (explicit headless) → CDP Fetch-domain per-request SSRF adjudication (DNS deep checks on every redirect hop) → after capture, <code>Browser.close</code> with timeout guards; returning drops the Browser and kills the child (kill_on_drop), so no leftover windows;</span></li>
+    <li><span class="zh"><b>SSRF 防线</b>：协议白名单 → 私网/保留 IP 字面量 → 连接时 DNS 深度解析（fail-closed）→ CDP 逐请求裁决（Electron 为 webRequest 同口径）。</span><span class="en"><b>SSRF lines</b>: scheme allowlist → private/reserved IP literals → connect-time DNS resolution (fail-closed) → per-request CDP adjudication (Electron enforces the same bar via webRequest).</span></li>
   </ul>
 
-  <h2>7 · 二次开发</h2>
-  <p>推荐环境：Node 22 LTS（仓库 <code>.mise.toml</code> 锁定，<code>mise install</code>）、PowerShell 7（Windows）、Rust stable（仅 Tauri）。</p>
-  <pre><code># 构建 core 并跑全部单测
+  <h2><span class="zh">7 · 二次开发</span><span class="en">7 · Development</span></h2>
+  <p><span class="zh">推荐环境：Node 22 LTS（仓库 <code>.mise.toml</code> 锁定，<code>mise install</code>）、PowerShell 7（Windows）、Rust stable（仅 Tauri）。</span><span class="en">Recommended: Node 22 LTS (pinned in <code>.mise.toml</code>, <code>mise install</code>), PowerShell 7 on Windows, Rust stable (Tauri only).</span></p>
+  <pre><code># Build core and run its tests
 cd HIA/core &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; node --test test/
-# 网页版开发服务器
+# Web dev server
 cd HIA/web &amp;&amp; npm install &amp;&amp; npm run dev
 # Electron / Tauri
 cd HIA/electron &amp;&amp; npm install &amp;&amp; npm start
 cd HIA/tauri &amp;&amp; npm install &amp;&amp; npm run build</code></pre>
-  <p>代码约定：全部语义节点中英双语文档化注释（ROP）；三端渲染器产物哈希一致性由 CI 断言；新增第三方依赖须登记来源/版本/许可证并优先宽松许可。</p>
+  <p><span class="zh">代码约定：全部语义节点中英双语文档化注释（ROP）；三端渲染器产物哈希一致性由 CI 断言；新增第三方依赖须登记来源/版本/许可证并优先宽松许可。</span><span class="en">Conventions: bilingual (zh/en) doc comments on every semantic node (ROP); CI asserts renderer hash equality across ends; new third-party dependencies must record source/version/license, permissive licenses preferred.</span></p>
 </main>
-<footer class="site-foot">HIA-Theme-Builder · <a href="https://github.com/mandolin/HIA-Theme-Builder">GitHub</a></footer>
+<footer class="site-foot">HIA Studio @2026- · <a href="https://github.com/mandolin/HIA-Theme-Builder">GitHub</a></footer>
 </body>
 </html>
