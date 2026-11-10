@@ -50,7 +50,7 @@
     },
     "win": {
       "target": ["portable", "nsis"],
-      "icon": "build/icon.png",
+      "icon": "resources/icon.png",
       "publisherName": "HIA",
       "signtoolOptions": {
         "certificateFile": "../../certs/hia-theme-builder.pfx",
