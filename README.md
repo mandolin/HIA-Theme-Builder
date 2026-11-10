@@ -1,93 +1,97 @@
 # HIA-Theme-Builder
 
-HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具，以 TypeScript + 组件化的方式重构为一套可复用、可发布的主题管理体系，并抽离公共核心（`core`），在其基础上派生出网页版、Electron 版与 Tauri 版。
+English | [简体中文](README.zh-CN.md)
 
-**当前版本 [v0.2.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.2.0)**（2026-11-09）：三端同构发布 · [在线版（GitHub Pages）](https://mandolin.github.io/HIA-Theme-Builder/) · [桌面下载](https://github.com/mandolin/HIA-Theme-Builder/releases)
+HIA Theme Builder. Rebuilds the original single-file tool `HIA_theme_manager.html` into a reusable, publishable theme management system based on TypeScript and componentization, with a shared core (`core`) from which the web, Electron and Tauri editions are derived.
 
-## 功能总览
+**Current release [v0.3.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.3.0)** (2026-11-10): three-end consistent release · [Web app (GitHub Pages)](https://mandolin.github.io/HIA-Theme-Builder/) · [Docs](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [Desktop downloads](https://github.com/mandolin/HIA-Theme-Builder/releases)
 
-- **主题操作台**：主色候选库（44 色）、副色候选区、名称/分类/行业元信息；一键应用/生成导入主题库。
-- **配色关系模式与辅助色**（ADR-007 v2）：主体色单色/双色/三色模式（成员数派生）；十种经典配色设计映射为关系规则（互补/冲突/中性/类比/分裂补色/三次色/原色组合/二次色组合/纯色/手动）；规则补副色/补第三色；辅助色独立槽位（0..8，手动添加/按规则生成/↔主副三互换/拖拽排序）。
-- **配色宝典选色**：弹层内置 24 情感分类 × 10 形态组合（1440 组合/3739 色条，逐页对账零缺失），点击组合一键套用主体色；情感行 ⚡ 快捷套用。
-- **取色探索**：桌面端输入网址真实渲染取色（多信号加权：主色/Logo/manifest 等），SSRF 双重校验（Electron 主进程 + Tauri Rust CDP 逐请求拦截）。
-- **预览**：PC 版企业后台完整预览（仪表盘/列表/表单/详情/分析/设置六页 × 左右/上下/混合三结构 × 明暗双模式）+ 小程序五页示例预览 + WordPress/Tailwind 经典场景注入预览。
-- **渐变**：8 渐变角色 × 色系来源（主/副/第三/辅助 N）× 色阶/角度/偏置，自定义下拉带色块预览。
-- **导出**：CSS 变量 / JSON Token / WordPress theme.json+子主题骨架 / Tailwind 配置；第三色与辅助色全量传导。
-- **主题市场**：本地库管理（搜索/分类/行业筛选）、导入导出主题包、分享链接（URL 还原主题）、远程预设源（官方示例源内置）。
-- **国际化与无障碍**：中/英双语界面（含演示内容翻译），ARIA/键盘可达基线。
+## Feature Overview
 
-| 入口 | 说明 |
+- **Theme console**: primary candidate library (44 colors), secondary candidate area, name/category/industry metadata; apply or generate-and-import themes in one click.
+- **Harmony modes & auxiliary colors** (ADR-007 v2): body color in single/dual/triad modes (derived from member count); ten classic color designs mapped to relation rules (complement/clash/neutral/analogous/split-complement/tertiary/primary-combo/secondary-combo/pure/manual); one-click "fill secondary / fill third"; auxiliary slots (0..12, manual or rule-generated, ↔Pri/↔Sec/↔3rd swaps, drag to reorder).
+- **Color baodian picker**: modal with 24 moods × 10 forms (1,440 combos / 3,739 bars, reconciled zero-missing against the source book); click a combo to apply; per-mood ⚡ quick apply.
+- **URL color exploration** (desktop): real-render extraction with multi-signal scoring (text/borders/logo/manifest), dual-layer SSRF protection (Electron main process + Tauri Rust per-request CDP adjudication); apply-scope checkboxes (primary & secondary, other colors → auxiliary).
+- **Previews**: full fake enterprise admin (dashboard/list/form/detail/analytics/settings × three layouts × dark/light) + mini-program sample pages + WordPress/Tailwind classic-target injection previews.
+- **Gradients**: 8 gradient roles × color sources (primary/secondary/third/auxiliary N) × shade/angle/bias, custom dropdown with swatch previews.
+- **Exports**: CSS variables / JSON tokens / WordPress theme.json + child-theme skeleton / Tailwind config; third & auxiliary colors propagate everywhere.
+- **Theme market**: local library (search/category/industry filters), pack import & export, share links (URL restores a theme), remote preset sources (official example source built in).
+- **i18n & a11y**: bilingual UI (zh/en, lossless round-trips), ARIA/keyboard baseline; docs site bilingual with language switch.
+
+| Entry | Description |
 | --- | --- |
-| 网页版 (`HIA/web`) | 在线主题构建与预览，发布到 GitHub Pages；共享渲染器为三端 UI 单一事实来源。 |
-| Electron 版 (`HIA/electron`) | 桌面版，复用 web 共享渲染器，启动即为一致操作台/预览/渐变/导出，并具备从指定网址获取颜色集等额外能力。 |
-| Tauri 版 (`HIA/tauri`) | 桌面版（更轻量），复用 web 共享渲染器，启动即为一致操作台/预览/渐变/导出，并具备从指定网址获取颜色集等额外能力。 |
-| 公共核心 (`HIA/core`) | 供以上各端调用的公共主题模型、颜色算法、Token 导出与预览组件。 |
+| Web edition (`HIA/web`) | Online theme building and preview, deployed to GitHub Pages; the shared renderer is the single source of truth for all three UIs. |
+| Electron edition (`HIA/electron`) | Desktop edition reusing the shared renderer; adds real-render URL color extraction. |
+| Tauri edition (`HIA/tauri`) | Lighter desktop edition reusing the shared renderer; adds real-render URL color extraction. |
+| Shared core (`HIA/core`) | Theme model, color algorithms, token export and preview components consumed by every end. |
 
-> 跨端一致性：桌面端不重写 UI，直接复用 `HIA/web` 的 Vite 构建产物（`index.html` + `assets`），因此三端呈现与操作一致；桌面端专属能力（从网址取色）通过各自平台桥（`window.hia.extractFromUrl` / `__TAURI_INVOKE__('extract_signals')`）由 `createAdaptivePlatform` 的回退链自动接入。
+> Cross-end consistency: desktop editions never rewrite the UI — they reuse the Vite build output of `HIA/web` (`index.html` + `assets`), so presentation and behavior match everywhere; desktop-only capabilities (URL extraction) plug in through each platform bridge (`window.hia.extractFromUrl` / `__TAURI_INVOKE__('extract_signals')`) via the `createAdaptivePlatform` fallback chain.
 >
-> 取色算法同源：Electron 注入与 Tauri 编译期 `include_str!` 嵌入的 scanner bundle 均来自同一份 `HIA/extractor/dist/browser-scanner.bundle.js`（IIFE 自包含），且 Electron 运行期读取 `node_modules/@hia/theme-url-extractor/dist/` 副本须与其内容一致。可用 `HIA/extractor/scripts/verify-bundle-consistency.mjs` 校验三端 bundle 内容 hash 一致，保证评分可复现。
+> Identical extraction: the scanner bundle injected by Electron and embedded into Tauri via `include_str!` both come from the same `HIA/extractor/dist/browser-scanner.bundle.js` (self-contained IIFE); a script verifies the bundle hash across ends so scores are reproducible.
 
-## 仓库与边界
+## Repository & Boundaries
 
-本项目是一个 mono-repo，顶层文件夹 `HIA-Theme-Builder/` 自身是**公开主库**（映射到 `mandolin/HIA-Theme-Builder`）；`work-zone/` 是独立**私有工作区库**（映射到 `mandolin/HIA-Theme-Builder-WorkZone`），被主库根 `.gitignore` 排除。
+This project is a mono-repo: the top folder `HIA-Theme-Builder/` is the **public main repository** (mapped to `mandolin/HIA-Theme-Builder`); `work-zone/` is an independent **private workspace repository** (mapped to `mandolin/HIA-Theme-Builder-WorkZone`) excluded by the root `.gitignore`.
 
-| 位置 | 职责 | 仓库 |
+| Location | Responsibility | Repository |
 | --- | --- | --- |
-| `HIA/core/` | 公共主题模型、配色算法、Token 导出、可复用预览组件。 | 主库（公开） |
-| `HIA/web/` | 网页版应用，部署 GitHub Pages。 | 主库（公开） |
-| `HIA/electron/` | Electron 桌面版，复用 web 共享渲染器，含网址取色等能力。 | 主库（公开） |
-| `HIA/tauri/` | Tauri 桌面版，复用 web 共享渲染器，含网址取色等能力。 | 主库（公开） |
-| `docs/` | 面向使用者和二次开发者的公开文档。 | 主库（公开） |
-| `dev/` | 已整理、可公开的开发材料入口（可为空）。 | 主库（公开） |
-| `work-zone/` | 私有规划、研究、审计、评审与 AI 协作证据。 | 私有库（不公开） |
+| `HIA/core/` | Shared theme model, color algorithms, token export, reusable preview components. | Public |
+| `HIA/web/` | Web app, deployed to GitHub Pages. | Public |
+| `HIA/electron/` | Electron desktop edition, reusing the web renderer with URL extraction. | Public |
+| `HIA/tauri/` | Tauri desktop edition, reusing the web renderer with URL extraction. | Public |
+| `docs/` | Public docs for users and contributors. | Public |
+| `docs-site/` | Bilingual docs subsite deployed under `/docs/` on GitHub Pages. | Public |
+| `dev/` | Curated public development materials (may be empty). | Public |
+| `work-zone/` | Private planning, research, audits and AI-collaboration evidence. | Private |
 
-根目录刻意不建立跨 `HIA/*` 的共享依赖树或统一构建流水线；各端独立包管理、测试与发布。跨端联调使用 `HIA/core` 的本地包链接、示例或 fixtures。
+The root deliberately creates no shared dependency tree or unified build pipeline across `HIA/*`; each end installs, tests and releases independently. Cross-end development uses local package links, examples or fixtures from `HIA/core`.
 
-## 原始工具
+## Original Tool
 
-重构起点为内部单文件工具 `HIA_theme_manager.html`：一个以主/副色操作台、预设主题库、渐变设置、PC/小程序预览和 CSS/JSON Token 导出为核心的单文件工作台。本项目在保留其设计语言与能力边界的前提下，进行组件化拆分与多端派生。
+The refactoring started from the internal single-file tool `HIA_theme_manager.html`: a single-file workbench built around a primary/secondary console, preset theme library, gradient settings, PC/mini-program previews and CSS/JSON token export. This project keeps its design language and capability boundaries while splitting it into components and deriving multiple ends.
 
-## 规划与里程碑
+## Planning & Milestones
 
-公开侧仅保留定位与能力说明。规划、周期（`W-*`/`C-*`）、里程碑（`M-*`）、ADR、审计与 AI 协作记录统一位于私有 `work-zone/`；公开 `docs/` 不复制内部过程材料。
+The public side keeps positioning and capability notes only. Planning, cycles (`W-*`/`C-*`), milestones (`M-*`), ADRs, audits and AI-collaboration records live in the private `work-zone/`; public `docs/` never copies internal process materials.
 
-## 开发环境
+## Development Environment
 
-- 推荐使用 [mise](https://mise.jdx.dev/) 统一工具链：根目录 `.mise.toml` 已锁定 Node 22（LTS），本地与 CI 版本保持一致。克隆后执行 `mise install` 即自动安装匹配运行时。
-- Shell 工作在 Windows 上统一使用 PowerShell 7（`C:\Program Files\PowerShell\7\pwsh.exe`）；`mise run` 任务（如 `build-web`/`test-core`/`test-ssrf`）可一键执行常见流程。
-- 各端在对应目录下独立安装与构建；具体内容见各端 README。
+- [mise](https://mise.jdx.dev/) is recommended for toolchains: the root `.mise.toml` pins Node 22 (LTS) so local and CI match; run `mise install` after cloning.
+- On Windows, shells use PowerShell 7 (`C:\Program Files\PowerShell\7\pwsh.exe`); `mise run` tasks (`build-web`/`test-core`/`test-ssrf`…) wrap common flows.
+- Each end installs and builds in its own directory; see each end's README.
 
-## 中英双语代码文档
+## Bilingual Code Docs
 
-自首份源码起，所有代码语义节点均执行 ROP（面向阅读的编程），具备紧邻的中英双语文档化注释；JS/TS 当前使用 `@lang zh-CN`、`@lang en` 与 inline `<lang>`。详见 `AGENTS.md`。
+Since the first line of source, every semantic node follows ROP (reading-oriented programming) with adjacent bilingual doc comments; JS/TS currently uses `@lang zh-CN`, `@lang en` and inline `<lang>`. See `AGENTS.md`.
 
-## 字体策略
+## Font Policy
 
-默认 UI、示例、测试与生成产物只使用来源与许可证明确的开源字体或 generic fallback；闭源或来源不明字体只作为兼容输入，不作默认值或打包资产。
+Default UI, samples, tests and generated artifacts only use open-source fonts with clear provenance/licenses or generic fallbacks; fonts of unknown provenance are compatibility inputs only — never defaults or bundled assets.
 
-## 构建与发布
+## Build & Release
 
-三端各自构建与发布，版本号相互独立。
+Each end builds and releases independently.
 
-- **网页版（`HIA/web`）**：`npm install && npm run build`（`GITHUB_PAGES=1` 时基路径适配）；产物部署到 GitHub Pages（`.github/workflows/pages.yml` 在 `main` 推送时自动构建四端并部署 `web/dist`）。
-- **Electron 版（`HIA/electron`）**：`npm install && npm run build` 编译；`npm run dist` 用 `electron-builder` 产出**便携版** `dist/HIA-Theme-Builder-Electron-<ver>-portable.exe`（内置运行时，双击即用）。
-- **Tauri 版（`HIA/tauri`）**：`npm install`（含 `@tauri-apps/cli`）→ `npm run build`（`build:front` + `tauri build`）；release 产物为独立便携 `exe`（`src-tauri/target/release/`，需系统 WebView2 Runtime）。
+- **Web (`HIA/web`)**: `npm install && npm run build` (base path adapts when `GITHUB_PAGES=1`); artifacts deploy to GitHub Pages (`.github/workflows/pages.yml` builds all ends and deploys `web/dist` on every `main` push).
+- **Electron (`HIA/electron`)**: `npm install && npm run build` compiles; `npm run dist` produces the **portable** `dist/HIA-Theme-Builder-Electron-<ver>-portable.exe` (bundled runtime, double-click to run) and an NSIS **installer** `...-setup.exe`.
+- **Tauri (`HIA/tauri`)**: `npm install` (includes `@tauri-apps/cli`) → `npm run build` (`build:front` + `tauri build`); release artifacts are a standalone portable `exe` and an MSI bundle (requires the system WebView2 Runtime).
 
-桌面端产物为**未签名便携版**（自签名证书签名，运行时可能提示发布者验证），运行时会提示"未知发布者"时选择"仍要运行"。GitHub Release 聚合桌面端产物（Electron 便携+安装器、Tauri 便携+MSI，附 SHA-256 校验和），网页版经 Pages 分发。
+Desktop artifacts are self-signed (the OS may ask to verify the publisher on first run — choose "Run anyway"). GitHub Releases aggregate the desktop artifacts (Electron portable + installer, Tauri portable + MSI, with SHA-256 checksums); the web edition is served via Pages.
 
-### v0.2.0 发布内容（2026-11-09）
+### v0.3.0 Highlights (2026-11-10)
 
-- 配色关系模式与辅助色（十种设计规则、三模式派生、宝典选色弹层、辅助色槽位管理）；
-- 配色机制 UX 完善（操作台修正、成员卡管理、拖拽互换、候选卡双/三/全色三态、24 情感一键套用）；
-- 主题市场（分享链接/导入导出/远程源）与 CMS 适配产出（WP/Tailwind/TDON v0）；
-- 中英双语界面全面清查（0 残留）；三端哈希一致性保证（渲染器 SHA256 逐位一致）。
+- Bilingual **docs subsite** (getting started / manual / reference) with a language switch, opening in the app's UI language via `?lang=`;
+- Pine-themed **site icon set** across the browser tab, desktop window title bars/taskbars and installer assets;
+- URL extraction **apply-scope checkboxes** (apply primary & secondary / apply other colors to auxiliary);
+- Tauri: no release **console window**, no **leftover Chromium windows** (explicit headless + timeout guards);
+- Auxiliary slot cap raised to **12**; top-right GitHub/docs links; site footer; bilingual README.
 
-## 许可证
+## Licenses
 
-本项目采用**混合许可证**策略：
+Mixed licensing:
 
-- 根文档及 `HIA/core`、`HIA/web`、`HIA/tauri` 默认按 **MIT License** 授权。
-- `HIA/electron/` 目录采用 **Apache License 2.0**（子包自决；因其“从指定网址获取颜色集”等额外能力可能引入 Apache-2.0 依赖，且专利授权对企业分发更友好）。具体见根 `LICENSE`；许可证审计记录位于私有 WorkZone。
-- `work-zone/` 为独立私有仓库，不随公开主库授权分发。
+- Root docs and `HIA/core`, `HIA/web`, `HIA/tauri` are licensed under the **MIT License**.
+- `HIA/electron/` is licensed under the **Apache License 2.0** (its URL-extraction extras may pull Apache-2.0 dependencies, and the patent grant suits enterprise distribution better). See the root `LICENSE`; audits live in the private WorkZone.
+- `work-zone/` is an independent private repository and is not distributed under the public licensing.
 
-所有第三方依赖、字体、图标与二进制资产进入发布路径前须记录来源、版本与许可证，优先 MIT、Apache-2.0、BSD、ISC、OFL、CC0 等宽松许可。
+All third-party dependencies, fonts, icons and binary assets entering release paths must record source, version and license; permissive licenses (MIT, Apache-2.0, BSD, ISC, OFL, CC0) are preferred.
