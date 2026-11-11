@@ -191,3 +191,35 @@ export function generateAuxiliaryCandidates(primaryHex:string,modifiers?:Auxilia
     return{hex:gamutMapOklch(adjusted.L,adjusted.C,hue).hex,name:`规则强调 ${i+1}`,modifier};
   });
 }
+
+
+// ---------- 主色锚推导（W-tb-P16）：组合成员按色相关系重映射到用户当前主色 ----------
+
+/**
+ * @lang zh-CN 色相锚定重映射：把 hex 的色相平移到"锚定目标"的色相系（偏移量=目标锚色相−来源锚色相），
+ *   明度/彩度保留 hex 自身——组合的明暗设计意图不丢失；gamut 越界由 gamutMapOklch 回吐合法 HEX。
+ *   用途：宝典组合/语气预设的"锚定模式"——成员[0] 对齐用户当前主色后，其余成员按各自偏移跟随。
+ * @lang en Hue-anchor remap: shifts hex by the hue delta between the two anchors while keeping its own
+ *   L/C (the combo's lightness design survives); gamut-mapped on overflow.
+ */
+export function shiftHueTo(hex:string,anchorFromHex:string,anchorToHex:string):string{
+  const src=hexToOklch(hex);
+  const from=hexToOklch(anchorFromHex);
+  const to=hexToOklch(anchorToHex);
+  const delta=to.h-from.h;
+  return gamutMapOklch(src.L,src.C,(src.h+delta+360)%360).hex;
+}
+
+/**
+ * @lang zh-CN 组合成员锚定：首成员**恒等于**用户当前主色（锚即用户色，原样保留其明度/彩度），
+ *   其余成员以原首成员为参照按 shiftHueTo 重映射——组合内相对色相关系与各成员明暗结构不变。
+ *   单色组合（仅 1 成员）锚定为恒等（主色本身）。
+ * @lang en Anchors a member list: member[0] becomes the user's primary verbatim; the rest re-map by
+ *   hue delta relative to the original lead. Single-member lists are identity.
+ */
+export function anchorComboMembers(members:readonly string[],anchorToHex:string):string[]{
+  if(members.length===0)return[];
+  const from=members[0]!;
+  return members.map((m,i)=>i===0?anchorToHex:shiftHueTo(m,from,anchorToHex));
+}
+

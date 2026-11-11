@@ -27,7 +27,7 @@ export type{SecondaryCandidate}from'./color/harmony.js';
 // 配色关系模式与辅助色（ADR-007 / `W-tb-P11`）：模式定义表与槽位生成。
 // <lang zh-CN>generateAuxiliarySet 为纯函数（Theme 装配与 UI 重生成共用）。</lang>
 // <lang en>Pure generator shared by Theme assembly and UI regeneration.</lang>
-export{SERIES_RELATION_DEFS,getSeriesRelationDef,deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates}from'./color/harmony.js';
+export{SERIES_RELATION_DEFS,getSeriesRelationDef,deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,shiftHueTo,anchorComboMembers}from'./color/harmony.js';
 export type{SeriesRelationDef}from'./color/harmony.js';
 // 对比度与最佳前景色选择（WCAG 相对亮度）。
 // <lang zh-CN>用于自动决定角色色上的文字用白还是深色。</lang>

@@ -364,6 +364,10 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .bd-card{position:relative;display:inline-flex}
 .bd-full{position:absolute;top:-7px;right:-6px;padding:1px 6px;border-radius:999px;border:1px solid var(--p200);background:var(--p50);color:var(--p800);font-size:9px;font-weight:800;cursor:pointer;z-index:2}
 .bd-full:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+/* 锚定开关（W-tb-P16）：弹层头部紧凑 checkbox 标签。 */
+/* Anchor toggle (W-tb-P16): compact checkbox label in the modal header. */
+.bd-anchor{display:inline-flex;align-items:center;gap:5px;margin-right:10px;font-size:11px;font-weight:800;color:var(--p800);cursor:pointer;user-select:none}
+.bd-anchor input{width:14px;height:14px;accent-color:var(--primary);cursor:pointer}
 .bd-bar{display:flex;align-items:flex-start;justify-content:flex-start;height:26px;width:70px;padding:2px 4px;font-size:10px;font-weight:700;color:rgba(0,0,0,.6);text-shadow:0 0 2px rgba(255,255,255,.4)}
 /* W-tb-P12 候选卡模式芯片（双/三/全切换）与全色辅助点。 */
 .cm-chips{display:flex;gap:4px;margin-top:7px}

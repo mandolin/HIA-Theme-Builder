@@ -124,5 +124,10 @@ registerStrings({
   // 语气预设（W-tb-P15）：宝典卡整套套用动作与回执。
   // <lang en>Tone preset entries (W-tb-P15): per-combo full-set action and its status line.</lang>
   'p15.tone.applyFull': { zh: '整套', en: 'Full set' },
+  // 锚定模式（W-tb-P16）：弹层开关 + 锚定命名标记 + 回执。
+  // <lang en>Anchor mode (W-tb-P16): modal toggle, anchored member name mark, status line.</lang>
+  'p16.anchor.label': { zh: '锚定到当前主色', en: 'Anchor to current primary' },
+  'p16.anchor.mark': { zh: '（锚）', en: ' (anchored)' },
+  'p16.anchor.applied': { zh: '已锚定套用「{name}」（主色保持，其余按组合关系重推导）', en: 'Applied anchored \"{name}\" (primary kept; others re-derived by combo relations)' },
   'p15.tone.applied': { zh: '已套用语气预设「{name}」（模式/关系/成员/辅助色成套）', en: 'Applied tone preset \"{name}\" (mode/relation/members/auxiliaries as a set)' },
 });

@@ -14,7 +14,7 @@ import{
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
-  tonePresets,buildTonePreset,
+  tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
@@ -225,6 +225,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // 合并内置与自定义预设，作为列表与查找的完整来源。
   // <lang zh-CN>内置在前，自定义在后。</lang>
   // <lang en>Built-ins first, custom after.</lang>
+  // 锚定模式状态（W-tb-P16）：默认直用；localStorage 键 hia-baodian-anchor 持久化（维护者定案 2）。
+  // <lang en>Anchor-mode state: default off (literal), persisted under 'hia-baodian-anchor'.</lang>
+  let baodianAnchor=false;
+  try{baodianAnchor=localStorage.getItem('hia-baodian-anchor')==='1';}catch{/* 隐私模式忽略 */}
+  function saveAnchorMode(v:boolean){baodianAnchor=v;try{localStorage.setItem('hia-baodian-anchor',v?'1':'0');}catch{/* ignore */}}
+
   function getAllPresets():Preset[]{
     // 内置库合入语气预设（W-tb-P15）：tone- 前缀内置对象随产品分发，与经典内置同权（不可删除）。
     // <lang en>Built-in library merges the tone presets; they ship with the app and are write-protected.</lang>
@@ -1191,6 +1197,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     if(!baodianEmotion||!baodianEmotions.includes(baodianEmotion))baodianEmotion=baodianEmotions[0]||'';
     renderBaodianMenu();renderBaodianRight();
     byId<HTMLElement>('baodianModal').hidden=false;
+    byId<HTMLInputElement>('baodianAnchorToggle').checked=baodianAnchor;
   }
   function renderBaodianMenu(){
     const menu=byId<HTMLElement>('baodianMenu');
@@ -1267,7 +1274,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>Combo size maps to mode; member order follows the combo order.</lang>
   function applyBaodianCombo(nums:number[]){
     seriesSnapshot={primary:draft.primary,primaryName:draft.primaryName,secondary:draft.secondary,secondaryName:draft.secondaryName,thirdColor:draft.thirdColor,seriesMode:draft.seriesMode,seriesRelation:draft.seriesRelation};
-    const list=nums.map(num=>({name:`${t('p12.baodian.tag')} #${num}`,value:BAODIAN_PALETTE[num]||'#cccccc'}));
+    // 锚定分支（W-tb-P16）：成员[0]=用户当前主色（恒等），其余按组合色相关系重映射；命名标记（锚）。
+    // <lang en>Anchor branch: member[0] is the user's primary verbatim; the rest re-map by combo hue relations.</lang>
+    let list:{name:string;value:string}[];
+    if(baodianAnchor){
+      const hexes=anchorComboMembers(nums.map(num=>BAODIAN_PALETTE[num]||'#cccccc'),draft.primary);
+      list=hexes.map((hex,i)=>({name:`${t('p12.baodian.tag')} #${nums[i]}${t('p16.anchor.mark')}`,value:hex}));
+    }else{
+      list=nums.map(num=>({name:`${t('p12.baodian.tag')} #${num}`,value:BAODIAN_PALETTE[num]||'#cccccc'}));
+    }
     byId<HTMLElement>('baodianModal').hidden=true;
     commitSeriesMembers(list);
     setText('generateStatus',t('p12.baodian.applied',{combo:nums.join('+')}));
@@ -1668,6 +1683,18 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>同时持久化当前渐变（独立键），并回显主色候选来源。</lang>
   // <lang en>Shared apply body used by both the library-id path and the baodian full-set action.</lang>
   function applyPresetData(p:Preset){
+    // 锚定分支（W-tb-P16）：仅语气预设（category tone）且开关开启——主色保持用户当前值，
+    //   副色/第三色按组合关系重映射，辅助色从用户主色重新生成；经典/自定义预设不受影响。
+    //   修复：变换后赋回参数继续主流程（原实现递归调用自身且 category 不变→无限递归，handler 静默崩溃）。
+    // <lang en>Anchor branch transforms p in place (the earlier self-recursion never terminated).</lang>
+    if(baodianAnchor&&p.category==='tone'){
+      p={...p,
+        primary:draft.primary,
+        secondary:shiftHueTo(p.secondary,p.primary,draft.primary),
+        ...(p.thirdColor?{thirdColor:{...p.thirdColor,value:shiftHueTo(p.thirdColor.value,p.primary,draft.primary)}}:{}),
+        auxiliary:generateAuxiliaryCandidates(draft.primary).slice(0,TONE_AUX_SLOTS).map((c,i)=>({name:`辅助色 ${i+1}`,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}))
+      };
+    }
     selectedPresetId=p.id;
     draft=draftFromPreset(p);
     // 字体/间距令牌为操作台全局状态（既定决策）：换预设后重新挂回，保持编辑连续性。
@@ -2000,6 +2027,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Segmented removed (mode derives); member inline recolor/delete bound inside renderHarmony.</lang>
     byId('baodianPickBtn').addEventListener('click',openBaodianModal);
     byId('baodianCloseBtn').addEventListener('click',()=>{byId<HTMLElement>('baodianModal').hidden=true;});
+    // 锚定开关（W-tb-P16）：切换即持久化（默认直用，维护者定案 2）。
+    // <lang en>Anchor toggle: persisted on change (default literal, maintainer decision 2).</lang>
+    byId<HTMLInputElement>('baodianAnchorToggle').addEventListener('change',e=>saveAnchorMode((e.currentTarget as HTMLInputElement).checked));
     byId<HTMLElement>('baodianModal').addEventListener('click',e=>{if(e.target===e.currentTarget)byId<HTMLElement>('baodianModal').hidden=true;});
     byId<HTMLSelectElement>('seriesRuleSelect').addEventListener('change',()=>{draft.seriesRelation=byId<HTMLSelectElement>('seriesRuleSelect').value as SeriesRelationId;renderHarmony();});
     byId('completeSecondaryBtn').addEventListener('click',()=>completeSeriesMember('secondary'));
