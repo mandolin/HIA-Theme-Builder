@@ -1233,8 +1233,28 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     h=Math.round((h*60+360)%360);
     return'hsl('+h+', '+Math.round(s*100)+'%, '+Math.round(l*100)+'%)';
   }
-  // ccTipShow：填充内容并按 hover 元素定位（上方优先，放不下翻转，左右夹取视口）。
-  function ccTipShow(target:Element,opts:{title:string;hex:string;desc?:string}){
+  // placeTip：零间距贴边定位——上方优先；放不下翻下方；加方向桥后用最终高度重算；四边夹取视口。
+  //   贴边=浮层与卡片同边无缝，鼠标沿最短路径滑入不会经过 hover 空白带。
+  // <lang en>Zero-gap placement with direction bridge; flip when the top lacks room; clamp to viewport.</lang>
+  function placeTip(target:Element){
+    const tip=ccTipEnsure();
+    const el=tip as HTMLElement;
+    if(el.hidden)return;
+    const r0=target.getBoundingClientRect();
+    // below 判定：上方空间不足（含 6px 边距）则翻下方。
+    let below=r0.top-el.offsetHeight<6;
+    el.classList.toggle('bridge-below',below);
+    el.classList.toggle('bridge-above',!below);
+    // 加桥后最终尺寸。
+    const tw=el.offsetWidth,th=el.offsetHeight;
+    const x=Math.min(Math.max(6,r0.left),window.innerWidth-tw-6);
+    let y=below?r0.bottom:r0.top-th;
+    // 下方也放不下→强制上方并接受轻微越界（保证不脱离卡片）。
+    if(y+th>window.innerHeight-6&&!below){y=Math.max(6,r0.top-th);}
+    el.style.left=x+'px';el.style.top=Math.max(6,y)+'px';
+  }
+  // ccTipShow：填充内容并触发定位。
+  function ccTipShow(target:Element,opts:{title:string;hex:string;desc?:string;caution?:string}){
     const tip=ccTipEnsure();
     const hex=opts.hex;
     const[r,g,b]=hexToRgb255(hex);
@@ -1244,21 +1264,30 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       html+='<div class="cc-tip-row"><span class="cc-tip-label">'+label+'</span><span class="cc-tip-val">'+val+'</span>'
         +'<button type="button" class="cc-tip-copy" data-cc-copy="'+val+'" title="'+t('p17.tip.copy')+'">⧉</button></div>';
     }
+    // 说明段（色名考据/来源）与注意事项段（配色使用建议），各自可复制。
+    // <lang en>Description and caution sections, each independently copyable.</lang>
     if(opts.desc){
       html+='<div class="cc-tip-row"><span class="cc-tip-label">'+t('p17.tip.desc')+'</span><button type="button" class="cc-tip-copy" data-cc-copy="'+escapeHtml(opts.desc)+'" title="'+t('p17.tip.copy')+'">⧉</button></div>';
       html+='<div class="cc-tip-desc">'+escapeHtml(opts.desc)+'</div>';
     }
+    if(opts.caution){
+      html+='<div class="cc-tip-row"><span class="cc-tip-label">'+t('p17.tip.caution')+'</span><button type="button" class="cc-tip-copy" data-cc-copy="'+escapeHtml(opts.caution)+'" title="'+t('p17.tip.copy')+'">⧉</button></div>';
+      html+='<div class="cc-tip-desc cc-tip-caution">'+escapeHtml(opts.caution)+'</div>';
+    }
     tip.innerHTML=html;
     (tip as HTMLElement).hidden=false;
-    const r0=target.getBoundingClientRect();
-    const tw=(tip as HTMLElement).offsetWidth,th=(tip as HTMLElement).offsetHeight;
-    let x=Math.min(Math.max(6,r0.left),window.innerWidth-tw-6);
-    let y=r0.top-th-8;
-    if(y<6)y=r0.bottom+8;
-    if(y+th>window.innerHeight-6)y=Math.max(6,window.innerHeight-th-6);
-    (tip as HTMLElement).style.left=x+'px';(tip as HTMLElement).style.top=y+'px';
+    // 定位两拍：先粗略放（防闪烁），下一帧布局稳定后精确校正（字体/图标就绪后的真实高度）。
+    //   维护者反馈：原 8px 间隙即 hover 断点；且首帧测高不准会压卡——零间距+rAF 校正一并解决。
+    // <lang en>Two-phase placement: coarse now, exact after the next frame when layout has settled.</lang>
+    placeTip(target);
+    requestAnimationFrame(()=>placeTip(target));
   }
-  function ccTipHide(){if(ccTipEl)(ccTipEl as HTMLElement).hidden=true}
+  // 隐藏宽限（150ms）：鼠标在卡片↔浮层之间移动时不立即消失。
+  // <lang en>Delayed hide gives a 150ms grace window while crossing between card and tip.</lang>
+  let ccTipTimer:number|undefined;
+  function ccTipHideNow(){if(ccTipEl)(ccTipEl as HTMLElement).hidden=true}
+  function ccTipHide(){window.clearTimeout(ccTipTimer);ccTipTimer=window.setTimeout(ccTipHideNow,150)}
+  function ccTipKeep(){window.clearTimeout(ccTipTimer)}
   // 事件委托：mouseover 进色卡/色块显示，进浮层保持，出即隐藏；复制点击统一处理。
   // <lang en>Delegated hover/copy handling for the shared tip element.</lang>
   document.addEventListener('mouseover',e=>{
@@ -1267,16 +1296,17 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const tip=ccTipEnsure();
     if(card){
       if(tip.contains(card))return;
+      ccTipKeep(); // 进入卡片即取消隐藏计时。
       if(card.classList.contains('bd-bar')){
         const hex=(card as HTMLElement).dataset.hex||'#cccccc';
         ccTipShow(card,{title:t('p12.baodian.tag')+' #'+(card.textContent||'').trim(),hex});
       }else{
         const el=card as HTMLElement;
-        ccTipShow(el,{title:el.dataset.tcName||'',hex:el.dataset.tcHex||'#cccccc',desc:el.dataset.tcNote||undefined});
+        ccTipShow(el,{title:el.dataset.tcName||'',hex:el.dataset.tcHex||'#cccccc',desc:el.dataset.tcNote||undefined,caution:el.dataset.tcCaution||undefined});
       }
       return;
     }
-    if(tip.contains(t0))return;
+    if(tip.contains(t0)){ccTipKeep();return;}
     ccTipHide();
   });
   // ccCopy：复制文本（clipboard API 优先，失败回退 execCommand——合成事件/非安全上下文兼容）。
@@ -1337,7 +1367,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     for(const[bucket,items]of buckets){
       html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(t('p17.bucket.'+bucket))} · ${items.length}</div><div class="tc-grid">`;
       for(const e of items){
-        html+=`<button type="button" class="tc-card" data-tc-hex="${e.hex}" data-tc-name="${escapeHtml(e.name)}" data-tc-note="${escapeHtml(e.note||'')}" title="${escapeHtml(e.nameEn)} ${e.hex}"><span class="tc-chip" style="background:${e.hex}"></span><span class="tc-name">${escapeHtml(e.name)}</span><span class="tc-hex">${e.hex}</span></button>`;
+        html+=`<button type="button" class="tc-card" data-tc-hex="${e.hex}" data-tc-name="${escapeHtml(e.name)}" data-tc-note="${escapeHtml(e.note||'')}" data-tc-caution="${escapeHtml(e.caution||'')}" title="${escapeHtml(e.nameEn)} ${e.hex}"><span class="tc-chip" style="background:${e.hex}"></span><span class="tc-name">${escapeHtml(e.name)}</span><span class="tc-hex">${e.hex}</span></button>`;
       }
       html+='</div></div>';
     }

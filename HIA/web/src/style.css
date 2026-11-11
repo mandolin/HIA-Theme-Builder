@@ -395,15 +395,24 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .bd-bar{display:flex;align-items:flex-start;justify-content:flex-start;height:28px;width:74px;padding:2px 4px;font-size:12px;font-weight:700;color:rgba(0,0,0,.6);text-shadow:0 0 2px rgba(255,255,255,.4)}
 /* 色卡信息浮层（W-tb-P17 扩充轮②）：hover 显示色值(#hex/rgb/hsl)/说明/注意事项，逐项复制小图标。 */
 /* Color-card info tip: hover floats value forms/description/cautions with per-row copy icons. */
-.cc-tip{position:fixed;z-index:90;min-width:230px;max-width:330px;background:#0F2233;color:#DCE9F5;border-radius:9px;box-shadow:0 10px 30px rgba(0,10,30,.45);padding:9px 11px;font-size:12px;line-height:1.55;pointer-events:auto}
-.cc-tip-title{font-weight:900;font-size:12.5px;color:#fff;margin-bottom:6px;display:flex;align-items:center;gap:7px}
-.cc-tip-swatch{width:15px;height:15px;border-radius:4px;border:1px solid rgba(255,255,255,.35);flex:none}
-.cc-tip-row{display:flex;align-items:center;gap:6px;margin:3px 0}
-.cc-tip-label{flex:none;color:#8FA9C4;font-size:11px}
+/* 浅底深字（维护者定案）：主色浅档底 + 深色文字，与界面一致。 */
+/* Light-on-primary tint with dark text (maintainer decision). */
+.cc-tip{position:fixed;z-index:90;min-width:236px;max-width:340px;background:var(--p50);color:#0F2233;border:1px solid var(--p200);border-radius:9px;box-shadow:0 10px 28px rgba(15,34,51,.22);padding:10px 12px;font-size:12px;line-height:1.6;pointer-events:auto}
+/* 移入保护带（维护者反馈：非常快滑入才进得去）——浮层与卡片间的缓冲区域，全部子元素可命中。 */
+/* Hover bridge: a padding band makes the gap traversable without losing hover. */
+.cc-tip-title{font-weight:900;font-size:13px;color:var(--p900);margin-bottom:7px;display:flex;align-items:center;gap:7px}
+.cc-tip-swatch{width:15px;height:15px;border-radius:4px;border:1px solid rgba(15,34,51,.22);flex:none}
+.cc-tip-row{display:flex;align-items:center;gap:6px;margin:4px 0}
+/* 方向桥：浮层贴近卡片一侧的内边距作为过渡带（配合 JS 的 gap=0 定位）。 */
+.cc-tip.bridge-below{padding-top:14px}
+.cc-tip.bridge-above{padding-bottom:14px}
+.cc-tip-label{flex:none;color:#5B6B7C;font-size:11px;font-weight:800}
 .cc-tip-val{flex:1;font-family:Consolas,monospace;font-size:11.5px;word-break:break-all}
-.cc-tip-desc{font-size:11.5px;color:#C7D8E8;margin:3px 0;line-height:1.6}
-.cc-tip-copy{flex:none;border:0;background:rgba(255,255,255,.12);color:#DCE9F5;border-radius:5px;width:22px;height:20px;cursor:pointer;font-size:11px;line-height:1}
-.cc-tip-copy:hover{background:rgba(255,255,255,.28)}
+.cc-tip-desc{font-size:12px;color:#22364A;margin:4px 0 2px;line-height:1.65}
+/* 注意事项段：左侧细条区分说明，保持可读。 */
+.cc-tip-caution{border-left:3px solid var(--primary);padding-left:8px;color:#1B3A57}
+.cc-tip-copy{flex:none;border:1px solid var(--p200);background:#fff;color:var(--p800);border-radius:5px;width:23px;height:21px;cursor:pointer;font-size:11px;line-height:1}
+.cc-tip-copy:hover{background:var(--p100);border-color:var(--primary)}
 .cc-tip-copy.done{background:#2E8B57;color:#fff}
 /* W-tb-P12 候选卡模式芯片（双/三/全切换）与全色辅助点。 */
 .cm-chips{display:flex;gap:4px;margin-top:7px}
