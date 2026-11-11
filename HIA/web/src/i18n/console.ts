@@ -24,7 +24,10 @@ const CONSOLE: Record<string, StringEntry> = {
   },
   'hero.chip.default': { zh: '默认主题：钴蓝 #0047AB + 清透青 #00A8D3', en: 'Default theme: Cobalt #0047AB + Clear Cyan #00A8D3' },
   'hero.chip.candidates': { zh: '主色候选：44', en: 'Primary candidates: 44' },
-  'hero.chip.presets': { zh: '内置主题预设：6', en: 'Built-in presets: 6' },
+  'hero.chip.presets': { zh: '内置主题预设：78（含语气 72）', en: 'Built-in presets: 78 (incl. 72 tone)' },
+  'library.filter.tone': { zh: '语气预设', en: 'Tone Presets' },
+  'category.tone': { zh: '语气预设', en: 'Tone Presets' },
+  '配色宝典': { zh: '配色宝典', en: 'Color Baodian' },
   'hero.chip.custom': { zh: '可保存自定义主题到本地主题库', en: 'Save custom themes to your local library' },
 
   // ---- 网址取色探索面板 ----

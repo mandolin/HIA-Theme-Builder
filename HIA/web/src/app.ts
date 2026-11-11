@@ -14,6 +14,7 @@ import{
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
+  tonePresets,buildTonePreset,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
@@ -224,7 +225,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // 合并内置与自定义预设，作为列表与查找的完整来源。
   // <lang zh-CN>内置在前，自定义在后。</lang>
   // <lang en>Built-ins first, custom after.</lang>
-  function getAllPresets():Preset[]{return mergePresets(builtinPresets,customPresets);}
+  function getAllPresets():Preset[]{
+    // 内置库合入语气预设（W-tb-P15）：tone- 前缀内置对象随产品分发，与经典内置同权（不可删除）。
+    // <lang en>Built-in library merges the tone presets; they ship with the app and are write-protected.</lang>
+    return mergePresets([...builtinPresets,...tonePresets],customPresets);
+  }
   // 持久化自定义预设到平台存储。
   // <lang zh-CN>序列化前会规范化基色，保证读写一致。</lang>
   // <lang en>Base colors are normalized before serialization for consistent round-trips.</lang>
@@ -1232,8 +1237,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const mine=combos.filter(c=>c.e===baodianEmotion);
       if(!mine.length)continue;
       html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(t(titleOf(formId)))} · ${mine.length}</div><div class="bd-combos">`;
-      for(const c of mine){
-        html+=`<button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join('+'))}">`+c.n.map(num=>`<span class="bd-bar" style="background:${BAODIAN_PALETTE[num]||'#ccc'}">${num}</span>`).join('')+`</button>`;
+      for(let ci=0;ci<mine.length;ci++){
+        const c=mine[ci]!;
+        // W-tb-P15：卡外包 wrapper，追加"整套"小按钮——按 当前情感+形态+组合序号 构建语气预设整体应用。
+        // <lang en>Card wrapper adds a "full set" badge building the tone preset for this mood/form/combo.</lang>
+        html+=`<div class="bd-card"><button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join('+'))}">`+c.n.map(num=>`<span class="bd-bar" style="background:${BAODIAN_PALETTE[num]||'#ccc'}">${num}</span>`).join('')+`</button><button type="button" class="bd-full" data-full-form="${escapeHtml(formId)}" data-full-idx="${ci}" title="${escapeHtml(t('p15.tone.applyFull'))}" aria-label="${escapeHtml(t('p15.tone.applyFull'))}">${escapeHtml(t('p15.tone.applyFull'))}</button></div>`;
       }
       html+='</div></div>';
     }
@@ -1241,6 +1249,17 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     all<HTMLButtonElement>('.bd-combo',right).forEach(btn=>btn.addEventListener('click',()=>{
       const nums=(btn.dataset.nums||'').split(',').filter(Boolean).map(Number);
       if(nums.length)applyBaodianCombo(nums);
+    }));
+    // 套用整套：构建语气预设 → applyPresetData（模式/规则/成员/辅助色整体落位）→ 关弹层 + 状态回执。
+    // <lang en>Full-set action: build the tone preset, apply wholly, close the modal and report.</lang>
+    all<HTMLButtonElement>('.bd-full',right).forEach(btn=>btn.addEventListener('click',()=>{
+      const formId=btn.dataset.fullForm||'';
+      const idx=Number(btn.dataset.fullIdx||'0');
+      const p=buildTonePreset(baodianEmotion,titleOf(formId),idx);
+      if(!p)return;
+      applyPresetData(p);
+      byId<HTMLElement>('baodianModal').hidden=true;
+      setText('generateStatus',t('p15.tone.applied',{name:t(p.name)}));
     }));
   }
   // 应用宝典组合：记录快照 → 成员=组合色号（名字带 #编号）→ 模式派生成员数 → 关闭弹层。
@@ -1644,14 +1663,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     });
   }
 
-  // 应用预设到操作台：标记选中、载入草稿、重算副色候选并刷新全界面。
+  // 应用预设对象主体（W-tb-P15 拆分）：标记选中、载入草稿、重算副色候选并刷新全界面；
+  //   供库内 id 应用与宝典弹层"套用整套"两条入口复用。
   // <lang zh-CN>同时持久化当前渐变（独立键），并回显主色候选来源。</lang>
-  // <lang en>Also persists current gradients (separate key) and re-shows the primary candidate source.</lang>
-  function applyPreset(id:string|undefined){
-    if(!id)return;
-    const p=getAllPresets().find(x=>x.id===id);
-    if(!p)return;
-    selectedPresetId=id;
+  // <lang en>Shared apply body used by both the library-id path and the baodian full-set action.</lang>
+  function applyPresetData(p:Preset){
+    selectedPresetId=p.id;
     draft=draftFromPreset(p);
     // 字体/间距令牌为操作台全局状态（既定决策）：换预设后重新挂回，保持编辑连续性。
     // <lang zh-CN>draftFromPreset 不携带令牌字段（预设仅颜色+渐变），需显式重挂共享引用。</lang>
@@ -1671,6 +1688,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Repaint the classic mock since presets may carry third/aux colors.</lang>
     renderClassicPreview();
     renderPrimaryCandidates();renderSecondaryCandidates();renderPresetList();
+  }
+
+  // 按 id 应用预设（库列表入口）：查找后走 applyPresetData 主体。
+  // <lang en>Apply-by-id (library entry): resolves then delegates to applyPresetData.</lang>
+  function applyPreset(id:string|undefined){
+    if(!id)return;
+    const p=getAllPresets().find(x=>x.id===id);
+    if(!p)return;
+    applyPresetData(p);
   }
 
   // 切换 PC 预览布局：更新状态、分段控件高亮、内容 CSS 类与侧栏/顶栏/轨道显隐。

@@ -118,14 +118,14 @@ export function upsertPreset(list:readonly Preset[],preset:Preset):Preset[]{
 }
 
 // 按 id 删除预设，返回过滤后的新数组。
-// <lang zh-CN>不可变删除；内置预设 id 以 'preset-' 开头，调用方应先用 isBuiltinPresetId 拦截。</lang>
-// <lang en>Immutable removal; callers should block built-ins (id starts with 'preset-') via isBuiltinPresetId first.</lang>
+// <lang zh-CN>不可变删除；内置预设 id 以 'preset-'/'tone-' 开头，调用方应先用 isBuiltinPresetId 拦截。</lang>
+// <lang en>Immutable removal; callers should block built-ins via isBuiltinPresetId first.</lang>
 export function removePreset(list:readonly Preset[],id:string):Preset[]{return list.filter(x=>x.id!==id);}
 
 // 判断预设 id 是否为内置（不可删除/覆盖）。
-// <lang zh-CN>内置预设 id 统一以 'preset-' 前缀，作为写保护的简单契约。</lang>
-// <lang en>Built-in ids share the 'preset-' prefix as a simple write-protection contract.</lang>
-export function isBuiltinPresetId(id:string):boolean{return id.startsWith('preset-');}
+// <lang zh-CN>内置预设 id 以 'preset-'（经典内置）或 'tone-'（语气预设，W-tb-P15）前缀，作为写保护的简单契约。</lang>
+// <lang en>Built-in ids carry the 'preset-' (classic) or 'tone-' (tone presets, W-tb-P15) prefix as a write-protection contract.</lang>
+export function isBuiltinPresetId(id:string):boolean{return id.startsWith('preset-')||id.startsWith('tone-');}
 
 // 将预设数组序列化为带 schema 版本的库文档字符串。
 // <lang zh-CN>使用 satisfies 校验结构同时保留字面量类型，便于未来版本迁移。</lang>

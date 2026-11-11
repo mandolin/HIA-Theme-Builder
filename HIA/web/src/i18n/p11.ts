@@ -121,4 +121,8 @@ registerStrings({
   // 宝典菜单一键套用（完善批④）：⚡ 快捷钮提示。
   // <lang en>Quick-apply hint on the per-mood lightning button (batch ④).</lang>
   'p12.baodian.quick': { zh: '一键套用该情感首个补色组合', en: 'Quick-apply the first complement combo of this mood' },
+  // 语气预设（W-tb-P15）：宝典卡整套套用动作与回执。
+  // <lang en>Tone preset entries (W-tb-P15): per-combo full-set action and its status line.</lang>
+  'p15.tone.applyFull': { zh: '整套', en: 'Full set' },
+  'p15.tone.applied': { zh: '已套用语气预设「{name}」（模式/关系/成员/辅助色成套）', en: 'Applied tone preset \"{name}\" (mode/relation/members/auxiliaries as a set)' },
 });
