@@ -148,6 +148,11 @@ registerStrings({
   'p17.bucket.品红/桃': { zh: '品红·桃', en: 'Magenta / Peach' },
   'p17.culture.en': { zh: '英文命名色', en: 'English Named' },
   'p17.culture.kr': { zh: '韩国传统色', en: 'Korean' },
+  // 色卡信息浮层（W-tb-P17 扩充轮②）：行标签与复制提示。
+  // <lang en>Info tip labels (W-tb-P17 expansion round).</lang>
+  'p17.tip.copy': { zh: '复制', en: 'Copy' },
+  'p17.tip.desc': { zh: '说明', en: 'About' },
+  'p17.tip.caution': { zh: '注意事项', en: 'Caution' },
   'p17.culture.ja': { zh: '日本传统色', en: 'Japanese' },
   'p17.culture.cn': { zh: '中国传统色', en: 'Chinese' },
   'p15.tone.applied': { zh: '已套用语气预设「{name}」（模式/关系/成员/辅助色成套）', en: 'Applied tone preset \"{name}\" (mode/relation/members/auxiliaries as a set)' },

@@ -1207,6 +1207,103 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     colorSource='baodian';
     openColorSourceModal();
   }
+  // 色卡信息浮层（W-tb-P17 扩充轮②）：hover 全部色卡（宝典色块/传统色卡）显示色值多形式（#hex/rgb/hsl）、
+  //   颜色说明（传统色 note）与注意事项（预留：现数据无独立字段则不显行），逐项复制小图标。
+  // <lang en>Color-card info tip: value forms/description/cautions with per-row copy icons.</lang>
+  let ccTipEl:HTMLElement|null=null;
+  // ccTipEnsure：单例浮层元素（body 直挂，fixed 定位）。
+  function ccTipEnsure():HTMLElement{
+    if(!ccTipEl){
+      ccTipEl=document.createElement('div');
+    ccTipEl.className='cc-tip';
+    ccTipEl.hidden=true;
+    document.body.appendChild(ccTipEl);
+    }
+    return ccTipEl;
+  }
+  // hexToRgb255/Hsl：tip 展示用主流色值形式。
+  function hexToRgb255(hex:string):[number,number,number]{return[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)]}
+  function hexToHslStr(hex:string):string{
+    const[r0,g0,b0]=hexToRgb255(hex);
+    const r=r0/255,g=g0/255,b=b0/255;
+    const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,l=(mx+mn)/2;
+    if(d===0)return'hsl(0, 0%, '+Math.round(l*100)+'%)';
+    const s=d/(1-Math.abs(2*l-1));
+    let h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;
+    h=Math.round((h*60+360)%360);
+    return'hsl('+h+', '+Math.round(s*100)+'%, '+Math.round(l*100)+'%)';
+  }
+  // ccTipShow：填充内容并按 hover 元素定位（上方优先，放不下翻转，左右夹取视口）。
+  function ccTipShow(target:Element,opts:{title:string;hex:string;desc?:string}){
+    const tip=ccTipEnsure();
+    const hex=opts.hex;
+    const[r,g,b]=hexToRgb255(hex);
+    const rows:[string,string][]=[['HEX',hex],['RGB','rgb('+r+', '+g+', '+b+')'],['HSL',hexToHslStr(hex)]];
+    let html='<div class="cc-tip-title"><span class="cc-tip-swatch" style="background:'+hex+'"></span>'+escapeHtml(opts.title)+'</div>';
+    for(const[label,val]of rows){
+      html+='<div class="cc-tip-row"><span class="cc-tip-label">'+label+'</span><span class="cc-tip-val">'+val+'</span>'
+        +'<button type="button" class="cc-tip-copy" data-cc-copy="'+val+'" title="'+t('p17.tip.copy')+'">⧉</button></div>';
+    }
+    if(opts.desc){
+      html+='<div class="cc-tip-row"><span class="cc-tip-label">'+t('p17.tip.desc')+'</span><button type="button" class="cc-tip-copy" data-cc-copy="'+escapeHtml(opts.desc)+'" title="'+t('p17.tip.copy')+'">⧉</button></div>';
+      html+='<div class="cc-tip-desc">'+escapeHtml(opts.desc)+'</div>';
+    }
+    tip.innerHTML=html;
+    (tip as HTMLElement).hidden=false;
+    const r0=target.getBoundingClientRect();
+    const tw=(tip as HTMLElement).offsetWidth,th=(tip as HTMLElement).offsetHeight;
+    let x=Math.min(Math.max(6,r0.left),window.innerWidth-tw-6);
+    let y=r0.top-th-8;
+    if(y<6)y=r0.bottom+8;
+    if(y+th>window.innerHeight-6)y=Math.max(6,window.innerHeight-th-6);
+    (tip as HTMLElement).style.left=x+'px';(tip as HTMLElement).style.top=y+'px';
+  }
+  function ccTipHide(){if(ccTipEl)(ccTipEl as HTMLElement).hidden=true}
+  // 事件委托：mouseover 进色卡/色块显示，进浮层保持，出即隐藏；复制点击统一处理。
+  // <lang en>Delegated hover/copy handling for the shared tip element.</lang>
+  document.addEventListener('mouseover',e=>{
+    const t0=e.target as Element;
+    const card=t0.closest('.bd-bar,.tc-card');
+    const tip=ccTipEnsure();
+    if(card){
+      if(tip.contains(card))return;
+      if(card.classList.contains('bd-bar')){
+        const hex=(card as HTMLElement).dataset.hex||'#cccccc';
+        ccTipShow(card,{title:t('p12.baodian.tag')+' #'+(card.textContent||'').trim(),hex});
+      }else{
+        const el=card as HTMLElement;
+        ccTipShow(el,{title:el.dataset.tcName||'',hex:el.dataset.tcHex||'#cccccc',desc:el.dataset.tcNote||undefined});
+      }
+      return;
+    }
+    if(tip.contains(t0))return;
+    ccTipHide();
+  });
+  // ccCopy：复制文本（clipboard API 优先，失败回退 execCommand——合成事件/非安全上下文兼容）。
+  // <lang en>Copies text with clipboard API falling back to execCommand for untrusted/non-secure contexts.</lang>
+  function ccCopy(v:string):Promise<void>{
+    if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(v);
+    return new Promise((res,rej)=>{
+      const ta=document.createElement('textarea');
+      ta.value=v;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();
+      const ok=document.execCommand('copy');
+      ta.remove();
+      ok?res():rej(new Error('execCommand copy failed'));
+    });
+  }
+  document.addEventListener('click',e=>{
+    const t0=e.target as HTMLElement;
+    const btn=t0.closest('.cc-tip-copy') as HTMLElement|null;
+    if(!btn||!btn.dataset.ccCopy)return;
+    // 复制回执：图标短暂变 ✓。
+    // <lang en>Feedback: the copy icon flips to a checkmark briefly.</lang>
+    ccCopy(btn.dataset.ccCopy).then(()=>{
+      btn.classList.add('done');btn.textContent='✓';
+      setTimeout(()=>{btn.classList.remove('done');btn.textContent='⧉'},900);
+    }).catch(()=>{});
+  });
+
   // 弹层渲染分发（W-tb-P17）：按当前源渲染菜单与右区；标题与快照语义随源。
   // <lang en>Modal render dispatch by source; menu/right pane per source.</lang>
   function openColorSourceModal(){
@@ -1240,7 +1337,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     for(const[bucket,items]of buckets){
       html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(t('p17.bucket.'+bucket))} · ${items.length}</div><div class="tc-grid">`;
       for(const e of items){
-        html+=`<button type="button" class="tc-card" data-tc-hex="${e.hex}" data-tc-name="${escapeHtml(e.name)}" title="${escapeHtml(e.nameEn)} ${e.hex}"><span class="tc-chip" style="background:${e.hex}"></span><span class="tc-name">${escapeHtml(e.name)}</span><span class="tc-hex">${e.hex}</span></button>`;
+        html+=`<button type="button" class="tc-card" data-tc-hex="${e.hex}" data-tc-name="${escapeHtml(e.name)}" data-tc-note="${escapeHtml(e.note||'')}" title="${escapeHtml(e.nameEn)} ${e.hex}"><span class="tc-chip" style="background:${e.hex}"></span><span class="tc-name">${escapeHtml(e.name)}</span><span class="tc-hex">${e.hex}</span></button>`;
       }
       html+='</div></div>';
     }
@@ -1309,7 +1406,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         const c=mine[ci]!;
         // W-tb-P15：卡外包 wrapper，追加"整套"小按钮——按 当前情感+形态+组合序号 构建语气预设整体应用。
         // <lang en>Card wrapper adds a "full set" badge building the tone preset for this mood/form/combo.</lang>
-        html+=`<div class="bd-card"><button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join('+'))}">`+c.n.map(num=>`<span class="bd-bar" style="background:${BAODIAN_PALETTE[num]||'#ccc'}">${num}</span>`).join('')+`</button><button type="button" class="bd-full" data-full-form="${escapeHtml(formId)}" data-full-idx="${ci}" title="${escapeHtml(t('p15.tone.applyFull'))}" aria-label="${escapeHtml(t('p15.tone.applyFull'))}">${escapeHtml(t('p15.tone.applyFull'))}</button></div>`;
+        html+=`<div class="bd-card"><button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join('+'))}">`+c.n.map(num=>`<span class="bd-bar" style="background:${BAODIAN_PALETTE[num]||'#ccc'}" data-hex="${BAODIAN_PALETTE[num]||'#cccccc'}">${num}</span>`).join('')+`</button><button type="button" class="bd-full" data-full-form="${escapeHtml(formId)}" data-full-idx="${ci}" title="${escapeHtml(t('p15.tone.applyFull'))}" aria-label="${escapeHtml(t('p15.tone.applyFull'))}">${escapeHtml(t('p15.tone.applyFull'))}</button></div>`;
       }
       html+='</div></div>';
     }
