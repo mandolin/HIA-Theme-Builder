@@ -235,7 +235,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>Multi-source picker state (W-tb-P17): current color source for the modal.</lang>
   let colorSource:'baodian'|'traditional'='baodian';
   // 传统色源内文化分组（日/中）。
-  let baodianTcCulture:'ja'|'cn'='ja';
+  let baodianTcCulture:'en'|'cn'|'ja'|'kr'='en';
 
   function getAllPresets():Preset[]{
     // 内置库合入语气预设（W-tb-P15）：tone- 前缀内置对象随产品分发，与经典内置同权（不可删除）。
@@ -1223,10 +1223,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>Traditional source: culture menu on the left; hue-bucket swatch grid on the right.</lang>
   function renderTraditionalMenu(){
     const menu=byId<HTMLElement>('baodianMenu');
-    const cultures:[('ja'|'cn'),string][]=[['ja','p17.culture.ja'],['cn','p17.culture.cn']];
+    const cultures:[('en'|'cn'|'ja'|'kr'),string][]=[['en','p17.culture.en'],['cn','p17.culture.cn'],['ja','p17.culture.ja'],['kr','p17.culture.kr']];
     menu.innerHTML=cultures.map(([c,key])=>`<button type="button" class="baodian-emo${(baodianTcCulture===c)?' active':''}" data-tc-culture="${c}">${escapeHtml(t(key))}</button>`).join('');
     all<HTMLButtonElement>('[data-tc-culture]',menu).forEach(btn=>btn.addEventListener('click',()=>{
-      baodianTcCulture=(btn.dataset.tcCulture==='cn'?'cn':'ja');renderTraditionalMenu();
+      baodianTcCulture=(btn.dataset.tcCulture as ('en'|'cn'|'ja'|'kr'));renderTraditionalMenu();
     }));
     renderTraditionalRight();
   }
@@ -1240,7 +1240,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     for(const[bucket,items]of buckets){
       html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(t('p17.bucket.'+bucket))} · ${items.length}</div><div class="tc-grid">`;
       for(const e of items){
-        html+=`<button type="button" class="tc-card" data-tc-hex="${e.hex}" data-tc-name="${escapeHtml(e.name)}" title="${escapeHtml(e.nameEn)} ${e.hex}"><span class="tc-chip" style="background:#${e.hex}"></span><span class="tc-name">${escapeHtml(e.name)}</span><span class="tc-hex">#${e.hex}</span></button>`;
+        html+=`<button type="button" class="tc-card" data-tc-hex="${e.hex}" data-tc-name="${escapeHtml(e.name)}" title="${escapeHtml(e.nameEn)} ${e.hex}"><span class="tc-chip" style="background:${e.hex}"></span><span class="tc-name">${escapeHtml(e.name)}</span><span class="tc-hex">${e.hex}</span></button>`;
       }
       html+='</div></div>';
     }

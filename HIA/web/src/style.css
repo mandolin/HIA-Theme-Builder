@@ -368,9 +368,12 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 /* Anchor toggle (W-tb-P16): compact checkbox label in the modal header. */
 .bd-anchor{display:inline-flex;align-items:center;gap:5px;margin-right:10px;font-size:11px;font-weight:800;color:var(--p800);cursor:pointer;user-select:none}
 /* 多源选色下拉（W-tb-P17）：主按钮旁的分隔下拉钮与源菜单。 */
-/* Multi-source dropdown (W-tb-P17): caret button and source menu beside the primary button. */
+/* Multi-source dropdown (W-tb-P17): Element-UI style split button — seamless joint, radii on the
+   outer corners only (maintainer feedback: the two gaps looked unnatural). */
 .source-dd{position:relative;display:inline-flex}
-.source-caret{padding:8px 10px;border:0;border-radius:0 5px 5px 0;background:var(--primary);color:#fff;font-size:11px;cursor:pointer}
+.source-dd>.btn{border-radius:5px 0 0 5px}
+.source-caret{padding:9px 10px;border:0;border-radius:0 5px 5px 0;margin-left:0;background:color-mix(in srgb,var(--primary) 82%,#000);color:#fff;font-size:11px;cursor:pointer}
+.source-caret:hover{background:var(--primary)}
 .source-menu{position:absolute;top:calc(100% + 4px);left:0;z-index:45;min-width:170px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}
 .source-menu[hidden]{display:none}
 .source-menu button{display:block;width:100%;text-align:left;padding:9px 12px;border:0;background:none;font-size:12px;font-weight:800;color:var(--text);cursor:pointer}
@@ -380,9 +383,12 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .tc-grid{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
 .tc-card{width:96px;border:1px solid var(--line);border-radius:8px;overflow:hidden;cursor:pointer;background:none;padding:0;text-align:left}
 .tc-card:hover{border-color:var(--primary)}
-.tc-chip{height:34px}
-.tc-name{padding:5px 7px 2px;font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tc-hex{padding:0 7px 6px;font-size:10px;color:var(--muted);font-family:Consolas,monospace}
+/* 传统色卡（维护者反馈修正）：chip 必须 display:block（span 默认 inline 致高度塌陷为 0——色块不显示的根因）；
+   卡片纵向 flex 统一结构，色块等高对齐；长名两行内截断，卡片等高。 */
+.tc-card{display:inline-flex;flex-direction:column;min-height:74px;vertical-align:top}
+.tc-chip{display:block;height:26px;border-bottom:1px solid rgba(15,23,42,.08)}
+.tc-name{display:block;padding:5px 7px 2px;font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-hex{display:block;padding:0 7px 6px;font-size:10px;color:var(--muted);font-family:Consolas,monospace}
 .bd-anchor input{width:14px;height:14px;accent-color:var(--primary);cursor:pointer}
 .bd-bar{display:flex;align-items:flex-start;justify-content:flex-start;height:26px;width:70px;padding:2px 4px;font-size:10px;font-weight:700;color:rgba(0,0,0,.6);text-shadow:0 0 2px rgba(255,255,255,.4)}
 /* W-tb-P12 候选卡模式芯片（双/三/全切换）与全色辅助点。 */
