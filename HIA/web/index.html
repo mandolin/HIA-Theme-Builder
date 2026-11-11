@@ -38,7 +38,7 @@
 <div class="toolbar console-actions" style="margin-top:12px"><button id="applyThemeBtn" class="btn primary" data-i18n="console.apply">应用当前主题</button><button id="savePresetBtn" class="btn secondary" data-i18n="console.savePreset">生成并导入主题库</button><button id="updatePresetBtn" class="btn soft" data-i18n="console.updatePreset">更新当前选中预设</button><button id="autoNameBtn" class="btn outline" data-i18n="console.autoName">自动命名</button><button id="shareLinkBtn" class="btn ghost" data-i18n="p10.share.action" title="复制可还原本主题的链接">复制分享链接</button></div></section>
 <section class="box" id="harmonyPanel"><div class="section-title"><div><h2 data-i18n="p11.panel.title">配色关系模式与辅助色</h2><p data-i18n="p11.panel.desc">主色系支持单色/双色/三色三种模式，十种基本配色设计映射为关系规则（规则右边可选配色宝典预设）；辅助色是主色系之外的独立槽位。</p></div><span class="badge">Harmony ×Aux</span></div>
 <div class="pp-row" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-  <button id="baodianPickBtn" class="btn primary" data-i18n="p12.baodian.open">宝典选色</button>
+  <div class="source-dd"><button id="baodianPickBtn" class="btn primary" data-i18n="p12.baodian.open">宝典选色</button><button id="sourceDdCaret" class="source-caret" aria-label="选择色源" aria-haspopup="menu">▾</button><div class="source-menu" id="sourceMenu" hidden><button type="button" data-source="baodian" data-i18n="p17.source.baodian">宝典配色</button><button type="button" data-source="traditional" data-i18n="p17.source.traditional">传统色选色</button></div></div>
   <div style="min-width:0"><div class="label" data-i18n="p12.rule.pick">规则补色</div><select id="seriesRuleSelect" class="select" style="min-width:210px"></select></div>
   <div style="display:flex;gap:8px"><button id="completeSecondaryBtn" class="btn soft" data-i18n="p12.rule.completeSecondary">补副色</button><button id="completeThirdBtn" class="btn soft" data-i18n="p12.rule.completeThird">补第三色</button><button id="seriesResetBtn" class="btn ghost" data-i18n="p11.series.reset">还原用户色</button></div>
 </div>
@@ -163,7 +163,7 @@
    letting later panels' custom combos (z-index:40 in the root context) paint above it. -->
 <div id="baodianModal" class="baodian-modal" hidden>
   <div class="baodian-pop" role="dialog" aria-modal="true" aria-label="宝典选色">
-    <div class="baodian-head"><b data-i18n="p12.baodian.title">配色宝典 · 情感分类与组合</b><label class="bd-anchor" title="Anchor to current primary / 锚定到当前主色"><input type="checkbox" id="baodianAnchorToggle"> <span data-i18n="p16.anchor.label">锚定到当前主色</span></label><button id="baodianCloseBtn" class="picker-x" type="button" aria-label="关闭">×</button></div>
+    <div class="baodian-head"><b id="baodianTitle" data-i18n="p12.baodian.title">配色宝典 · 情感分类与组合</b><label class="bd-anchor" title="Anchor to current primary / 锚定到当前主色"><input type="checkbox" id="baodianAnchorToggle"> <span data-i18n="p16.anchor.label">锚定到当前主色</span></label><button id="baodianCloseBtn" class="picker-x" type="button" aria-label="关闭">×</button></div>
     <div class="baodian-body"><div class="baodian-menu" id="baodianMenu"></div><div class="baodian-right" id="baodianRight"></div></div>
   </div>
 </div>

@@ -14,7 +14,7 @@ import{
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
-  tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,
+  tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
@@ -230,6 +230,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   let baodianAnchor=false;
   try{baodianAnchor=localStorage.getItem('hia-baodian-anchor')==='1';}catch{/* 隐私模式忽略 */}
   function saveAnchorMode(v:boolean){baodianAnchor=v;try{localStorage.setItem('hia-baodian-anchor',v?'1':'0');}catch{/* ignore */}}
+
+  // 多源选色（W-tb-P17）：当前源（宝典/传统色）；下拉菜单开关与源切换在 bind() 接线。
+  // <lang en>Multi-source picker state (W-tb-P17): current color source for the modal.</lang>
+  let colorSource:'baodian'|'traditional'='baodian';
+  // 传统色源内文化分组（日/中）。
+  let baodianTcCulture:'ja'|'cn'='ja';
 
   function getAllPresets():Preset[]{
     // 内置库合入语气预设（W-tb-P15）：tone- 前缀内置对象随产品分发，与经典内置同权（不可删除）。
@@ -1184,7 +1190,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // 打开宝典弹层：收集情感（complement 首见序）→ 渲染菜单与 CHM 色卡区。
   // <lang zh-CN>右侧按十形态分区展示所选情感的全部组合（色条=色号底+编号，照搬 CHM 版式）。</lang>
   // <lang en>Right panel groups the selected emotion's combos by all ten forms, CHM-style swatch stacks.</lang>
-  function openBaodianModal(){
+  function ensureBaodianEmotions(){
     if(!baodianEmotions.length){
       // 情感清单：complement 形态页序优先，其余形态并集补全（保 24 类完整）。
       // <lang zh-CN>complement 缺某情感时（该页无补色组合）由其余形态补齐。</lang>
@@ -1195,9 +1201,64 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       baodianEmotions=[...seen];
     }
     if(!baodianEmotion||!baodianEmotions.includes(baodianEmotion))baodianEmotion=baodianEmotions[0]||'';
-    renderBaodianMenu();renderBaodianRight();
+  }
+  function openBaodianModal(){
+    ensureBaodianEmotions();
+    colorSource='baodian';
+    openColorSourceModal();
+  }
+  // 弹层渲染分发（W-tb-P17）：按当前源渲染菜单与右区；标题与快照语义随源。
+  // <lang en>Modal render dispatch by source; menu/right pane per source.</lang>
+  function openColorSourceModal(){
     byId<HTMLElement>('baodianModal').hidden=false;
     byId<HTMLInputElement>('baodianAnchorToggle').checked=baodianAnchor;
+    setText('baodianTitle',colorSource==='baodian'?t('p12.baodian.title'):t('p17.traditional.title'));
+    renderColorSourceModal();
+  }
+  function renderColorSourceModal(){
+    if(colorSource==='baodian'){ensureBaodianEmotions();renderBaodianMenu();renderBaodianRight();return;}
+    renderTraditionalMenu();
+  }
+  // 传统色源：左=文化两级（日/中），右=色系桶分组色卡（名+HEX），点击=单色即主色（P17 定案）。
+  // <lang en>Traditional source: culture menu on the left; hue-bucket swatch grid on the right.</lang>
+  function renderTraditionalMenu(){
+    const menu=byId<HTMLElement>('baodianMenu');
+    const cultures:[('ja'|'cn'),string][]=[['ja','p17.culture.ja'],['cn','p17.culture.cn']];
+    menu.innerHTML=cultures.map(([c,key])=>`<button type="button" class="baodian-emo${(baodianTcCulture===c)?' active':''}" data-tc-culture="${c}">${escapeHtml(t(key))}</button>`).join('');
+    all<HTMLButtonElement>('[data-tc-culture]',menu).forEach(btn=>btn.addEventListener('click',()=>{
+      baodianTcCulture=(btn.dataset.tcCulture==='cn'?'cn':'ja');renderTraditionalMenu();
+    }));
+    renderTraditionalRight();
+  }
+  function renderTraditionalRight(){
+    const right=byId<HTMLElement>('baodianRight');
+    const entries=TRADITIONAL_COLORS.filter(e=>e.culture===baodianTcCulture);
+    // 色系桶分组（bucket 为解析期粗分）。
+    const buckets=new Map<string,typeof entries>();
+    for(const e of entries){(buckets.get(e.bucket)||buckets.set(e.bucket,[]).get(e.bucket)!).push(e);}
+    let html='';
+    for(const[bucket,items]of buckets){
+      html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(t('p17.bucket.'+bucket))} · ${items.length}</div><div class="tc-grid">`;
+      for(const e of items){
+        html+=`<button type="button" class="tc-card" data-tc-hex="${e.hex}" data-tc-name="${escapeHtml(e.name)}" title="${escapeHtml(e.nameEn)} ${e.hex}"><span class="tc-chip" style="background:#${e.hex}"></span><span class="tc-name">${escapeHtml(e.name)}</span><span class="tc-hex">#${e.hex}</span></button>`;
+      }
+      html+='</div></div>';
+    }
+    right.innerHTML=html||`<div class="small">${t('p12.baodian.empty')}</div>`;
+    // 单色即主色（P17 定案）：主色=条目；副色=互补规则推导；模式/关系显式 dual/complement；辅助=规则生成 2 槽。
+    // <lang en>Entry apply: primary=swatch hex; secondary=complement-derived; aux generated; explicit dual/complement.</lang>
+    all<HTMLButtonElement>('.tc-card',right).forEach(btn=>btn.addEventListener('click',()=>{
+      const hex=normalizeHex(btn.dataset.tcHex||'');
+      if(!hex)return;
+      seriesSnapshot={primary:draft.primary,primaryName:draft.primaryName,secondary:draft.secondary,secondaryName:draft.secondaryName,thirdColor:draft.thirdColor,seriesMode:draft.seriesMode,seriesRelation:draft.seriesRelation};
+      const secondary=deriveSecondaryByRelation(hex,'complement')||hex;
+      const aux=generateAuxiliaryCandidates(hex).slice(0,TONE_AUX_SLOTS).map((c,i)=>({name:`辅助色 ${i+1}`,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}));
+      draft.primary=hex;draft.seriesMode='dual';draft.seriesRelation='complement';draft.secondary=secondary;draft.thirdColor=undefined;draft.auxiliary=aux;
+      draft.primaryName=btn.dataset.tcName||'主色';draft.secondaryName='副色';
+      byId<HTMLElement>('baodianModal').hidden=true;
+      syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();updatePreviewMeta();
+      setText('generateStatus',t('p17.traditional.apply',{name:btn.dataset.tcName||''}));
+    }));
   }
   function renderBaodianMenu(){
     const menu=byId<HTMLElement>('baodianMenu');
@@ -2030,6 +2091,23 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 锚定开关（W-tb-P16）：切换即持久化（默认直用，维护者定案 2）。
     // <lang en>Anchor toggle: persisted on change (default literal, maintainer decision 2).</lang>
     byId<HTMLInputElement>('baodianAnchorToggle').addEventListener('change',e=>saveAnchorMode((e.currentTarget as HTMLInputElement).checked));
+    // 多源下拉（W-tb-P17）：主按钮=开当前源弹层；▾=源菜单；菜单项切换源并开弹层；外点收起。
+    // <lang en>Multi-source dropdown: main button opens current source; caret opens the menu.</lang>
+    byId<HTMLButtonElement>('baodianPickBtn').addEventListener('click',()=>{openColorSourceModal();});
+    byId<HTMLButtonElement>('sourceDdCaret').addEventListener('click',e=>{
+      e.stopPropagation();
+      const menu=byId<HTMLElement>('sourceMenu');
+      menu.hidden=!menu.hidden;
+    });
+    all<HTMLButtonElement>('#sourceMenu [data-source]').forEach(btn=>btn.addEventListener('click',()=>{
+      colorSource=(btn.dataset.source as'baodian'|'traditional');
+      byId<HTMLElement>('sourceMenu').hidden=true;
+      openColorSourceModal();
+    }));
+    document.addEventListener('click',e=>{
+      const menu=byId<HTMLElement>('sourceMenu');
+      if(!menu.hidden&&!menu.contains(e.target as Node)&&(e.target as Element).id!=='sourceDdCaret')menu.hidden=true;
+    });
     byId<HTMLElement>('baodianModal').addEventListener('click',e=>{if(e.target===e.currentTarget)byId<HTMLElement>('baodianModal').hidden=true;});
     byId<HTMLSelectElement>('seriesRuleSelect').addEventListener('change',()=>{draft.seriesRelation=byId<HTMLSelectElement>('seriesRuleSelect').value as SeriesRelationId;renderHarmony();});
     byId('completeSecondaryBtn').addEventListener('click',()=>completeSeriesMember('secondary'));

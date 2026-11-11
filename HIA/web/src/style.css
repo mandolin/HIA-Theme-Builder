@@ -367,6 +367,22 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 /* 锚定开关（W-tb-P16）：弹层头部紧凑 checkbox 标签。 */
 /* Anchor toggle (W-tb-P16): compact checkbox label in the modal header. */
 .bd-anchor{display:inline-flex;align-items:center;gap:5px;margin-right:10px;font-size:11px;font-weight:800;color:var(--p800);cursor:pointer;user-select:none}
+/* 多源选色下拉（W-tb-P17）：主按钮旁的分隔下拉钮与源菜单。 */
+/* Multi-source dropdown (W-tb-P17): caret button and source menu beside the primary button. */
+.source-dd{position:relative;display:inline-flex}
+.source-caret{padding:8px 10px;border:0;border-radius:0 5px 5px 0;background:var(--primary);color:#fff;font-size:11px;cursor:pointer}
+.source-menu{position:absolute;top:calc(100% + 4px);left:0;z-index:45;min-width:170px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}
+.source-menu[hidden]{display:none}
+.source-menu button{display:block;width:100%;text-align:left;padding:9px 12px;border:0;background:none;font-size:12px;font-weight:800;color:var(--text);cursor:pointer}
+.source-menu button:hover{background:var(--p50);color:var(--primary)}
+/* 传统色色卡（W-tb-P17）：单色条目卡（色块+名+HEX），点击即主色。 */
+/* Traditional color cards (W-tb-P17): single-color entry cards. */
+.tc-grid{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.tc-card{width:96px;border:1px solid var(--line);border-radius:8px;overflow:hidden;cursor:pointer;background:none;padding:0;text-align:left}
+.tc-card:hover{border-color:var(--primary)}
+.tc-chip{height:34px}
+.tc-name{padding:5px 7px 2px;font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-hex{padding:0 7px 6px;font-size:10px;color:var(--muted);font-family:Consolas,monospace}
 .bd-anchor input{width:14px;height:14px;accent-color:var(--primary);cursor:pointer}
 .bd-bar{display:flex;align-items:flex-start;justify-content:flex-start;height:26px;width:70px;padding:2px 4px;font-size:10px;font-weight:700;color:rgba(0,0,0,.6);text-shadow:0 0 2px rgba(255,255,255,.4)}
 /* W-tb-P12 候选卡模式芯片（双/三/全切换）与全色辅助点。 */
