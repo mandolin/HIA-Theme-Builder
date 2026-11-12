@@ -17,7 +17,7 @@ The whole loop, recorded from the production build (auto-generated, re-runnable)
 | ![Console](promo/screenshots/en/01-default-light.png) | ![Baodian combos](promo/screenshots/en/02-baodian-modal.png) |
 | ![Traditional colors](promo/screenshots/en/04-traditional-colors.png) | ![Dark mode](promo/screenshots/en/07-dark-mode.png) |
 
-More stills in [`promo/screenshots/`](promo/screenshots) · Product Hunt gallery art: [`promo/ph-gallery-1270x760.png`](promo/ph-gallery-1270x760.png).
+More stills in [`promo/screenshots/en/`](promo/screenshots/en) · Product Hunt gallery art: [`promo/ph-gallery-1270x760.png`](promo/ph-gallery-1270x760.png).
 
 ## Feature Overview
 
