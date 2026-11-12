@@ -33,3 +33,6 @@ Thumbs.db
 # 桌面端本地打包产物（通过 GitHub Release 分发，不入库）
 HIA/tauri/HIA-Theme-Builder-Tauri-*-portable.exe
 HIA/tauri/tauri-render-log.txt
+
+# W-tb-P27 无障碍/复验运行产物（证据归 WorkZone dev/evidence/assets）
+HIA/web/test/shots/

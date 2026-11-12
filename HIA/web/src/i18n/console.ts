@@ -49,6 +49,9 @@ const CONSOLE: Record<string, StringEntry> = {
   // 顶部站点链接（W-tb-P14）：GitHub 仓库与文档子站。
   // <lang en>Top-right site links (repo / docs subsite).</lang>
   'top.docs': { zh: '文档', en: 'Docs' },
+  // hero 区转 region landmark 用的可访问名（axe region 修复：eyebrow/hero-meta 原先游离在 landmark 外）。
+  // <lang en>Accessible name turning the hero section into a region landmark (axe region fix).</lang>
+  'top.hero.region': { zh: '页面简介', en: 'Page introduction' },
 
   // ---- 主题操作台 ----
   'console.title': { zh: '当前主题操作台', en: 'Theme Console' },
@@ -136,6 +139,9 @@ const CONSOLE: Record<string, StringEntry> = {
 
   // ---- 语言切换 ----
   'lang.switch': { zh: 'EN', en: '中文' },
+  // 语言切换按钮的可访问名：动作 + 可见目标语言缩写（ axe label-content-name-mismatch 修复）。
+  // <lang en>Accessible name for the toggle: action plus the visible target token.</lang>
+  'lang.switchTo': { zh: '切换语言到', en: 'Switch language to' },
 
   // ---- ARIA 标签（无障碍，不显示但读屏可见） ----
   'aria.primaryPicker': { zh: '主色颜色选择器', en: 'Primary color picker' },

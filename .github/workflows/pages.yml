@@ -76,6 +76,15 @@ jobs:
           npm install
           npm run build
 
+      # ----- a11y：axe 无障碍门禁（生产 dist，light+dark 双模式，基线比对）-----
+      # <lang zh-CN>ubuntu-latest 预装 Chrome（channel:'chrome' 直接命中）；新增违规即失败，阻断 Pages 部署。</lang>
+      # <lang en>ubuntu-latest ships Chrome (channel:'chrome'); any new violation fails and blocks the Pages deploy.</lang>
+      - name: A11y gate (axe)
+        working-directory: HIA/web
+        run: |
+          npm run build
+          node scripts/axe-scan.mjs
+
       # ----- electron：编译 + SSRF 单测（不下载 Electron 二进制）-----
       # <lang zh-CN>--ignore-scripts 跳过 Electron 二进制下载以加速 CI；仅验证 tsc + vitest(ssrf)。</lang>
       # <lang en>--ignore-scripts skips the Electron binary download to speed CI; only tsc + vitest(ssrf) are verified.</lang>

@@ -516,7 +516,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const modesList:('dual'|'triad'|'full')[]=isAward?['dual','triad','full']:['dual','triad'];
       const chips=modesList.map(m=>`<button type="button" class="cm-chip${mode===m?' active':''}" data-card-mode="${m}" data-card-id="${escapeHtml(c.id)}" aria-label="${m==='dual'?t('p12.card.dual'):m==='triad'?t('p12.card.triad'):t('p12.card.full')}">${m==='dual'?t('p12.card.dual'):m==='triad'?t('p12.card.triad'):t('p12.card.full')}</button>`).join('');
       const dots=combo.members.map(m=>`<i style="background:${m.hex}"></i>`).join('')+combo.auxes.map(a=>`<i class="cm-aux-dot" style="background:${a.hex}"></i>`).join('');
-      return`<div class="color-card ${normalizeHex(c.hex)===draft.primary?'active':''}" data-primary="${escapeHtml(c.id)}" role="button" tabindex="0" title="${escapeHtml(c.desc)}"><div class="color-top" style="background:linear-gradient(90deg,${stops})"><span>${escapeHtml(t(c.tag))}</span></div><h4>${escapeHtml(t(c.name))}</h4><div class="color-meta">${en?'':escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div><div class="cm-chips">${chips}</div><span class="pair-chip">${dots}${escapeHtml(t(c.secondaryName))}</span></div>`;
+      return`<div class="color-card ${normalizeHex(c.hex)===draft.primary?'active':''}" data-primary="${escapeHtml(c.id)}" title="${escapeHtml(c.desc)}"><button type="button" class="card-apply" aria-label="${t('p12.card.apply')}：${escapeHtml(t(c.name))}"></button><div class="color-top" style="background:linear-gradient(90deg,${stops})"><span>${escapeHtml(t(c.tag))}</span></div><div class="color-name">${escapeHtml(t(c.name))}</div><div class="color-meta">${en?'':escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div><div class="cm-chips">${chips}</div><span class="pair-chip">${dots}${escapeHtml(t(c.secondaryName))}</span></div>`;
     }).join('')}</div>`).join('');
     // 模式芯片：切换该卡展示态（stopPropagation 防触发应用）。
     all<HTMLButtonElement>('[data-card-mode]',wrap).forEach(chip=>chip.addEventListener('click',e=>{
@@ -560,7 +560,6 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     };
     all<HTMLElement>('[data-primary]',wrap).forEach(btn=>{
       btn.addEventListener('click',()=>applyCard(btn));
-      btn.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();applyCard(btn);}});
     });
   }
 
@@ -572,7 +571,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 逐候选生成色卡，active 标记当前副色（normalizeHex 比较）。
     // <lang zh-CN>title 用 note 说明该副色来源/特点。</lang>
     // <lang en>title uses note to explain the candidate's origin/character.</lang>
-    wrap.innerHTML=secondaryCandidates.map(c=>`<button class="color-card ${normalizeHex(c.hex)===draft.secondary?'active':''}" data-secondary="${escapeHtml(c.id)}" title="${escapeHtml(t(c.note))}"><div class="color-top" style="background:${c.hex}"><span>${escapeHtml(c.scheme.split('·').map(seg=>t(seg.trim())).join(' · '))}</span></div><h4>${escapeHtml(t(c.name))}</h4><div class="color-meta">${getLocale()==='en'?'':escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div></button>`).join('');
+    wrap.innerHTML=secondaryCandidates.map(c=>`<button class="color-card ${normalizeHex(c.hex)===draft.secondary?'active':''}" data-secondary="${escapeHtml(c.id)}" title="${escapeHtml(t(c.note))}"><div class="color-top" style="background:${c.hex}"><span>${escapeHtml(c.scheme.split('·').map(seg=>t(seg.trim())).join(' · '))}</span></div><div class="color-name">${escapeHtml(t(c.name))}</div><div class="color-meta">${getLocale()==='en'?'':escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div></button>`).join('');
     // 点击副色：写回草稿并刷新界面（不覆盖主题名）。
     // <lang zh-CN>applyCurrentTheme(false) 保留当前主题名。</lang>
     // <lang en>applyCurrentTheme(false) keeps the current theme name.</lang>
@@ -1159,20 +1158,20 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     wrap.innerHTML=`
       <div class="typo-controls">
         <div class="grid-2">
-          <div class="control-group"><div class="label">${t('p9.typo.family.body')}</div><input class="input" data-typo-field="familyBody" value="${escapeHtml(ty.fontFamily.body)}" spellcheck="false"></div>
-          <div class="control-group"><div class="label">${t('p9.typo.family.heading')}</div><input class="input" data-typo-field="familyHeading" value="${escapeHtml(ty.fontFamily.heading)}" placeholder="inherit" spellcheck="false"></div>
+          <div class="control-group"><div class="label">${t('p9.typo.family.body')}</div><input class="input" data-typo-field="familyBody" value="${escapeHtml(ty.fontFamily.body)}" spellcheck="false" aria-label="${t('p9.typo.family.body')}"></div>
+          <div class="control-group"><div class="label">${t('p9.typo.family.heading')}</div><input class="input" data-typo-field="familyHeading" value="${escapeHtml(ty.fontFamily.heading)}" placeholder="inherit" spellcheck="false" aria-label="${t('p9.typo.family.heading')}"></div>
         </div>
         <div class="grid-2">
-          <div class="control-group"><div class="label">${t('p9.typo.family.mono')}</div><input class="input" data-typo-field="familyMono" value="${escapeHtml(ty.fontFamily.mono)}" spellcheck="false"></div>
-          <div class="control-group"><div class="label">${t('p9.typo.fs.base')} / ${t('p9.typo.fs.ratio')}</div><div class="row" style="flex-wrap:nowrap"><input class="input" type="number" min="9" max="48" step="1" data-typo-field="fsBase" value="${ty.fontSizeScale.base}" style="width:90px;flex:none"><select class="select" data-typo-field="fsRatio" style="width:110px;flex:none">${ratioOptions.map(r=>`<option value="${r}" ${r===ratioSelected?'selected':''}>${r}</option>`).join('')}</select></div></div>
+          <div class="control-group"><div class="label">${t('p9.typo.family.mono')}</div><input class="input" data-typo-field="familyMono" value="${escapeHtml(ty.fontFamily.mono)}" spellcheck="false" aria-label="${t('p9.typo.family.mono')}"></div>
+          <div class="control-group"><div class="label">${t('p9.typo.fs.base')} / ${t('p9.typo.fs.ratio')}</div><div class="row" style="flex-wrap:nowrap"><input class="input" type="number" min="9" max="48" step="1" data-typo-field="fsBase" value="${ty.fontSizeScale.base}" style="width:90px;flex:none" aria-label="${t('p9.typo.fs.base')}"><select class="select" data-typo-field="fsRatio" style="width:110px;flex:none" aria-label="${t('p9.typo.fs.ratio')}">${ratioOptions.map(r=>`<option value="${r}" ${r===ratioSelected?'selected':''}>${r}</option>`).join('')}</select></div></div>
         </div>
         <div class="grid-2">
-          <div class="control-group"><div class="label">${t('p9.typo.lineHeight')}</div><input class="input" type="number" min="1" max="2.4" step="0.05" data-typo-field="lineHeight" value="${ty.lineHeightBody}"></div>
-          <div class="control-group"><div class="label">${t('p9.typo.space.base')}</div><input class="input" type="number" min="2" max="32" step="1" data-typo-field="spaceBase" value="${sp.base}"></div>
+          <div class="control-group"><div class="label">${t('p9.typo.lineHeight')}</div><input class="input" type="number" min="1" max="2.4" step="0.05" data-typo-field="lineHeight" value="${ty.lineHeightBody}" aria-label="${t('p9.typo.lineHeight')}"></div>
+          <div class="control-group"><div class="label">${t('p9.typo.space.base')}</div><input class="input" type="number" min="2" max="32" step="1" data-typo-field="spaceBase" value="${sp.base}" aria-label="${t('p9.typo.space.base')}"></div>
         </div>
         <div class="grid-2">
-          <div class="control-group"><div class="label">${t('p9.typo.space.step')}</div><select class="select" data-typo-field="spaceStep">${(['linear4','x2','x15']as const).map(s=>`<option value="${s}" ${s===sp.step?'selected':''}>${stepLabels[s]}</option>`).join('')}</select></div>
-          <div class="control-group"><div class="label">${t('p9.typo.space.levels')}</div><input class="input" type="number" min="1" max="12" step="1" data-typo-field="spaceLevels" value="${sp.levels}"></div>
+          <div class="control-group"><div class="label">${t('p9.typo.space.step')}</div><select class="select" data-typo-field="spaceStep" aria-label="${t('p9.typo.space.step')}">${(['linear4','x2','x15']as const).map(s=>`<option value="${s}" ${s===sp.step?'selected':''}>${stepLabels[s]}</option>`).join('')}</select></div>
+          <div class="control-group"><div class="label">${t('p9.typo.space.levels')}</div><input class="input" type="number" min="1" max="12" step="1" data-typo-field="spaceLevels" value="${sp.levels}" aria-label="${t('p9.typo.space.levels')}"></div>
         </div>
         <div class="typo-hint">${t('p9.typo.family.heading.inherit')}</div>
         <div class="typo-preview-head" style="margin-top:2px"><b>${t('p9.typo.preview.lineHeightTitle')}</b></div>
@@ -2606,7 +2605,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();
       renderTypography();renderClassicPreview();renderTdonPanel();applyPreviewMode(previewMode);renderExportTree();
       renderRemoteSources();renderRemoteList();renderHarmony();
-      byId<HTMLButtonElement>('langToggleBtn').textContent=t('lang.switch');
+      const langBtn=byId<HTMLButtonElement>('langToggleBtn');
+      langBtn.textContent=t('lang.switch');
+      // 可访问名须含可见文本（语音输入用户直接说按钮上的字）；切换时同步更新。
+      // <lang zh-CN>可见文本是目标语言缩写（EN/中文），拼进 aria-label 末尾。</lang>
+      // <lang en>The visible text is the target-language token (EN/中文); append it to the aria-label.</lang>
+      langBtn.setAttribute('aria-label',`${t('lang.switchTo')} ${langBtn.textContent}`);
       document.documentElement.lang=next;
       // 文档链接随界面语言同步（W-tb-P14 维护者反馈：从首页进入文档站应保持当前语言）。
       // <lang en>Docs link follows the UI locale (maintainer feedback): the docs site opens in the same language.</lang>

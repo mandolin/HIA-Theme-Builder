@@ -111,6 +111,9 @@ registerStrings({
   'p12.family.primary': { zh: '主色', en: 'Primary' },
   'p12.family.secondary': { zh: '副色', en: 'Secondary' },
   'p12.card.modeLabel': { zh: '展示模式', en: 'Display mode' },
+  // 色卡的应用动作名：嵌套交互重构后由覆盖式真实按钮承载（axe nested-interactive 修复）。
+  // <lang en>Card apply action name carried by the overlay real button (nested-interactive fix).</lang>
+  'p12.card.apply': { zh: '应用主色', en: 'Apply primary' },
   'p12.card.dual': { zh: '双色', en: 'Dual' },
   'p12.card.triad': { zh: '三色', en: 'Triad' },
   'p12.card.full': { zh: '全色', en: 'Full' },
