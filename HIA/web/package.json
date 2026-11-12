@@ -12,7 +12,8 @@
   "dependencies": {
     "@hia/theme-core": "file:../core",
     "@hia/theme-url-extractor": "file:../extractor",
-    "fflate": "^0.8.3"
+    "fflate": "^0.8.3",
+    "@hia/tdon": "file:../tdon"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

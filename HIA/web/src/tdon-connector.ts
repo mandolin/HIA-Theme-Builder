@@ -6,7 +6,7 @@
  *   only retrieves text per source (URL / local file) under a size cap; parsing and validation are delegated to
  *   core's `parseTdonDocument`. This module lives in the web layer (DOM/network); core stays IO-free.
  */
-import{TDON_MAX_BYTES}from'@hia/theme-core';
+import{TDON_MAX_BYTES}from'@hia/tdon';
 import type{FetchTextPort}from'./platform.js';
 
 // 连接结果：成功给出原文与来源标签，失败给出可展示的原因。
@@ -25,11 +25,15 @@ export async function fetchTdonFromUrl(url:string,fetchText:FetchTextPort|undefi
   if(!fetchText)return{ok:false,reason:'当前环境不支持远程取回。',source:url};
   try{
     const text=await fetchText.fetchText(url);
-    // TDON 上限（TDON-2.3）：字节数按 UTF-8 统计，与规范"256 KB 文件"口径一致。
-    // <lang zh-CN>字符数判定会低估多字节文本，故用 TextEncoder 计字节。</lang>
-    // <lang en>Character count under-counts multibyte text, so TextEncoder counts bytes.</lang>
-    if(new TextEncoder().encode(text).length>TDON_MAX_BYTES){
-      return{ok:false,reason:`文件超过 ${Math.round(TDON_MAX_BYTES/1024)} KB 上限。`,source:url};
+    // 取回阶段只挡硬上限（TDON-2.3）：软阈值由校验器发警告，连接器不替用户做取舍。
+    // <lang zh-CN>否则 512KB~4MB 的合法复杂文件会被连接器提前拦下，与规范"软阈值只警告"相悖。
+    //   字节数按 UTF-8 统计算——字符数会低估多字节文本。</lang>
+    // <lang en>Only the hard cap is enforced here; soft-cap warnings belong to the validator, so a legitimate
+    //   512KB–4MB file is not blocked early (the spec says soft caps only warn). Bytes are UTF-8 counted —
+    //   character counts under-count multibyte text.</lang>
+    const bytes=new TextEncoder().encode(text).length;
+    if(bytes>TDON_MAX_BYTES){
+      return{ok:false,reason:`文件 ${Math.round(bytes/1024)} KB 超过 ${Math.round(TDON_MAX_BYTES/1024)} KB 硬上限。`,source:url};
     }
     return{ok:true,text,source:url};
   }catch(e){

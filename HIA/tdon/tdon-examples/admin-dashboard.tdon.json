@@ -1,0 +1,86 @@
+{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "admin-dashboard",
+    "name": "后台管理主题",
+    "nameEn": "Admin Dashboard Theme",
+    "author": "HIA 官方示例"
+  },
+  "tokens": {
+    "include": {
+      "color": ["primary", "secondary"],
+      "colorShades": ["50", "100", "500", "700", "900"],
+      "gradient": ["metric", "callout"]
+    }
+  },
+  "preview": {
+    "title": "后台管理预览",
+    "layout": "sidebar-left",
+    "nodes": [
+      {
+        "type": "nav",
+        "items": [{ "label": "仪表盘", "active": true }, "订单", "商品", "报表", "设置"],
+        "bgToken": "primary.700",
+        "activeToken": "primary.100"
+      },
+      {
+        "type": "stats",
+        "items": [
+          { "label": "今日订单", "value": "1,284" },
+          { "label": "成交额", "value": "¥86,420" },
+          { "label": "转化率", "value": "4.7%" },
+          { "label": "客单价", "value": "¥67.3" }
+        ],
+        "labelToken": "primary.700",
+        "valueToken": "primary.900"
+      },
+      {
+        "type": "table",
+        "columns": [
+          { "key": "id", "label": "订单号" },
+          { "key": "customer", "label": "客户" },
+          { "key": "amount", "label": "金额" },
+          { "key": "status", "label": "状态" }
+        ],
+        "rows": [
+          { "id": "A-10241", "customer": "示例客户甲", "amount": "¥1,280", "status": "已发货", "note": "多余键被忽略" },
+          { "id": "A-10242", "customer": "示例客户乙", "amount": "¥640", "status": "待付款" },
+          { "id": "A-10243", "customer": "示例客户丙", "amount": "¥2,150", "status": "已完成" }
+        ],
+        "headerToken": "primary.800",
+        "cellToken": "primary.700"
+      },
+      {
+        "type": "form",
+        "fields": [
+          { "label": "客户名称", "type": "text" },
+          { "label": "联系邮箱", "type": "email" },
+          { "label": "订单状态", "type": "select" },
+          { "label": "备注", "type": "textarea" }
+        ],
+        "submitLabel": "保存订单",
+        "accentToken": "primary.600"
+      },
+      {
+        "type": "card",
+        "title": "表单为只读展示",
+        "text": "TDON 的 form 节点渲染为禁用控件，不绑定提交、不发请求（规范 TDON-5.9）。",
+        "bgToken": "secondary.50",
+        "titleToken": "secondary.900",
+        "textToken": "secondary.700"
+      }
+    ]
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": "src/styles/hia-admin.css",
+        "template": "/* 后台管理主题 — {{meta:name}} ({{meta:id}}) */\n.hia-admin {\n  --admin-brand: {{token:primary.600}};\n  --admin-brand-strong: {{token:primary.800}};\n  --admin-surface: {{token:primary.50}};\n  --admin-accent: {{token:secondary.500}};\n  --admin-on-brand: {{token:on:primary}};\n}\n"
+      },
+      { "path": "src/styles/hia-tokens.css", "templateRef": "builtin:hia-tokens-css" }
+    ]
+  },
+  "effects": {
+    "fade": { "type": "fade-in", "duration": 300 }
+  }
+}

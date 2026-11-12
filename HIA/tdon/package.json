@@ -1,0 +1,46 @@
+{
+  "name": "@hia/tdon",
+  "version": "0.1.0",
+  "description": "HIA TDON runtime: declarative theme-adapter documents (tdon-0.2) — zero-dependency validator, preview renderer and export adapter. Pure functions, no IO.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./examples/*": "./tdon-examples/*"
+  },
+  "files": [
+    "dist",
+    "src",
+    "tdon-examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "test": "npm run build && node --test test/"
+  },
+  "dependencies": {
+    "@hia/theme-core": "file:../core"
+  },
+  "devDependencies": {
+    "rimraf": "^5.0.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "tdon",
+    "design-token",
+    "theme-adapter",
+    "declarative",
+    "hia"
+  ]
+}

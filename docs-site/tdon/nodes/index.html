@@ -1,0 +1,131 @@
+<!doctype html>
+<!-- @lang zh-CN TDON 节点参考（`tdon-0.2`，双语）：9 类预览节点的完整属性表与渲染语义。
+     @lang en TDON node reference (`tdon-0.2`, bilingual): full attribute tables and rendering semantics for the nine node types. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TDON 节点参考 · Node Reference · HIA-Theme-Builder</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/lang.js" defer></script>
+<style>
+  .attr-table td:nth-child(2){font-family:Consolas,Menlo,monospace;font-size:12.5px;color:var(--primary-deep);white-space:nowrap}
+  .attr-table td:nth-child(3){white-space:nowrap}
+  .node-head{display:flex;align-items:baseline;gap:10px;margin:28px 0 6px}
+  .node-head code{font-size:15px}
+  .req{color:#B91C1C;font-weight:700}
+</style>
+</head>
+<body>
+<header class="site-head">
+  <a class="logo" href="../"><img src="../../assets/favicon-32.png" alt="">TDON Docs</a>
+  <nav>
+    <a href="../"><span class="zh">TDON 首页</span><span class="en">TDON Home</span></a>
+    <a href="../spec/"><span class="zh">规范全文</span><span class="en">Spec</span></a>
+    <a class="active" href="./"><span class="zh">节点参考</span><span class="en">Nodes</span></a>
+    <a href="../errors/"><span class="zh">错误码</span><span class="en">Errors</span></a>
+    <a href="../examples/"><span class="zh">示例</span><span class="en">Examples</span></a>
+  </nav>
+  <button id="docLangBtn" class="lang-switch" type="button" aria-label="Switch language / 切换语言">EN</button>
+</header>
+<main class="wrap">
+  <section class="hero-doc">
+    <h1><span class="zh">节点参考</span><span class="en">Node Reference</span></h1>
+    <p><span class="zh">9 类预览节点的属性与语义。所有节点可带通用字段 <code>id</code>、<code>effect</code>、<code>children</code>。</span><span class="en">Attributes and semantics for the nine preview node types. Every node may carry the shared fields <code>id</code>, <code>effect</code> and <code>children</code>.</span></p>
+  </section>
+
+  <section class="doc">
+    <h2><span class="zh">通用规则</span><span class="en">Shared rules</span></h2>
+    <table>
+      <tr><th><span class="zh">字段</span><span class="en">Field</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td><code>id</code></td><td><span class="zh">≤48 字符，渲染为 <code>data-tdon-id</code>，便于定位/测试。</span><span class="en">≤48 chars, rendered as <code>data-tdon-id</code> for locating/testing.</span></td></tr>
+      <tr><td><code>effect</code></td><td><span class="zh">引用 <code>effects</code> 中声明的 id（最多 12 个）。</span><span class="en">References an id declared in <code>effects</code> (max 12).</span></td></tr>
+      <tr><td><code>children</code></td><td><span class="zh">1–12 个子节点；整体最多 4 层、总计 ≤1500。</span><span class="en">1–12 children; at most 4 levels deep and ≤1500 total nodes.</span></td></tr>
+      <tr><td><span class="zh">未知属性</span><span class="en">Unknown attrs</span></td><td><span class="zh">报 <code>E_UNKNOWN_KEY</code>，不会静默丢弃。</span><span class="en">Reported as <code>E_UNKNOWN_KEY</code> — never silently dropped.</span></td></tr>
+    </table>
+
+    <div class="node-head"><code>hero</code><span class="zh">主视觉区块</span><span class="en">Hero block</span></div>
+    <table class="attr-table">
+      <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td>title</td><td>string</td><td><span class="req">✓</span></td><td><span class="zh">≤120 字符</span><span class="en">≤120 chars</span></td></tr>
+      <tr><td>subtitle</td><td>string</td><td></td><td><span class="zh">≤200 字符</span><span class="en">≤200 chars</span></td></tr>
+      <tr><td>bgToken</td><td>token</td><td></td><td><span class="zh">常用 <code>gradient:*</code></span><span class="en">Usually <code>gradient:*</code></span></td></tr>
+      <tr><td>imageUrl</td><td>https URL</td><td></td><td><span class="zh">底层图片，半透明叠加</span><span class="en">Background image, semi-transparent overlay</span></td></tr>
+      <tr><td>actions</td><td>array</td><td></td><td><span class="zh">≤3 项 <code>{label, token?}</code>，渲染为 span（非按钮）</span><span class="en">≤3 <code>{label, token?}</code>, rendered as spans (not buttons)</span></td></tr>
+    </table>
+
+    <div class="node-head"><code>nav</code><span class="zh">导航条</span><span class="en">Navigation bar</span></div>
+    <table class="attr-table">
+      <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td>items</td><td>array</td><td><span class="req">✓</span></td><td><span class="zh">1–8 项：字符串或 <code>{label, active?}</code></span><span class="en">1–8 items: string or <code>{label, active?}</code></span></td></tr>
+      <tr><td>bgToken</td><td>token</td><td></td><td><span class="zh">导航条底色</span><span class="en">Bar background</span></td></tr>
+      <tr><td>activeToken</td><td>token</td><td></td><td><span class="zh">当前项文字色</span><span class="en">Active item color</span></td></tr>
+    </table>
+
+    <div class="node-head"><code>card</code><span class="zh">内容卡</span><span class="en">Card</span></div>
+    <table class="attr-table">
+      <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td>title</td><td>string</td><td><span class="req">✓</span></td><td><span class="zh">≤120 字符</span><span class="en">≤120 chars</span></td></tr>
+      <tr><td>text</td><td>string</td><td></td><td><span class="zh">≤400；<code>\n</code> → <code>&lt;br&gt;</code></span><span class="en">≤400; <code>\n</code> → <code>&lt;br&gt;</code></span></td></tr>
+      <tr><td>bgToken / titleToken / textToken</td><td>token</td><td></td><td><span class="zh">三者独立，表达卡内层级</span><span class="en">Independent, for intra-card hierarchy</span></td></tr>
+      <tr><td>imageUrl</td><td>https URL</td><td></td><td><span class="zh">16:9 封面，位于标题之上</span><span class="en">16:9 cover above the title</span></td></tr>
+    </table>
+
+    <div class="node-head"><code>stats</code><span class="zh">指标组</span><span class="en">Stats</span></div>
+    <table class="attr-table">
+      <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td>items</td><td>array</td><td><span class="req">✓</span></td><td><span class="zh">1–6 项 <code>{label, value}</code>；value 为静态文本</span><span class="en">1–6 <code>{label, value}</code>; value is static text</span></td></tr>
+      <tr><td>labelToken / valueToken</td><td>token</td><td></td><td><span class="zh">标签与数值分别着色</span><span class="en">Colors label and value separately</span></td></tr>
+    </table>
+
+    <div class="node-head"><code>list</code><span class="zh">列表</span><span class="en">List</span></div>
+    <table class="attr-table">
+      <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td>items</td><td>array</td><td><span class="req">✓</span></td><td><span class="zh">1–12 个字符串，每项 ≤120</span><span class="en">1–12 strings, each ≤120</span></td></tr>
+      <tr><td>textToken / markerToken</td><td>token</td><td></td><td><span class="zh">文字与项目符号颜色</span><span class="en">Text and marker colors</span></td></tr>
+    </table>
+
+    <div class="node-head"><code>table</code><span class="zh">表格</span><span class="en">Table</span></div>
+    <table class="attr-table">
+      <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td>columns</td><td>array</td><td><span class="req">✓</span></td><td><span class="zh">1–6 项 <code>{key, label}</code>；key 为 <code>^[a-z][a-z0-9_]{0,23}$</code></span><span class="en">1–6 <code>{key, label}</code>; key matches <code>^[a-z][a-z0-9_]{0,23}$</code></span></td></tr>
+      <tr><td>rows</td><td>array</td><td><span class="req">✓</span></td><td><span class="zh">1–40 行；值为字符串/数字/布尔；多余键忽略</span><span class="en">1–40 rows; values string/number/boolean; extra keys ignored</span></td></tr>
+      <tr><td>headerToken / cellToken</td><td>token</td><td></td><td><span class="zh">表头与单元格颜色</span><span class="en">Header and cell colors</span></td></tr>
+    </table>
+
+    <div class="node-head"><code>form</code><span class="zh">表单（只读）</span><span class="en">Form (read-only)</span></div>
+    <table class="attr-table">
+      <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td>fields</td><td>array</td><td><span class="req">✓</span></td><td><span class="zh">1–8 项 <code>{label, type}</code>；type ∈ text|email|select|textarea</span><span class="en">1–8 <code>{label, type}</code>; type ∈ text|email|select|textarea</span></td></tr>
+      <tr><td>submitLabel</td><td>string</td><td></td><td><span class="zh">≤40；仅视觉元素，不提交</span><span class="en">≤40; visual only, never submits</span></td></tr>
+      <tr><td>accentToken</td><td>token</td><td></td><td><span class="zh">提交按钮底色</span><span class="en">Submit button background</span></td></tr>
+    </table>
+
+    <div class="node-head"><code>divider</code><span class="zh">分隔线</span><span class="en">Divider</span></div>
+    <table class="attr-table">
+      <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td>token</td><td>token</td><td></td><td><span class="zh">线条颜色</span><span class="en">Line color</span></td></tr>
+      <tr><td>thickness</td><td>integer</td><td></td><td><span class="zh">1–4 px，缺省 1</span><span class="en">1–4 px, default 1</span></td></tr>
+    </table>
+
+    <div class="node-head"><code>raw-text</code><span class="zh">纯文本段</span><span class="en">Raw text</span></div>
+    <table class="attr-table">
+      <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>
+      <tr><td>text</td><td>string</td><td><span class="req">✓</span></td><td><span class="zh">≤2000；<code>\n</code> → <code>&lt;br&gt;</code>，不解析 HTML</span><span class="en">≤2000; <code>\n</code> → <code>&lt;br&gt;</code>, HTML not parsed</span></td></tr>
+      <tr><td>textToken</td><td>token</td><td></td><td><span class="zh">文字颜色</span><span class="en">Text color</span></td></tr>
+      <tr><td>size</td><td><code>fs:&lt;step&gt;</code></td><td></td><td><span class="zh">字号档，如 <code>fs:h1</code></span><span class="en">Font size step, e.g. <code>fs:h1</code></span></td></tr>
+    </table>
+
+    <div class="tip">
+      <b><span class="zh">渲染安全</span><span class="en">Rendering safety</span></b><br>
+      <span class="zh">所有文本渲染前 HTML 转义；节点上不允许出现任意 CSS 字符串；图片一律懒加载且不发送 referrer。</span>
+      <span class="en">All text is HTML-escaped before rendering; no arbitrary CSS strings are allowed on nodes; images are always lazy-loaded with no referrer.</span>
+    </div>
+  </section>
+</main>
+<footer class="site-foot">
+  <a href="../spec/">← <span class="zh">返回规范全文</span><span class="en">Back to the spec</span></a>
+</footer>
+</body>
+</html>

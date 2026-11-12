@@ -107,25 +107,13 @@ export{toV2Signals}from'./analyze/v1-compat.js';
 // <lang en>P3 cross-end theme analysis: takes V2 signals, emits explainable report.</lang>
 export{analyzeThemeV2,clusterEvidence}from'./analyze/analyze-v2.js';
 
-// TDON 运行时（`W-tb-P26` / 规范 `tdon-0.1`）：类型、校验、令牌解析、预览渲染、导出适配器。
-// <lang zh-CN>校验器零依赖、纯函数；连接器（取回/文件读取）由各端 UI 层实现，core 不做 IO。</lang>
-// <lang en>Zero-dependency pure validator; connectors (fetch/file read) live in each runtime's UI layer — core stays IO-free.</lang>
-export{
-  TDON_SPEC_VERSION,TDON_MAX_BYTES,TDON_MAX_ISSUES,TDON_MAX_PREVIEW_NODES,TDON_MAX_NODES_TOTAL,TDON_NODE_TYPES
-}from'./tdon/types.js';
-export type{
-  TdonDocument,TdonTarget,TdonTokens,TdonTokensInclude,TdonPreview,TdonPreviewLayout,TdonNode,TdonNodeType,
-  TdonExportManifest,TdonExportFile,TdonConstraints,TdonContrastRule,TdonEffect
-}from'./tdon/types.js';
-export{tdonError,tdonWarning,isTdonWarning}from'./tdon/issues.js';
-export type{TdonIssue,TdonIssueCode,TdonValidationResult}from'./tdon/issues.js';
-export{checkTdonPath,isDangerousKey,TDON_MAX_PATH_LENGTH}from'./tdon/paths.js';
-export type{TdonPathCheck}from'./tdon/paths.js';
-export{
-  resolveTdonToken,isTdonTokenSyntax,listTdonColorRoles,listTdonTokens,tdonBuiltinTokensCss,tdonCustomShades
-}from'./tdon/resolve.js';
-export type{TdonTokenResult}from'./tdon/resolve.js';
-export{parseTdonDocument}from'./tdon/validate.js';
-export type{TdonParseResult}from'./tdon/validate.js';
-export{renderTdonPreview,escapeTdonHtml,TDON_PREVIEW_CSS}from'./tdon/render.js';
-export{createTdonExportTarget,describeTdonFiles}from'./tdon/export.js';
+// 导出适配器共享工具（`W-tb-P26`）：主题名 slug 化与注释安全化。
+// <lang zh-CN>原为适配器内部模块；TDON 独立包需要同一 slug 规则生成归档名，故提升为公共 API。</lang>
+// <lang en>Was an adapter-internal helper; the standalone TDON package needs the same slug rule for archive
+//   names, so it is promoted to the public API.</lang>
+export{slugifyThemeName,commentSafe}from'./export/shared.js';
+
+// TDON 运行时已拆分到独立包 `@hia/tdon`（`W-tb-P26` / 规范 TDON-15.1）。
+// <lang zh-CN>core 不再导出任何 TDON 符号：便于第三方应用按需引用，避免把规范实现塞进公共核心。</lang>
+// <lang en>core exports no TDON symbols: third-party apps can depend on it selectively, and the spec
+//   implementation stays out of the shared core.</lang>

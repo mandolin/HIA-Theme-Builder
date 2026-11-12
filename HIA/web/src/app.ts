@@ -19,10 +19,15 @@ import{
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
-  type WebsiteThemeAnalysisV2,
+  type WebsiteThemeAnalysisV2
+}from'@hia/theme-core';
+// TDON 运行时来自独立包 @hia/tdon（TDON-15.1）：core 不再导出这些符号。
+// <lang zh-CN>独立包让第三方应用可只引用 TDON 而不引入整个 core。</lang>
+// <lang en>The standalone package lets third-party apps use TDON alone, without all of core.</lang>
+import{
   parseTdonDocument,renderTdonPreview,createTdonExportTarget,describeTdonFiles,TDON_PREVIEW_CSS,TDON_SPEC_VERSION,
   type TdonDocument,type TdonValidationResult,type TdonIssue
-}from'@hia/theme-core';
+}from'@hia/tdon';
 import{zipSync,strToU8}from'fflate';
 import{all,byId,inputValue,setInputValue,setText}from'./dom.js';
 import{t,setLocale,getLocale,applyAll}from'./i18n/index.js';
@@ -944,16 +949,16 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   }
 
   // 加载内置示例（vitepress 文档站），用于无网络时快速体验。
-  // <lang zh-CN>示例文本来源于 core 的 tdon-examples（打包时由 Vite 以 ?raw 内联为字符串），
+  // <lang zh-CN>示例文本来源于 @hia/tdon 包的 tdon-examples（打包时由 Vite 以 ?raw 内联为字符串），
   //   随后走与连接器完全相同的解析校验入口，避免两条路径的校验口径分叉。</lang>
-  // <lang en>Example text comes from core's tdon-examples (inlined as a string via Vite `?raw`), then goes
+  // <lang en>Example text comes from the @hia/tdon package's tdon-examples (inlined as a string via Vite `?raw`), then goes
   //   through exactly the same parse/validate entry as the connector so the two paths cannot diverge.</lang>
   async function loadTdonExample(){
     try{
       // `?raw` 让 Vite 把示例 JSON 内联为字符串（无需网络与文件选择）。
-      // <lang zh-CN>路径指向 core 包内示例，保持"示例即文档"的单一来源。</lang>
+      // <lang zh-CN>路径指向 @hia/tdon 包内示例，保持"示例即文档"的单一来源。</lang>
       // <lang en>The path targets the example inside the core package, keeping examples as the single source.</lang>
-      const mod=await import('../../core/tdon-examples/vitepress-docs.tdon.json?raw');
+      const mod=await import('../../tdon/tdon-examples/vitepress-docs.tdon.json?raw');
       const text=String((mod as {default:string}).default??'');
       applyTdonText(text,'vitepress-docs.tdon.json');
     }catch(e){

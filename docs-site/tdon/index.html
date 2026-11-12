@@ -1,0 +1,104 @@
+<!doctype html>
+<!-- @lang zh-CN TDON 文档子站首页（双语）：规范全文 / 节点参考 / 错误码表 / 示例文件 四入口。
+     与主文档站同一套 assets（样式与语言切换），部署在 /HIA-Theme-Builder/docs/tdon/。
+     @lang en TDON docs home (bilingual): spec, node reference, error codes, examples.
+     Shares the main docs assets; deployed under /HIA-Theme-Builder/docs/tdon/. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TDON 规范 · Spec · HIA-Theme-Builder</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/lang.js" defer></script>
+</head>
+<body>
+<header class="site-head">
+  <a class="logo" href="../"><img src="../assets/favicon-32.png" alt="">HIA-Theme-Builder Docs</a>
+  <nav>
+    <a href="../"><span class="zh">文档首页</span><span class="en">Docs Home</span></a>
+    <a href="../getting-started/"><span class="zh">入门教程</span><span class="en">Getting Started</span></a>
+    <a href="../manual/"><span class="zh">使用手册</span><span class="en">Manual</span></a>
+    <a href="../reference/"><span class="zh">参考及开发文档</span><span class="en">Reference</span></a>
+    <a class="active" href="./">TDON</a>
+  </nav>
+  <button id="docLangBtn" class="lang-switch" type="button" aria-label="Switch language / 切换语言">EN</button>
+  <a class="gh" href="https://github.com/mandolin/HIA-Theme-Builder" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+</header>
+<main class="wrap">
+  <section class="hero-doc">
+    <h1>TDON <span class="zh">声明式主题适配规范</span><span class="en">Declarative Theme-Adapter Spec</span></h1>
+    <p>
+      <span class="zh">当前版本 <code>tdon-0.2</code>。一个 TDON 文件描述"某个目标长什么样、导出哪些文件"，由 Theme Builder 解释执行——<b>不携带可执行代码</b>。npm 包 <code>@hia/tdon</code>，零第三方依赖。</span>
+      <span class="en">Current version <code>tdon-0.2</code>. One TDON file declares what a target looks like and which files it exports, interpreted by Theme Builder — <b>no executable code</b>. npm package <code>@hia/tdon</code>, zero third-party dependencies.</span>
+    </p>
+  </section>
+
+  <div class="cards">
+    <a class="card" href="spec/">
+      <h3>📐 <span class="zh">规范全文</span><span class="en">Full Spec</span></h3>
+      <p><span class="zh">13 节条款：结构 / 令牌 / 预览 / 导出 / 约束 / 特效 / 安全边界 / TDOT 预留。每条带编号，可逐条引用。</span><span class="en">13 sections: structure, tokens, preview, export, constraints, effects, security, TDOT reservation — every clause numbered.</span></p>
+    </a>
+    <a class="card" href="nodes/">
+      <h3>🧩 <span class="zh">节点参考</span><span class="en">Node Reference</span></h3>
+      <p><span class="zh">9 类预览节点的完整属性表：必填项、取值范围、令牌引用方式与实际渲染效果。</span><span class="en">Attribute tables for all nine preview node types: required fields, ranges, token references and rendered results.</span></p>
+    </a>
+    <a class="card" href="errors/">
+      <h3>🚨 <span class="zh">错误码表</span><span class="en">Error Codes</span></h3>
+      <p><span class="zh">全部错误与警告码（含 v0.2 新增的软阈值警告），每个码说明触发条件与修法。码是稳定契约。</span><span class="en">Every error and warning code (including v0.2 soft-cap warnings) with trigger and fix. Codes are a stable contract.</span></p>
+    </a>
+    <a class="card" href="examples/">
+      <h3>📦 <span class="zh">示例文件</span><span class="en">Examples</span></h3>
+      <p><span class="zh">三个可直接连接的示例（文档站 / 后台 / 最小）与十个反例，反例文件名即错误码。</span><span class="en">Three connectable examples (docs site / admin / minimal) plus ten counterexamples named after their error codes.</span></p>
+    </a>
+  </div>
+
+  <section class="doc">
+    <h2><span class="zh">30 秒了解</span><span class="en">In 30 seconds</span></h2>
+    <pre><code>{
+  "specVersion": "tdon-0.2",
+  "target": { "id": "my-docs", "name": "我的文档站" },
+  "preview": {
+    "layout": "stack",
+    "nodes": [
+      { "type": "hero", "title": "主视觉", "bgToken": "gradient:carousel" },
+      { "type": "card", "title": "卡片刻", "text": "正文", "bgToken": "primary.50" }
+    ]
+  },
+  "exportManifest": {
+    "files": [
+      { "path": "theme/custom.css", "template": ":root { --brand: {{token:primary.500}}; }" }
+    ]
+  }
+}</code></pre>
+    <p>
+      <span class="zh">颜色全部来自 <b>令牌引用</b>（<code>primary.500</code>、<code>gradient:carousel</code>），不写死色值；导出的 CSS 里插值会替换成当前主题的真实色值。</span>
+      <span class="en">Every color comes from a <b>token reference</b> (<code>primary.500</code>, <code>gradient:carousel</code>) — no hardcoded values. Interpolations in exported CSS resolve to the current theme's real colors.</span>
+    </p>
+
+    <h2><span class="zh">在代码里使用</span><span class="en">Use it in code</span></h2>
+    <pre><code>npm install @hia/tdon</code></pre>
+    <pre><code>import { parseTdonDocument, renderTdonPreview, createTdonExportTarget } from '@hia/tdon';
+
+const { result, doc } = parseTdonDocument(raw, { theme });
+if (!result.ok) {
+  // 每条含 code / path / message（中英双语）
+  console.error(result.errors);
+} else {
+  const html  = renderTdonPreview(doc, theme);           // 预览 HTML 片段
+  const files = createTdonExportTarget(doc).files(theme); // [{ path, content }]
+}</code></pre>
+
+    <div class="tip">
+      <b><span class="zh">设计边界</span><span class="en">Design boundary</span></b><br>
+      <span class="zh">TDON 只读、纯声明。需要条件逻辑/循环/变量时走预留的 <b>TDOT</b>（<code>template</code> 段），当前接受但暂不生效。</span>
+      <span class="en">TDON is read-only and purely declarative. For conditionals/loops/variables use the reserved <b>TDOT</b> block (<code>template</code>), accepted today but inert.</span>
+    </div>
+  </section>
+</main>
+<footer class="site-foot">
+  <span class="zh">MIT 许可 · </span><span class="en">MIT licensed · </span>
+  <a href="https://github.com/mandolin/HIA-Theme-Builder">HIA-Theme-Builder</a>
+</footer>
+</body>
+</html>

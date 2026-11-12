@@ -12,9 +12,11 @@ on:
     branches: [main]
     paths:
       - 'HIA/core/**'
+      - 'HIA/tdon/**'
       - 'HIA/web/**'
       - 'HIA/electron/**'
       - 'HIA/tauri/**'
+      - 'docs-site/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -54,9 +56,18 @@ jobs:
           npm install
           npm run build
 
+      # ----- tdon：构建 + 单测（独立包 @hia/tdon，web 消费其 dist）-----
+      # <lang zh-CN>TDON 已从 core 拆出（ADR-010）；web 依赖它，故须在 web 之前构建并跑单测。</lang>
+      # <lang en>TDON is its own package (ADR-010) and web depends on it, so build+test it before web.</lang>
+      - name: Verify tdon
+        working-directory: HIA/tdon
+        run: |
+          npm install
+          npm test
+
       # ----- web：构建（tsc + vite）-----
-      # <lang zh-CN>web 消费本地 core/extractor dist；GITHUB_PAGES 触发基路径兼容。</lang>
-      # <lang en>web consumes local core/extractor dist; GITHUB_PAGES enables base-path compatibility.</lang>
+      # <lang zh-CN>web 消费本地 core/extractor/tdon dist；GITHUB_PAGES 触发基路径兼容。</lang>
+      # <lang en>web consumes local core/extractor/tdon dist; GITHUB_PAGES enables base-path compatibility.</lang>
       - name: Verify web
         working-directory: HIA/web
         env:

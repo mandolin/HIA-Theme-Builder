@@ -1,0 +1,108 @@
+{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "vitepress-docs",
+    "name": "VitePress 文档主题",
+    "nameEn": "VitePress Docs Theme",
+    "author": "HIA 官方示例",
+    "homepage": "https://vitepress.dev/",
+    "targetVersion": ">=1.0"
+  },
+  "tokens": {
+    "include": {
+      "color": ["primary", "secondary"],
+      "colorShades": "all",
+      "gradient": ["carousel", "banner"],
+      "typography": ["fontFamily", "fontSizeScale"],
+      "spacing": "all"
+    },
+    "alias": {
+      "--vp-c-brand": "primary.500",
+      "--vp-c-brand-1": "primary.600",
+      "--vp-c-brand-2": "primary.700",
+      "--vp-c-bg-soft": "primary.50"
+    }
+  },
+  "preview": {
+    "title": "VitePress 文档站预览",
+    "layout": "stack",
+    "nodes": [
+      {
+        "type": "hero",
+        "title": "文档站主视觉",
+        "subtitle": "渐变令牌直接驱动 hero 背景，标题字号取 fs:h1。",
+        "bgToken": "gradient:carousel",
+        "actions": [
+          { "label": "开始使用", "token": "primary.600" },
+          { "label": "查看配置", "token": "primary.100" }
+        ],
+        "effect": "fade"
+      },
+      {
+        "type": "nav",
+        "items": ["指南", { "label": "配置", "active": true }, "主题", "插件"],
+        "bgToken": "primary.50",
+        "activeToken": "primary.700"
+      },
+      {
+        "type": "raw-text",
+        "text": "下面的表格演示列键与行数据的映射：多余的行键被忽略，缺失的键渲染为空单元格。",
+        "textToken": "primary.800",
+        "size": "fs:small"
+      },
+      {
+        "type": "table",
+        "columns": [
+          { "key": "token", "label": "令牌" },
+          { "key": "value", "label": "用途" }
+        ],
+        "rows": [
+          { "token": "--vp-c-brand", "value": "主品牌色（primary.500）" },
+          { "token": "--vp-c-brand-1", "value": "悬停态（primary.600）" },
+          { "token": "--vp-c-bg-soft", "value": "浅底块（primary.50）" }
+        ],
+        "headerToken": "primary.900",
+        "cellToken": "primary.800"
+      },
+      {
+        "type": "list",
+        "items": ["令牌别名只影响导出文本，预览一律用 HIA 变量", "表格行键必须属于列键", "对比度断言在 strict 模式下阻断注册"],
+        "textToken": "primary.800",
+        "markerToken": "secondary.500"
+      },
+      { "type": "divider", "token": "primary.200", "thickness": 2 },
+      {
+        "type": "card",
+        "title": "副色用于强调",
+        "text": "副色出现在链接悬停与强调标记上，符合 HIA 副色语义。",
+        "bgToken": "primary.50",
+        "titleToken": "primary.900",
+        "textToken": "primary.700",
+        "effect": "lift"
+      }
+    ]
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": ".vitepress/theme/hia-brand.css",
+        "template": "/* 由 HIA Theme Builder 生成 — {{meta:name}} */\n:root {\n  --vp-c-brand: {{token:primary.500}};\n  --vp-c-brand-1: {{token:primary.600}};\n  --vp-c-brand-2: {{token:primary.700}};\n  --vp-c-bg-soft: {{token:primary.50}};\n  --vp-c-text-1: {{token:primary.900}};\n}\n"
+      },
+      { "path": "docs/hia-tokens.css", "templateRef": "builtin:hia-tokens-css" },
+      { "path": "docs/hia-tokens.json", "templateRef": "builtin:hia-tokens-json" }
+    ],
+    "package": { "rootDir": "docs/" }
+  },
+  "constraints": {
+    "requiredTokens": ["primary.500", "primary.900"],
+    "requireContrast": [
+      { "fg": "primary.900", "bg": "primary.50", "min": 4.5 }
+    ],
+    "strict": false
+  },
+  "effects": {
+    "fade": { "type": "fade-in", "duration": 400 },
+    "lift": { "type": "hover-lift", "distance": 2 },
+    "shift": { "type": "gradient-shift" }
+  }
+}

@@ -59,6 +59,14 @@ jobs:
           npm install
           npm run build
 
+      # TDON 独立包（ADR-010）：web 依赖其 dist，须先于 web 构建。
+      # <lang en>Standalone TDON package (ADR-010): web depends on its dist, so build it first.</lang>
+      - name: Build tdon
+        working-directory: HIA/tdon
+        run: |
+          npm install
+          npm run build
+
       - name: Build web
         working-directory: HIA/web
         run: |
@@ -143,6 +151,14 @@ jobs:
           npm install
           npm run build
 
+      # TDON 独立包（ADR-010）：web 依赖其 dist，须先于 web 构建。
+      # <lang en>Standalone TDON package (ADR-010): web depends on its dist, so build it first.</lang>
+      - name: Build tdon
+        working-directory: HIA/tdon
+        run: |
+          npm install
+          npm run build
+
       - name: Build web
         working-directory: HIA/web
         run: |
@@ -217,6 +233,14 @@ jobs:
 
       - name: Build extractor
         working-directory: HIA/extractor
+        run: |
+          npm install
+          npm run build
+
+      # TDON 独立包（ADR-010）：web 依赖其 dist，须先于 web 构建。
+      # <lang en>Standalone TDON package (ADR-010): web depends on its dist, so build it first.</lang>
+      - name: Build tdon
+        working-directory: HIA/tdon
         run: |
           npm install
           npm run build

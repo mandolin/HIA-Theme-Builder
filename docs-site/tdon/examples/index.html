@@ -1,0 +1,118 @@
+<!doctype html>
+<!-- @lang zh-CN TDON 示例页（`tdon-0.2`，双语）：三个合法示例 + 十个反例，与包内 tdon-examples 同源。
+     @lang en TDON examples page (`tdon-0.2`, bilingual): three valid examples plus ten counterexamples,
+     sharing one source with the package's tdon-examples. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TDON 示例 · Examples · HIA-Theme-Builder</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/lang.js" defer></script>
+</head>
+<body>
+<header class="site-head">
+  <a class="logo" href="../"><img src="../../assets/favicon-32.png" alt="">TDON Docs</a>
+  <nav>
+    <a href="../"><span class="zh">TDON 首页</span><span class="en">TDON Home</span></a>
+    <a href="../spec/"><span class="zh">规范全文</span><span class="en">Spec</span></a>
+    <a href="../nodes/"><span class="zh">节点参考</span><span class="en">Nodes</span></a>
+    <a href="../errors/"><span class="zh">错误码</span><span class="en">Errors</span></a>
+    <a class="active" href="./"><span class="zh">示例</span><span class="en">Examples</span></a>
+  </nav>
+  <button id="docLangBtn" class="lang-switch" type="button" aria-label="Switch language / 切换语言">EN</button>
+</header>
+<main class="wrap">
+  <section class="hero-doc">
+    <h1><span class="zh">示例文件</span><span class="en">Example Files</span></h1>
+    <p><span class="zh">全部示例随 <code>@hia/tdon</code> 分发（<code>tdon-examples/</code>），并有集成测试在<b>默认主题</b>下复核——新建主题后直接连接即可用。</span><span class="en">All examples ship with <code>@hia/tdon</code> (<code>tdon-examples/</code>) and are covered by tests against a <b>default theme</b> — connect one right after creating a theme and it works.</span></p>
+  </section>
+
+  <section class="doc">
+    <h2><span class="zh">怎么用</span><span class="en">How to use</span></h2>
+    <p><span class="zh"><b>在 Theme Builder 里</b>：预览区切到「自定义支持」→ 选「URL 源」或「本地文件」→ 连接；或直接点「加载示例」。</span><span class="en"><b>In Theme Builder</b>: switch the preview to "Custom Support" → choose a URL or local file → connect; or click "Load example" directly.</span></p>
+    <pre><code>npm install @hia/tdon</code></pre>
+    <pre><code>import { parseTdonDocument, renderTdonPreview, createTdonExportTarget } from '@hia/tdon';
+import { readFileSync } from 'node:fs';
+
+const raw = JSON.parse(readFileSync('tdon-examples/vitepress-docs.tdon.json', 'utf8'));
+const { result, doc } = parseTdonDocument(raw, { theme });
+if (!result.ok) console.error(result.errors);
+if (doc) {
+  const html  = renderTdonPreview(doc, theme);
+  const files = createTdonExportTarget(doc).files(theme);
+}</code></pre>
+
+    <h2><span class="zh">合法示例</span><span class="en">Valid examples</span></h2>
+    <table>
+      <tr><th><span class="zh">文件</span><span class="en">File</span></th><th><span class="zh">覆盖能力</span><span class="en">Covers</span></th></tr>
+      <tr><td><code>minimal.tdon.json</code></td><td><span class="zh">最小合法文档：仅 <code>target</code> + 1 个导出文件。适合作为起点拷贝。</span><span class="en">Minimal valid document: <code>target</code> plus one export file. Good starting point.</span></td></tr>
+      <tr><td><code>vitepress-docs.tdon.json</code></td><td><span class="zh">文档站：hero / nav / raw-text / table / list / divider / card + <code>alias</code> + <code>constraints</code> + 三种 <code>effects</code>。</span><span class="en">Docs site: hero/nav/raw-text/table/list/divider/card plus <code>alias</code>, <code>constraints</code> and all three <code>effects</code>.</span></td></tr>
+      <tr><td><code>admin-dashboard.tdon.json</code></td><td><span class="zh">后台：nav / stats / table / form / card + 多令牌映射。</span><span class="en">Admin: nav/stats/table/form/card plus multiple token mappings.</span></td></tr>
+    </table>
+
+    <h3><span class="zh">最小示例全文</span><span class="en">The minimal example, in full</span></h3>
+    <pre><code>{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "minimal-theme",
+    "name": "最小示例",
+    "nameEn": "Minimal Example"
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": "tokens.css",
+        "template": ":root {\n  --brand: {{token:primary.500}};\n}\n"
+      }
+    ]
+  }
+}</code></pre>
+
+    <h3><span class="zh">带预览与特效的片段</span><span class="en">Preview and effects, excerpted</span></h3>
+    <pre><code>"preview": {
+  "layout": "stack",
+  "nodes": [
+    { "type": "hero", "title": "文档站主视觉",
+      "bgToken": "gradient:carousel", "effect": "fade" },
+    { "type": "nav", "items": ["指南", { "label": "配置", "active": true }],
+      "bgToken": "primary.50", "activeToken": "primary.700" },
+    { "type": "table",
+      "columns": [{ "key": "token", "label": "令牌" }],
+      "rows": [{ "token": "--vp-c-brand" }],
+      "headerToken": "primary.900" }
+  ]
+},
+"effects": {
+  "fade": { "type": "fade-in", "duration": 400 },
+  "lift": { "type": "hover-lift", "distance": 2 }
+}</code></pre>
+
+    <h2><span class="zh">反例（每个只针对一个错误码）</span><span class="en">Counterexamples (one code each)</span></h2>
+    <table>
+      <tr><th><span class="zh">文件</span><span class="en">File</span></th><th><span class="zh">期望错误码</span><span class="en">Expected code</span></th></tr>
+      <tr><td><code>invalid/bad-version.tdon.json</code></td><td><code>E_VERSION</code></td></tr>
+      <tr><td><code>invalid/bad-unknown-key.tdon.json</code></td><td><code>E_UNKNOWN_KEY</code></td></tr>
+      <tr><td><code>invalid/bad-path-traversal.tdon.json</code></td><td><code>E_BAD_PATH</code></td></tr>
+      <tr><td><code>invalid/bad-template-conflict.tdon.json</code></td><td><code>E_CONFLICT</code></td></tr>
+      <tr><td><code>invalid/bad-template-ref.tdon.json</code></td><td><code>E_TEMPLATE_REF</code></td></tr>
+      <tr><td><code>invalid/bad-interp.tdon.json</code></td><td><code>E_INTERP</code></td></tr>
+      <tr><td><code>invalid/bad-node-type.tdon.json</code></td><td><code>E_ENUM</code></td></tr>
+      <tr><td><code>invalid/bad-token-syntax.tdon.json</code></td><td><code>E_TOKEN_SYNTAX</code></td></tr>
+      <tr><td><code>invalid/bad-effect-range.tdon.json</code></td><td><code>E_EFFECT_RANGE</code></td></tr>
+      <tr><td><code>invalid/bad-proto-pollution.tdon.json</code></td><td><code>E_BAD_KEY</code></td></tr>
+    </table>
+
+    <div class="tip">
+      <b><span class="zh">示例即文档</span><span class="en">Examples are documentation</span></b><br>
+      <span class="zh">集成测试直接读取这些 JSON 文件，因此"文档里写的用法真的能跑"是被持续验证的，而不是靠人工核对。</span>
+      <span class="en">Integration tests read these JSON files directly, so "the documented usage actually runs" is continuously verified rather than manually checked.</span>
+    </div>
+  </section>
+</main>
+<footer class="site-foot">
+  <a href="../spec/">← <span class="zh">返回规范全文</span><span class="en">Back to the spec</span></a>
+</footer>
+</body>
+</html>

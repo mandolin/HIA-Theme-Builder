@@ -1,0 +1,22 @@
+{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "a-b",
+    "name": "x"
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": "a.css",
+        "template": "x"
+      }
+    ]
+  },
+  "preview": {
+    "nodes": [
+      {
+        "type": "chart"
+      }
+    ]
+  }
+}

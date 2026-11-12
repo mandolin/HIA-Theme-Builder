@@ -1,0 +1,122 @@
+<!doctype html>
+<!-- @lang zh-CN TDON 错误与警告码表（`tdon-0.2`，双语）：码是稳定契约，可据码做本地化文案覆盖。
+     @lang en TDON error & warning codes (`tdon-0.2`, bilingual): codes are a stable contract for copy overrides. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TDON 错误码 · Error Codes · HIA-Theme-Builder</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/lang.js" defer></script>
+<style>
+  .code-col{font-family:Consolas,Menlo,monospace;font-size:12.5px;white-space:nowrap;font-weight:700}
+  tr.err .code-col{color:#B91C1C}
+  tr.warn .code-col{color:#92400E}
+  tr.warn td{background:#FFFBEB}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;margin:10px 0 20px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .dot.e{background:#B91C1C}
+  .dot.w{background:#D97706}
+</style>
+</head>
+<body>
+<header class="site-head">
+  <a class="logo" href="../"><img src="../../assets/favicon-32.png" alt="">TDON Docs</a>
+  <nav>
+    <a href="../"><span class="zh">TDON 首页</span><span class="en">TDON Home</span></a>
+    <a href="../spec/"><span class="zh">规范全文</span><span class="en">Spec</span></a>
+    <a href="../nodes/"><span class="zh">节点参考</span><span class="en">Nodes</span></a>
+    <a class="active" href="./"><span class="zh">错误码</span><span class="en">Errors</span></a>
+    <a href="../examples/"><span class="zh">示例</span><span class="en">Examples</span></a>
+  </nav>
+  <button id="docLangBtn" class="lang-switch" type="button" aria-label="Switch language / 切换语言">EN</button>
+</header>
+<main class="wrap">
+  <section class="hero-doc">
+    <h1><span class="zh">错误与警告码</span><span class="en">Error &amp; Warning Codes</span></h1>
+    <p><span class="zh">每条问题含 <code>code</code>、<code>path</code>（如 <code>preview.nodes[2].bgToken</code>）与中英双语 <code>message</code>。单次校验最多报 20 条。</span><span class="en">Every issue carries a <code>code</code>, a <code>path</code> (e.g. <code>preview.nodes[2].bgToken</code>) and a bilingual <code>message</code>. One pass reports at most 20 issues.</span></p>
+  </section>
+
+  <div class="legend">
+    <span><i class="dot e"></i><b>E_</b> <span class="zh">错误：阻止注册</span><span class="en">Error: blocks registration</span></span>
+    <span><i class="dot w"></i><b>W_</b> <span class="zh">警告：提示但可用</span><span class="en">Warning: noted but usable</span></span>
+  </div>
+
+  <section class="doc">
+    <h2><span class="zh">取回与解析</span><span class="en">Fetch &amp; parse</span></h2>
+    <table>
+      <tr><th><span class="zh">码</span><span class="en">Code</span></th><th><span class="zh">触发</span><span class="en">Trigger</span></th><th><span class="zh">修法</span><span class="en">Fix</span></th></tr>
+      <tr class="err"><td class="code-col">E_TOO_LARGE</td><td><span class="zh">文档 &gt; 4 MB</span><span class="en">Document &gt; 4 MB</span></td><td><span class="zh">拆分为多个 TDON，或减少内联模板</span><span class="en">Split into multiple TDON files or trim inline templates</span></td></tr>
+      <tr class="warn"><td class="code-col">W_TOO_LARGE</td><td><span class="zh">文档 &gt; 512 KB</span><span class="en">Document &gt; 512 KB</span></td><td><span class="zh">可忽略；留意加载耗时</span><span class="en">Safe to ignore; watch load time</span></td></tr>
+      <tr class="err"><td class="code-col">E_JSON</td><td><span class="zh">JSON 语法错误</span><span class="en">JSON syntax error</span></td><td><span class="zh">按 message 中的位置修语法</span><span class="en">Fix syntax using the position in the message</span></td></tr>
+      <tr class="err"><td class="code-col">E_NOT_OBJECT</td><td><span class="zh">顶层不是对象</span><span class="en">Top level is not an object</span></td><td><span class="zh">顶层必须是 <code>{ … }</code></span><span class="en">Top level must be <code>{ … }</code></span></td></tr>
+      <tr class="err"><td class="code-col">E_VERSION</td><td><span class="zh"><code>specVersion</code> 不匹配</span><span class="en"><code>specVersion</code> mismatch</span></td><td><span class="zh">改为当前支持版本（<code>tdon-0.2</code>）</span><span class="en">Set it to <code>tdon-0.2</code></span></td></tr>
+      <tr class="err"><td class="code-col">E_UNKNOWN_KEY</td><td><span class="zh">出现本节不允许的键</span><span class="en">Key not allowed in this section</span></td><td><span class="zh">按 message 列出的允许键改写（常见为拼写错误）</span><span class="en">Use one of the allowed keys listed in the message (often a typo)</span></td></tr>
+      <tr class="err"><td class="code-col">E_BAD_KEY</td><td><span class="zh"><code>__proto__</code>/<code>constructor</code>/<code>prototype</code></span><span class="en">Prototype-pollution keys</span></td><td><span class="zh">改名——这些键被永久拒绝</span><span class="en">Rename them — these keys are permanently rejected</span></td></tr>
+    </table>
+
+    <h2><span class="zh">通用结构</span><span class="en">Generic structure</span></h2>
+    <table>
+      <tr><th><span class="zh">码</span><span class="en">Code</span></th><th><span class="zh">触发</span><span class="en">Trigger</span></th><th><span class="zh">修法</span><span class="en">Fix</span></th></tr>
+      <tr class="err"><td class="code-col">E_REQUIRED</td><td><span class="zh">必填字段缺失</span><span class="en">Required field missing</span></td><td><span class="zh">补齐字段</span><span class="en">Add the field</span></td></tr>
+      <tr class="err"><td class="code-col">E_TYPE</td><td><span class="zh">类型不符</span><span class="en">Wrong type</span></td><td><span class="zh">按 message 改为字符串/数值/对象/数组</span><span class="en">Use the type named in the message</span></td></tr>
+      <tr class="err"><td class="code-col">E_ENUM</td><td><span class="zh">枚举值非法</span><span class="en">Illegal enum value</span></td><td><span class="zh">取 message 列出的值之一</span><span class="en">Pick one of the listed values</span></td></tr>
+      <tr class="err"><td class="code-col">E_RANGE</td><td><span class="zh">数值越界</span><span class="en">Value out of range</span></td><td><span class="zh">按提示区间调整</span><span class="en">Adjust into the stated range</span></td></tr>
+      <tr class="err"><td class="code-col">E_LIMIT</td><td><span class="zh">超出硬上限（节点/文件/长度）</span><span class="en">Hard cap exceeded (nodes/files/length)</span></td><td><span class="zh">拆分或裁剪；软阈值只警告不会报此码</span><span class="en">Split or trim; soft caps only warn</span></td></tr>
+      <tr class="err"><td class="code-col">E_PATTERN</td><td><span class="zh">不符合命名/格式规则</span><span class="en">Fails a naming/format rule</span></td><td><span class="zh">按 message 给出的正则/示例改写</span><span class="en">Follow the regex/example in the message</span></td></tr>
+      <tr class="err"><td class="code-col">E_CONFLICT</td><td><span class="zh">互斥字段同时出现</span><span class="en">Mutually exclusive fields both present</span></td><td><span class="zh"><code>template</code> 与 <code>templateRef</code> 只留一个</span><span class="en">Keep only one of <code>template</code>/<code>templateRef</code></span></td></tr>
+      <tr class="warn"><td class="code-col">W_NODE_LIMIT</td><td><span class="zh">节点数越过软阈值（顶层 &gt;100 或总计 &gt;400）</span><span class="en">Node count past a soft cap (&gt;100 top-level or &gt;400 total)</span></td><td><span class="zh">可忽略；过多节点会拖慢预览</span><span class="en">Safe to ignore; many nodes slow the preview</span></td></tr>
+      <tr class="warn"><td class="code-col">W_FILE_COUNT</td><td><span class="zh">导出文件 &gt; 32</span><span class="en">More than 32 export files</span></td><td><span class="zh">可忽略；通常说明该拆成多个 TDON</span><span class="en">Safe to ignore; usually means splitting is warranted</span></td></tr>
+      <tr class="warn"><td class="code-col">W_TEMPLATE_SIZE</td><td><span class="zh">单模板 &gt; 256 KB 或合计 &gt; 512 KB</span><span class="en">Single template &gt; 256 KB or total &gt; 512 KB</span></td><td><span class="zh">可忽略；留意产物体积</span><span class="en">Safe to ignore; watch artifact size</span></td></tr>
+    </table>
+
+    <h2><span class="zh">令牌</span><span class="en">Tokens</span></h2>
+    <table>
+      <tr><th><span class="zh">码</span><span class="en">Code</span></th><th><span class="zh">触发</span><span class="en">Trigger</span></th><th><span class="zh">修法</span><span class="en">Fix</span></th></tr>
+      <tr class="err"><td class="code-col">E_TOKEN_SYNTAX</td><td><span class="zh">引用不匹配 6 种形式</span><span class="en">Reference matches none of the six forms</span></td><td><span class="zh">用 <code>primary.500</code> / <code>gradient:carousel</code> 等</span><span class="en">Use forms like <code>primary.500</code> / <code>gradient:carousel</code></span></td></tr>
+      <tr class="err"><td class="code-col">E_TOKEN_UNRESOLVED</td><td><span class="zh">角色/色阶/渐变不可解析</span><span class="en">Role/shade/gradient cannot resolve</span></td><td><span class="zh">三色模式才有 <code>third</code>；<code>aux&lt;N&gt;</code> 需在槽数内；渐变需启用</span><span class="en"><code>third</code> needs triad mode; <code>aux&lt;N&gt;</code> must be within slots; gradients must be enabled</span></td></tr>
+      <tr class="warn"><td class="code-col">W_TOKEN_UNRESOLVED</td><td><span class="zh">主题变更后降级提示</span><span class="en">Degraded hint after a theme change</span></td><td><span class="zh">切回含该令牌的主题，或改引用</span><span class="en">Switch back to a theme with the token, or change the reference</span></td></tr>
+      <tr class="err"><td class="code-col">E_SHADE_RANGE</td><td><span class="zh">色阶越界/键非法</span><span class="en">Shade out of range or illegal key</span></td><td><span class="zh">数值 0–1000；标准键 50/100/…/900</span><span class="en">Numbers 0–1000; standard keys 50/100/…/900</span></td></tr>
+    </table>
+
+    <h2><span class="zh">预览</span><span class="en">Preview</span></h2>
+    <table>
+      <tr><th><span class="zh">码</span><span class="en">Code</span></th><th><span class="zh">触发</span><span class="en">Trigger</span></th><th><span class="zh">修法</span><span class="en">Fix</span></th></tr>
+      <tr class="err"><td class="code-col">E_UNKNOWN_NODE</td><td><span class="zh">节点类型不在 9 类内</span><span class="en">Node type is not one of the nine</span></td><td><span class="zh">改用内置 9 类之一</span><span class="en">Use one of the nine built-in types</span></td></tr>
+      <tr class="err"><td class="code-col">E_NODE_ATTR</td><td><span class="zh">节点属性不合法</span><span class="en">Illegal node attribute</span></td><td><span class="zh">对照节点参考的属性表</span><span class="en">Check the node reference attribute tables</span></td></tr>
+      <tr class="err"><td class="code-col">E_MEDIA_URL</td><td><span class="zh">图片/字体地址非 https 或格式非法</span><span class="en">Image/font URL is not https or malformed</span></td><td><span class="zh">使用 <code>https://…</code></span><span class="en">Use <code>https://…</code></span></td></tr>
+    </table>
+
+    <h2><span class="zh">导出</span><span class="en">Export</span></h2>
+    <table>
+      <tr><th><span class="zh">码</span><span class="en">Code</span></th><th><span class="zh">触发</span><span class="en">Trigger</span></th><th><span class="zh">修法</span><span class="en">Fix</span></th></tr>
+      <tr class="err"><td class="code-col">E_BAD_PATH</td><td><span class="zh">路径穿越/绝对路径/盘符/反斜杠/超长</span><span class="en">Traversal/absolute/drive letter/backslash/too long</span></td><td><span class="zh">改为安全的相对 POSIX 路径</span><span class="en">Use a safe relative POSIX path</span></td></tr>
+      <tr class="err"><td class="code-col">E_INTERP</td><td><span class="zh">插值命名空间非法</span><span class="en">Illegal interpolation namespace</span></td><td><span class="zh">仅 <code>{{token:…}}</code> 与 <code>{{meta:name|id}}</code></span><span class="en">Only <code>{{token:…}}</code> and <code>{{meta:name|id}}</code></span></td></tr>
+      <tr class="err"><td class="code-col">E_TEMPLATE_REF</td><td><span class="zh"><code>templateRef</code> 不在白名单</span><span class="en"><code>templateRef</code> not whitelisted</span></td><td><span class="zh">仅 <code>builtin:hia-tokens-css</code> / <code>builtin:hia-tokens-json</code></span><span class="en">Only the two builtin token templates</span></td></tr>
+    </table>
+
+    <h2><span class="zh">约束与特效</span><span class="en">Constraints &amp; effects</span></h2>
+    <table>
+      <tr><th><span class="zh">码</span><span class="en">Code</span></th><th><span class="zh">触发</span><span class="en">Trigger</span></th><th><span class="zh">修法</span><span class="en">Fix</span></th></tr>
+      <tr class="err"><td class="code-col">E_CONTRAST</td><td><span class="zh"><code>strict:true</code> 下对比度不达标</span><span class="en">Contrast fails under <code>strict:true</code></span></td><td><span class="zh">换色阶组合，或改 <code>strict:false</code></span><span class="en">Change the shade pair or set <code>strict:false</code></span></td></tr>
+      <tr class="warn"><td class="code-col">W_CONTRAST</td><td><span class="zh">非严格模式下对比度不达标</span><span class="en">Contrast fails in non-strict mode</span></td><td><span class="zh">可忽略，但请检查可读性</span><span class="en">Safe to ignore, but check readability</span></td></tr>
+      <tr class="err"><td class="code-col">E_EFFECT_UNKNOWN</td><td><span class="zh">未知特效类型或引用未声明的 id</span><span class="en">Unknown effect type or undeclared id</span></td><td><span class="zh">仅 3 种类型；节点 <code>effect</code> 须先在 <code>effects</code> 声明</span><span class="en">Three types only; declare ids in <code>effects</code> first</span></td></tr>
+      <tr class="err"><td class="code-col">E_EFFECT_PARAM</td><td><span class="zh">参数名不在该类型允许列表</span><span class="en">Param name not allowed for that type</span></td><td><span class="zh">按规范 §9 的参数表</span><span class="en">Follow the §9 parameter table</span></td></tr>
+      <tr class="err"><td class="code-col">E_EFFECT_RANGE</td><td><span class="zh">参数值越界</span><span class="en">Param value out of range</span></td><td><code>duration</code> 100–2000/50 · <code>distance</code> 1–8</td></tr>
+    </table>
+
+    <h2><span class="zh">预留能力（v0.2 新增）</span><span class="en">Reserved (new in v0.2)</span></h2>
+    <table>
+      <tr><th><span class="zh">码</span><span class="en">Code</span></th><th><span class="zh">含义</span><span class="en">Meaning</span></th><th><span class="zh">影响</span><span class="en">Impact</span></th></tr>
+      <tr class="warn"><td class="code-col">W_TDOT_RESERVED</td><td><span class="zh"><code>template</code> 段（TDOT）已接受但暂不生效</span><span class="en"><code>template</code> (TDOT) accepted but inert</span></td><td><span class="zh">无——可提前编写，等 TDOT 运行时落地</span><span class="en">None — write ahead and wait for the TDOT runtime</span></td></tr>
+      <tr class="warn"><td class="code-col">W_FONT_RESERVED</td><td><span class="zh"><code>tokens.fontUrl</code> 远程字体预留，暂不加载</span><span class="en"><code>tokens.fontUrl</code> reserved, not loaded</span></td><td><span class="zh">字体不会生效；其余功能正常</span><span class="en">Font is not applied; everything else works</span></td></tr>
+    </table>
+  </section>
+</main>
+<footer class="site-foot">
+  <a href="../spec/">← <span class="zh">返回规范全文</span><span class="en">Back to the spec</span></a>
+</footer>
+</body>
+</html>
