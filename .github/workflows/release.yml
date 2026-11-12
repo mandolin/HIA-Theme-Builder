@@ -192,7 +192,9 @@ jobs:
       - name: Install Linux system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          # Ubuntu 22.04+ 用 ayatana 版 appindicator；两者都装以兼容（缺失时 apt 会跳过可选）。
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev patchelf
+          sudo apt-get install -y libayatana-appindicator3-dev || sudo apt-get install -y libappindicator3-dev
 
       - name: Build core
         working-directory: HIA/core
