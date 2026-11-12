@@ -82,7 +82,9 @@ jobs:
           Get-ChildItem -Path "HIA\electron\release" -Recurse -Filter "HIA-Theme-Builder-Electron-*-portable.exe" | Copy-Item -Destination artifacts\
           Get-ChildItem -Path "HIA\electron\release" -Recurse -Filter "HIA-Theme-Builder-Electron-*-setup.exe" | Copy-Item -Destination artifacts\
           Copy-Item "HIA\tauri\src-tauri\target\release\bundle\msi\HIA Theme Builder_*_x64_en-US.msi" artifacts\
-          Copy-Item "HIA\tauri\src-tauri\target\release\HIA Theme Builder.exe" artifacts\HIA-Theme-Builder-Tauri-portable.exe
+          # Tauri v2 只产出 bin 名 exe（v1 另产 productName.exe）——按 bin 名取并重命名为便携版。
+          # <lang en>Tauri v2 emits only the bin-named exe; copy and rename it as the portable artifact.</lang>
+          Copy-Item "HIA\tauri\src-tauri\target\release\hia-theme-tauri.exe" artifacts\HIA-Theme-Builder-Tauri-portable.exe
           $ver = (Get-Content "HIA\electron\package.json" | ConvertFrom-Json).version
           Write-Host "sealed version: $ver"
           $expected = @(
