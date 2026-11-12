@@ -76,7 +76,8 @@
         "deb"
       ],
       "icon": "resources/icon.png",
-      "category": "Development"
+      "category": "Development",
+      "artifactName": "HIA-Theme-Builder-${version}-${arch}.${ext}"
     },
     "directories": {
       "output": "release"
