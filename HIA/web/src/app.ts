@@ -1670,7 +1670,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       draft.secondary=colors[1]??colors[0]!;
       draft.thirdColor=colors.length>=3?makeRoleColor(colors[2]!,'第三色'):undefined;
       draft.primaryName=name;draft.secondaryName='副色';
-      draft.auxiliary=generateAuxiliaryCandidates(colors[0]!).slice(0,TONE_AUX_SLOTS).map((c,i)=>({name:`辅助色 ${i+1}`,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}));
+      draft.auxiliary=generateAuxiliaryCandidates(colors[0]!).slice(0,TONE_AUX_SLOTS).map(c=>({name:c.name,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}));
       byId<HTMLElement>('baodianModal').hidden=true;
       syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();updatePreviewMeta();
       // 回执按来源选择词条（国旗/企业/自然/社会）。
@@ -1711,7 +1711,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       if(!hex)return;
       seriesSnapshot={primary:draft.primary,primaryName:draft.primaryName,secondary:draft.secondary,secondaryName:draft.secondaryName,thirdColor:draft.thirdColor,seriesMode:draft.seriesMode,seriesRelation:draft.seriesRelation};
       const secondary=deriveSecondaryByRelation(hex,'complement')||hex;
-      const aux=generateAuxiliaryCandidates(hex).slice(0,TONE_AUX_SLOTS).map((c,i)=>({name:`辅助色 ${i+1}`,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}));
+      const aux=generateAuxiliaryCandidates(hex).slice(0,TONE_AUX_SLOTS).map(c=>({name:c.name,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}));
       draft.primary=hex;draft.seriesMode='dual';draft.seriesRelation='complement';draft.secondary=secondary;draft.thirdColor=undefined;draft.auxiliary=aux;
       draft.primaryName=btn.dataset.tcName||'主色';draft.secondaryName='副色';
       byId<HTMLElement>('baodianModal').hidden=true;
@@ -2212,7 +2212,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         primary:draft.primary,
         secondary:shiftHueTo(p.secondary,p.primary,draft.primary),
         ...(p.thirdColor?{thirdColor:{...p.thirdColor,value:shiftHueTo(p.thirdColor.value,p.primary,draft.primary)}}:{}),
-        auxiliary:generateAuxiliaryCandidates(draft.primary).slice(0,TONE_AUX_SLOTS).map((c,i)=>({name:`辅助色 ${i+1}`,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}))
+        auxiliary:generateAuxiliaryCandidates(draft.primary).slice(0,TONE_AUX_SLOTS).map(c=>({name:c.name,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}))
       };
     }
     selectedPresetId=p.id;

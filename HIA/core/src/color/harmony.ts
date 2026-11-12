@@ -1,6 +1,7 @@
 import type{AuxiliaryModifier,SeriesMode,SeriesRelationId,HarmonyDef}from'../types.js';
 import{clamp,gamutMapOklch,hexToOklch,normalizeHex}from'./convert.js';
 import{tonalScale}from'./scale.js';
+import{nameColor}from'./color-name.js';
 
 // 副色和谐方案库：每项为一种由主色推导副色的色彩理论策略。
 // <lang zh-CN>offset 为相对主色相的角差；L/C 为目标亮度与彩度（缺失时按主色推算）。</lang>
@@ -188,7 +189,10 @@ export function generateAuxiliaryCandidates(primaryHex:string,modifiers?:Auxilia
       :modifier==='pale'?{L:clamp(L+.14,.6,.88),C:clamp(C*.6,.05,.13)}
       :modifier==='grayish'?{L:clamp(L+.04,.55,.8),C:clamp(C*.45,.03,.1)}
       :{L,C};
-    return{hex:gamutMapOklch(adjusted.L,adjusted.C,hue).hex,name:`规则强调 ${i+1}`,modifier};
+    // 结构化命名（W-tb-P20）：修饰语 + 色相名（如 深蓝/浅青），替代序号式命名。
+    // <lang en>Structured names (modifier + hue) replace the old numbered labels.</lang>
+    const hexOut=gamutMapOklch(adjusted.L,adjusted.C,hue).hex;
+    return{hex:hexOut,name:nameColor(hexOut).zh,modifier};
   });
 }
 
