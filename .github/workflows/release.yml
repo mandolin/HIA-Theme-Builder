@@ -1,7 +1,13 @@
-# @lang zh-CN HIA-Theme-Builder 桌面端发布工作流：构建并上传四件产物（electron 便携+NSIS、tauri 便携+MSI）到 GitHub Release，附带 SHA-256 校验和。
-#   触发条件：手动 workflow_dispatch 或版本标签 v*；需要 secrets.WIN_CSC_KEY_PASSWORD（自签名证书密码）。
-# @lang en HIA-Theme-Builder desktop release workflow: build and upload four artifacts (electron portable+NSIS, tauri portable+MSI) to GitHub Release with SHA-256 checksums.
-#   Triggers: manual workflow_dispatch or version tag v*; requires secrets.WIN_CSC_KEY_PASSWORD (self-signed certificate password).
+// @lang zh-CN HIA-Theme-Builder 桌面端发布工作流（W-tb-P25 三平台矩阵）：
+//   ①windows-latest：Electron 便携+NSIS、Tauri 便携+MSI（自签名）——沿用原逻辑；
+//   ②macos-latest：Electron dmg+zip、Tauri app+dmg（**未签名/未公证**，按维护者 2026-11-12 定案）；
+//   ③ubuntu-latest：Electron AppImage+deb、Tauri AppImage+deb（未签名，Linux 无强制签名要求）。
+//   各平台独立 job 构建后汇总到一个 Release，SHA-256 校验和按平台分别生成并合并上传。
+//   触发：手动 workflow_dispatch 或版本标签 v*。
+//   未签名说明：macOS 首次打开需「右键 → 打开」或在系统设置中允许；Windows 会提示未知发布者。
+// @lang en HIA-Theme-Builder desktop release workflow (W-tb-P25 three-platform matrix):
+//   windows (signed, as before), macOS (unsigned, per maintainer decision), Linux (unsigned).
+//   Each platform builds in its own job; artifacts merge into one Release with per-platform SHA-256.
 
 name: Release desktop
 
@@ -15,15 +21,15 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  # ===== Windows（签名，沿用原逻辑） =====
+  # <lang zh-CN>Electron 便携+NSIS、Tauri 便携+MSI；证书从 secrets 导入。</lang>
+  # <lang en>Electron portable+NSIS, Tauri portable+MSI; certificate imported from secrets.</lang>
+  release-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
 
-      # 导入自签名证书到 Windows 证书库（Tauri 需要）
-      # <lang zh-CN>将 PFX 导入到 CurrentUser\My，Tauri 通过 certificateThumbprint 引用。</lang>
-      # <lang en>Import PFX to CurrentUser\My; Tauri references it via certificateThumbprint.</lang>
       - name: Import signing certificate
         shell: pwsh
         env:
@@ -33,9 +39,7 @@ jobs:
           $secPassword = ConvertTo-SecureString -String $env:WIN_CSC_KEY_PASSWORD -Force -AsPlainText
           Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation "Cert:\CurrentUser\My" -Password $secPassword
 
-      # 构建 core + extractor（供 electron 消费）
-      # <lang zh-CN>先构建 core 到 dist，再构建 extractor 产出 scanner bundle。</lang>
-      # <lang en>Build core to dist first, then extractor to produce scanner bundle.</lang>
+      # 依赖链：core → extractor → web（桌面端复制渲染器）。
       - name: Build core
         working-directory: HIA/core
         run: |
@@ -48,18 +52,12 @@ jobs:
           npm install
           npm run build
 
-      # 构建 web（供桌面端复制）
-      # <lang zh-CN>web 构建产物被 electron/tauri 复制脚本复用。</lang>
-      # <lang en>web build output is reused by electron/tauri copy scripts.</lang>
       - name: Build web
         working-directory: HIA/web
         run: |
           npm install
           npm run build
 
-      # 构建 electron（便携+NSIS，签名）
-      # <lang zh-CN>通过 WIN_CSC_KEY_PASSWORD 环境变量传递证书密码；electron-builder 从 certs/hia-theme-builder.pfx 签名。</lang>
-      # <lang en>Pass certificate password via WIN_CSC_KEY_PASSWORD env var; electron-builder signs from certs/hia-theme-builder.pfx.</lang>
       - name: Build electron
         working-directory: HIA/electron
         env:
@@ -68,19 +66,14 @@ jobs:
           npm install
           npm run dist
 
-      # 构建 tauri（MSI+便携，签名）
-      # <lang zh-CN>Tauri 从 Windows 证书库读取证书（已通过 Import-PfxCertificate 导入）。</lang>
-      # <lang en>Tauri reads certificate from Windows certificate store (imported via Import-PfxCertificate).</lang>
       - name: Build tauri
         working-directory: HIA/tauri
         run: |
           npm install
           npm run build
 
-      # 收集产物并生成 SHA-256
-      # <lang zh-CN>四件产物复制到 artifacts/ 目录，生成 SHA256SUMS.txt。版本号从 electron package.json 动态读取（封版升版不再改工作流——v0.2.0 发版时硬编码 0.1.0 致 Collect 步失败的修复）。</lang>
-      # <lang en>Copy four artifacts to artifacts/, generate SHA256SUMS.txt. Version is read from electron package.json dynamically (fixes the hardcoded 0.1.0 that failed Collect on v0.2.0).</lang>
-      - name: Collect artifacts
+      # 收集 Win 产物 + SHA-256。
+      - name: Collect Windows artifacts
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path artifacts -Force
@@ -88,12 +81,8 @@ jobs:
           Copy-Item "HIA\electron\dist\HIA-Theme-Builder-Electron-*-setup.exe" artifacts\
           Copy-Item "HIA\tauri\src-tauri\target\release\bundle\msi\HIA Theme Builder_*_x64_en-US.msi" artifacts\
           Copy-Item "HIA\tauri\src-tauri\target\release\HIA Theme Builder.exe" artifacts\HIA-Theme-Builder-Tauri-portable.exe
-          # 版本号动态读取（electron/tauri 四包版本封版时同步）。
           $ver = (Get-Content "HIA\electron\package.json" | ConvertFrom-Json).version
           Write-Host "sealed version: $ver"
-          # 验证产物存在且非空
-          # <lang zh-CN>确保四件产物都已构建。</lang>
-          # <lang en>Verify all four artifacts exist and are non-empty.</lang>
           $expected = @(
             "artifacts\HIA-Theme-Builder-Electron-$ver-portable.exe",
             "artifacts\HIA-Theme-Builder-Electron-$ver-setup.exe",
@@ -107,21 +96,166 @@ jobs:
             }
             Write-Host "$f : $((Get-Item $f).Length) bytes"
           }
-          # 生成 SHA-256
           Set-Location artifacts
-          $files = Get-ChildItem -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" }
-          if ($files.Count -eq 0) {
-            Write-Error "No artifact files found in artifacts directory"
-            exit 1
-          }
+          $files = Get-ChildItem -File | Where-Object { $_.Name -ne "SHA256SUMS-windows.txt" }
           $hashes = $files | ForEach-Object { (Get-FileHash $_.FullName -Algorithm SHA256).Hash + "  " + $_.Name }
-          $hashes | Out-File -FilePath SHA256SUMS.txt -Encoding utf8
-          Write-Host "SHA256SUMS.txt content:"
-          Get-Content SHA256SUMS.txt
+          $hashes | Out-File -FilePath SHA256SUMS-windows.txt -Encoding utf8
+          Get-Content SHA256SUMS-windows.txt
 
-      # 创建 GitHub Release
-      # <lang zh-CN>标签推送时自动创建 Release；手动触发时从 GITHUB_REF 提取标签或使用 "manual"。</lang>
-      # <lang en>Auto-create Release on tag push; for manual trigger, extract tag from GITHUB_REF or use "manual".</lang>
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-windows
+          path: artifacts/
+
+  # ===== macOS（未签名/未公证，按定案） =====
+  # <lang zh-CN>Electron dmg+zip、Tauri app+dmg；不签名不公证，Gatekeeper 提示写入发布说明。</lang>
+  # <lang en>Electron dmg+zip, Tauri app+dmg; unsigned/unnotarized per decision.</lang>
+  release-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: HIA/tauri/src-tauri
+
+      - name: Build core
+        working-directory: HIA/core
+        run: |
+          npm install
+          npm run build
+
+      - name: Build extractor
+        working-directory: HIA/extractor
+        run: |
+          npm install
+          npm run build
+
+      - name: Build web
+        working-directory: HIA/web
+        run: |
+          npm install
+          npm run build
+
+      # Electron macOS：dmg + zip（未签名）。
+      - name: Build electron (mac)
+        working-directory: HIA/electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          npm install
+          npx electron-builder --mac dmg zip --publish never
+
+      # Tauri macOS：app + dmg（未签名）。
+      - name: Build tauri (mac)
+        working-directory: HIA/tauri
+        run: |
+          npm install
+          npm run build:front
+          npx tauri build --bundles app,dmg
+
+      - name: Collect macOS artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cp HIA/electron/dist/*.dmg artifacts/ 2>/dev/null || true
+          cp HIA/electron/dist/*-mac.zip artifacts/ 2>/dev/null || true
+          cp "HIA/tauri/src-tauri/target/release/bundle/dmg/"*.dmg artifacts/ 2>/dev/null || true
+          ver=$(node -p "require('./HIA/electron/package.json').version")
+          echo "sealed version: $ver"
+          ls -la artifacts/
+          cd artifacts && shasum -a 256 * > SHA256SUMS-macos.txt && cat SHA256SUMS-macos.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-macos
+          path: artifacts/
+
+  # ===== Linux（未签名） =====
+  # <lang zh-CN>Electron AppImage+deb、Tauri AppImage+deb；需系统依赖（webkit2gtk 等）。</lang>
+  # <lang en>Electron AppImage+deb, Tauri AppImage+deb; requires system webkit2gtk deps.</lang>
+  release-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: HIA/tauri/src-tauri
+
+      # Tauri v2 Linux 构建依赖（WebKitGTK 4.1 等）。
+      # <lang en>Tauri v2 Linux build dependencies (WebKitGTK 4.1 etc.).</lang>
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Build core
+        working-directory: HIA/core
+        run: |
+          npm install
+          npm run build
+
+      - name: Build extractor
+        working-directory: HIA/extractor
+        run: |
+          npm install
+          npm run build
+
+      - name: Build web
+        working-directory: HIA/web
+        run: |
+          npm install
+          npm run build
+
+      - name: Build electron (linux)
+        working-directory: HIA/electron
+        run: |
+          npm install
+          npx electron-builder --linux AppImage deb --publish never
+
+      - name: Build tauri (linux)
+        working-directory: HIA/tauri
+        run: |
+          npm install
+          npm run build:front
+          npx tauri build --bundles appimage,deb
+
+      - name: Collect Linux artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cp HIA/electron/dist/*.AppImage artifacts/ 2>/dev/null || true
+          cp HIA/electron/dist/*.deb artifacts/ 2>/dev/null || true
+          cp HIA/tauri/src-tauri/target/release/bundle/appimage/*.AppImage artifacts/ 2>/dev/null || true
+          cp HIA/tauri/src-tauri/target/release/bundle/deb/*.deb artifacts/ 2>/dev/null || true
+          ver=$(node -p "require('./HIA/electron/package.json').version")
+          echo "sealed version: $ver"
+          ls -la artifacts/
+          cd artifacts && sha256sum * > SHA256SUMS-linux.txt && cat SHA256SUMS-linux.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-linux
+          path: artifacts/
+
+  # ===== 汇总发布（三平台产物合并到一个 Release） =====
+  # <lang zh-CN>三平台 job 完成后统一下载产物并创建 Release；任一平台失败则不发布（避免半套产物）。</lang>
+  # <lang en>Aggregates all three platforms into one Release; any platform failure blocks publishing.</lang>
+  publish:
+    needs: [release-windows, release-macos, release-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List collected artifacts
+        run: ls -la artifacts/
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -130,8 +264,19 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            artifacts/*.exe
-            artifacts/*.msi
-            artifacts/SHA256SUMS.txt
+            artifacts/*
+          body: |
+            ### 桌面端产物（三平台）
+
+            | 平台 | 产物 | 签名 |
+            | --- | --- | --- |
+            | Windows | Electron 便携版 + NSIS 安装器、Tauri 便携版 + MSI | 自签名 |
+            | macOS | Electron dmg + zip、Tauri dmg | **未签名/未公证** |
+            | Linux | Electron AppImage + deb、Tauri AppImage + deb | 未签名 |
+
+            **macOS 首次打开**：右键点击应用 → 选择「打开」（或在「系统设置 → 隐私与安全性」中允许）。
+            **Windows** 可能提示「未知发布者」，选择「仍要运行」。
+
+            各平台校验和见 `SHA256SUMS-*.txt`。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

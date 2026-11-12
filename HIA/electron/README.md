@@ -26,4 +26,6 @@ Electron 桌面版（Apache-2.0）。在 `core` 基础上具备额外能力：�
 
 - 便携版：`npm run dist` 经 `electron-builder` 产出 `dist/HIA-Theme-Builder-Electron-<ver>-portable.exe`（内置 Electron 运行时，双击即用，未签名）。
 - 本地依赖 `@hia/theme-core` / `@hia/theme-url-extractor` 经 `file:` 链接，打包时跟随实际内容进入 `app.asar`。
-- GitHub Release `v0.3.0` 上传便携版 + NSIS 安装器（`...-setup.exe`，可选安装目录），附 SHA-256 校验和；窗口与安装器图标为松树主题。
+- **Windows**：GitHub Release 上传便携版 + NSIS 安装器（`...-setup.exe`，可选安装目录），自签名，附 SHA-256 校验和；窗口与安装器图标为松树主题。
+- **macOS**：dmg + zip（**未签名/未公证**）。首次打开需右键 → 打开，或在「系统设置 → 隐私与安全性」中允许。
+- **Linux**：AppImage + deb（未签名；Linux 无强制签名要求）。

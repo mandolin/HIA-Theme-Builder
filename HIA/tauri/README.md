@@ -26,4 +26,6 @@ Tauri 桌面版（MIT，轻量运行时：Rust 后端 + WebView）。在 `core` 
 ## 发布
 
 - 便携版：`npm run build` 后复制 `src-tauri/target/release/HIA Theme Builder.exe` 为 `HIA-Theme-Builder-Tauri-<ver>-portable.exe`。
-- GitHub Release `v0.3.0` 上传便携版 + MSI 安装包（WiX），附 SHA-256 校验和；release 无命令行窗口，窗口/安装器图标为松树主题。
+- **Windows**：GitHub Release 上传便携版 + MSI 安装包（WiX），自签名，附 SHA-256 校验和；release 无命令行窗口，窗口/安装器图标为松树主题。
+- **macOS**：app + dmg（**未签名/未公证**，需 `bundle.icon` 含 icns）。首次打开需右键 → 打开。
+- **Linux**：AppImage + deb（构建需 `libwebkit2gtk-4.1-dev` 等系统依赖；未签名）。
