@@ -4,8 +4,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { quantizeCelebi, quantizerDivergence } from '../src/quantize/celebi.ts';
-import { quantizeMedianCut } from '../src/quantize/median-cut.ts';
+// 导入编译产物而非 .ts 源：Node 原生不支持直接导入 TypeScript（W-tb-P23 celebi 失败根因）。
+//   dist 由 `npm run build` 产出——测试前先构建即可稳定运行（CI 与本地同口径）。
+// <lang en>Import compiled JS, not .ts sources: native Node cannot load TypeScript.</lang>
+import { quantizeCelebi, quantizerDivergence } from '../dist/quantize/celebi.js';
+import { quantizeMedianCut } from '../dist/quantize/median-cut.js';
 
 /** @lang zh-CN 构造若干像素（含一种主导纯色与背景噪声）。 */
 function makePixels(dominant, bg, n = 2000) {
