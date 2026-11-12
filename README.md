@@ -4,18 +4,18 @@ English | [简体中文](README.zh-CN.md)
 
 HIA Theme Builder. Rebuilds the original single-file tool `HIA_theme_manager.html` into a reusable, publishable theme management system based on TypeScript and componentization, with a shared core (`core`) from which the web, Electron and Tauri editions are derived.
 
-**Current release [v0.4.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.4.0)** (2026-11-12): three-end consistent release · [Web app (GitHub Pages)](https://mandolin.github.io/HIA-Theme-Builder/) · [Docs](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [Desktop downloads](https://github.com/mandolin/HIA-Theme-Builder/releases)
+**Current release [v0.5.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.5.0)** (2026-11-13): engineering modernization & release surface · [Web app (GitHub Pages)](https://mandolin.github.io/HIA-Theme-Builder/) · [Docs](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [Desktop downloads](https://github.com/mandolin/HIA-Theme-Builder/releases)
 
 ## Demo
 
 The whole loop, recorded from the production build (auto-generated, re-runnable): pick a primary → generate the color system → baodian combos → six color sources → EN interface → filters → dark mode → exports.
 
-![Demo](promo/demo.gif)
+![Demo](promo/demo-en.gif)
 
 | | |
 | --- | --- |
-| ![Console](promo/screenshots/01-default-light.png) | ![Baodian combos](promo/screenshots/02-baodian-modal.png) |
-| ![Traditional colors](promo/screenshots/04-traditional-colors.png) | ![Dark mode](promo/screenshots/07-dark-mode.png) |
+| ![Console](promo/screenshots/en/01-default-light.png) | ![Baodian combos](promo/screenshots/en/02-baodian-modal.png) |
+| ![Traditional colors](promo/screenshots/en/04-traditional-colors.png) | ![Dark mode](promo/screenshots/en/07-dark-mode.png) |
 
 More stills in [`promo/screenshots/`](promo/screenshots) · Product Hunt gallery art: [`promo/ph-gallery-1270x760.png`](promo/ph-gallery-1270x760.png).
 

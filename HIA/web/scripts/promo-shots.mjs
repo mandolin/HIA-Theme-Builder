@@ -85,6 +85,17 @@ const STEPS=[
   {name:'back-default',hold:1000,run:p=>ui.click(p,'#exportTypeTabs .tab[data-export-mode="default"]'),scroll:'body'},
 ];
 
+// 双语言集（维护者 2026-11-13 指示：英文 README 须配英文界面截图/动图）。
+// <lang zh-CN>zh 集 → promo/screenshots/ + demo.gif；en 集 → promo/screenshots/en/ + demo-en.gif。
+//   EN 场景在 boot 时先切语言，并跳过 zh 集里的 lang-en/lang-back 两步（整个场景保持英文）。</lang>
+// <lang en>zh set → promo/screenshots/ + demo.gif; en set → promo/screenshots/en/ + demo-en.gif.
+//   The EN pass switches language at boot and skips the zh-only language-toggle steps.</lang>
+const LANG_ARG=(()=>{const i=process.argv.indexOf('--lang');return i>0&&process.argv[i+1]?process.argv[i+1]:'both';})();
+const LANGS=LANG_ARG==='both'?['zh','en']:[LANG_ARG];
+const OUT_FOR=lang=>lang==='zh'?OUT_SHOTS:join(OUT_SHOTS,'en');
+const GIF_FOR=lang=>lang==='zh'?OUT_GIF:join(ROOT,'promo','demo-en.gif');
+const stepsFor=lang=>lang==='zh'?STEPS:STEPS.filter(s=>s.name!=='lang-en'&&s.name!=='lang-back');
+
 // 终态截图映射：步骤名 → 截图文件名（1440×900 命名集，7 类全覆盖）。
 const SHOTS={
   'boot':'01-default-light.png',
@@ -97,12 +108,15 @@ const SHOTS={
   'export-tdon':'08-export-tdon.png',
 };
 
-async function runPass(page,viewport){
+async function runPass(page,viewport,lang){
   await page.setViewport(viewport);
   await page.goto('http://127.0.0.1:18996/',{waitUntil:'networkidle2',timeout:30000});
   await page.waitForSelector('#pcPageTitle',{timeout:15000});
+  // EN 集：boot 即切英文（真实点击，i18n 全量生效），随后的所有截图/GIF 帧都是英文界面。
+  // <lang en>EN set: switch to English at boot so every shot/frame is the EN interface.</lang>
+  if(lang==='en')await ui.click(page,'#langToggleBtn');
   const frames=[];
-  for(const step of STEPS){
+  for(const step of stepsFor(lang)){
     // 滚动定位先行：改动区域进入视口，截图与 GIF 帧才有信息量。
     // <lang en>Scroll first so the changing region is in the viewport.</lang>
     if(step.scroll)await page.evaluate(sel=>{document.querySelector(sel)?.scrollIntoView({block:'center'});},step.scroll);
@@ -116,9 +130,9 @@ async function runPass(page,viewport){
     }
     const shotName=SHOTS[step.name];
     if(shotName&&viewport.width>1200){
-      mkdirSync(OUT_SHOTS,{recursive:true});
-      writeFileSync(join(OUT_SHOTS,shotName),await page.screenshot({type:'png'}));
-      console.log(`[shot] ${shotName}`);
+      mkdirSync(OUT_FOR(lang),{recursive:true});
+      writeFileSync(join(OUT_FOR(lang),shotName),await page.screenshot({type:'png'}));
+      console.log(`[shot][${lang}] ${shotName}`);
     }
   }
   return frames;
@@ -147,30 +161,33 @@ function frameToGif(pngBuf,width,height){
 const server=await serveStatic(DIST,18996);
 const browser=await launchBrowser();
 
-// Pass A：终态截图（1440×900）。
-const pageA=await browser.newPage();
-await runPass(pageA,{width:1440,height:900,deviceScaleFactor:1});
-await pageA.close();
-
-// Pass B：GIF 帧（800×500，确定同序列）。
-const pageB=await browser.newPage();
-const frames=await runPass(pageB,{width:800,height:500,deviceScaleFactor:1});
-await pageB.close();
+// 每个语言集：Pass A 截图（1440×900）+ Pass B GIF 帧（800×500），确定性同序列。
+// <lang en>Per language set: Pass A shots + Pass B GIF frames, same deterministic scenario.</lang>
+const passFrames={};
+for(const lang of LANGS){
+  const pageA=await browser.newPage();
+  await runPass(pageA,{width:1440,height:900,deviceScaleFactor:1},lang);
+  await pageA.close();
+  const pageB=await browser.newPage();
+  passFrames[lang]=await runPass(pageB,{width:800,height:500,deviceScaleFactor:1},lang);
+  await pageB.close();
+}
 
 await browser.close();
 server?.close();
 
-// 编码：每帧独立量化（主题色随场景变化，全局调色板会串色）；delay 200ms ≈ 5fps。
+// 编码：每个语言集一个 GIF；每帧独立量化（主题色随场景变化，全局调色板会串色）；delay 200ms ≈ 5fps。
 mkdirSync(join(ROOT,'promo'),{recursive:true});
-const gif=GIFEncoder();
-let totalBytes=0;
-for(const buf of frames){
-  const{index,palette}=frameToGif(buf,800,500);
-  gif.writeFrame(index,800,500,{palette,delay:200});
-  totalBytes+=index.length;
+for(const lang of LANGS){
+  const gif=GIFEncoder();
+  const frames=passFrames[lang];
+  for(const buf of frames){
+    const{index,palette}=frameToGif(buf,800,500);
+    gif.writeFrame(index,800,500,{palette,delay:200});
+  }
+  gif.finish();
+  const out=gif.bytes();
+  writeFileSync(GIF_FOR(lang),out);
+  console.log(`GIF[${lang}]：${frames.length} 帧 / ${(frames.length*0.2).toFixed(1)}s / ${(out.length/1024/1024).toFixed(2)} MB → ${GIF_FOR(lang)}`);
+  if(out.length>8*1024*1024)console.error('⚠ GIF 超过 8MB 目标——考虑降帧或缩尺寸。');
 }
-gif.finish();
-const out=gif.bytes();
-writeFileSync(OUT_GIF,out);
-console.log(`GIF：${frames.length} 帧 / ${(frames.length*0.2).toFixed(1)}s / ${(out.length/1024/1024).toFixed(2)} MB → ${OUT_GIF}`);
-if(out.length>8*1024*1024)console.error('⚠ GIF 超过 8MB 目标——考虑降帧或缩尺寸。');
