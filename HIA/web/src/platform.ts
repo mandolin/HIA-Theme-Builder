@@ -56,7 +56,10 @@ declare global{
   interface Window{
     hiaThemeBridge?:InjectedThemeBridge;
     hia?:LegacyHiaBridge;
+    /** @lang zh-CN Tauri v1 全局注入（旧）。 @lang en Tauri v1 global injection (legacy). */
     __TAURI_INVOKE__?:TauriInvoke;
+    /** @lang zh-CN Tauri v2 全局注入（优先）。 @lang en Tauri v2 global injection (preferred). */
+    __TAURI__?:{core?:{invoke?:TauriInvoke}};
   }
 }
 
@@ -82,7 +85,10 @@ function legacyElectronExplorer():ThemeExplorePort|undefined{
 // <lang zh-CN>取回 V1 原始信号后，经 core 的 toV2Signals + analyzeThemeV2 产出 V2 报告，失败抛中文错误。</lang>
 // <lang en>Pulls V1 signals then runs core's toV2Signals + analyzeThemeV2 for the V2 report; throws a localized error.</lang>
 function tauriExplorer():ThemeExplorePort|undefined{
-  const invoke=window.__TAURI_INVOKE__;
+  // 桥接双通道（ADR-008）：v2 走 __TAURI__.core.invoke，v1 回退 __TAURI_INVOKE__。
+  //   v1 已在主线停止维护，双通道保证升级期与回滚期前端均可工作。
+  // <lang en>Dual-channel bridge (ADR-008): v2 via __TAURI__.core.invoke, falling back to v1's global.</lang>
+  const invoke=window.__TAURI__?.core?.invoke??window.__TAURI_INVOKE__;
   if(!invoke)return undefined;
   return{async exploreUrl(url:string){
     const response=await invoke('extract_signals',{url})as TauriSignalSuccess|TauriSignalFailure;

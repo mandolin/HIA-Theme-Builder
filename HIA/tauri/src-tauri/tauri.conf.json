@@ -1,30 +1,16 @@
 {
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "HIA Theme Builder",
+  "version": "0.4.0",
+  "identifier": "com.hia.theme-builder",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build:front",
-    "devPath": "dist",
-    "distDir": "dist",
-    "withGlobalTauri": true
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "dist"
   },
-  "package": {
-    "productName": "HIA Theme Builder",
-    "version": "0.4.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "shell": { "open": true },
-      "dialog": { "all": true }
-    },
-    "bundle": {
-      "active": true,
-      "targets": ["msi"],
-      "identifier": "com.hia.theme-builder",
-      "icon": ["icons/icon.ico"],
-      "windows": {
-        "certificateThumbprint": "E68466AD564223C2B5E9FEA02BBE9166D9A39DA6"
-      }
-    },
+  "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "HIA 主题构建器 · Tauri",
@@ -35,6 +21,14 @@
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi"],
+    "icon": ["icons/icon.ico"],
+    "windows": {
+      "certificateThumbprint": "E68466AD564223C2B5E9FEA02BBE9166D9A39DA6"
     }
   }
 }
