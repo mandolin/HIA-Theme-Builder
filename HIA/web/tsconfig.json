@@ -13,5 +13,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src/main.ts", "src/app.ts", "src/platform.ts", "src/dom.ts", "src/public-api.ts", "vite.config.ts"]
+  "include": ["src/main.ts", "src/app.ts", "src/platform.ts", "src/tdon-connector.ts", "src/raw-modules.d.ts", "src/dom.ts", "src/public-api.ts", "vite.config.ts"]
 }

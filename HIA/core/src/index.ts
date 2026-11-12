@@ -106,3 +106,26 @@ export{toV2Signals}from'./analyze/v1-compat.js';
 // <lang zh-CN>P3 跨端共用的主题分析实现，输入 V2 信号，输出可读分析报告。</lang>
 // <lang en>P3 cross-end theme analysis: takes V2 signals, emits explainable report.</lang>
 export{analyzeThemeV2,clusterEvidence}from'./analyze/analyze-v2.js';
+
+// TDON 运行时（`W-tb-P26` / 规范 `tdon-0.1`）：类型、校验、令牌解析、预览渲染、导出适配器。
+// <lang zh-CN>校验器零依赖、纯函数；连接器（取回/文件读取）由各端 UI 层实现，core 不做 IO。</lang>
+// <lang en>Zero-dependency pure validator; connectors (fetch/file read) live in each runtime's UI layer — core stays IO-free.</lang>
+export{
+  TDON_SPEC_VERSION,TDON_MAX_BYTES,TDON_MAX_ISSUES,TDON_MAX_PREVIEW_NODES,TDON_MAX_NODES_TOTAL,TDON_NODE_TYPES
+}from'./tdon/types.js';
+export type{
+  TdonDocument,TdonTarget,TdonTokens,TdonTokensInclude,TdonPreview,TdonPreviewLayout,TdonNode,TdonNodeType,
+  TdonExportManifest,TdonExportFile,TdonConstraints,TdonContrastRule,TdonEffect
+}from'./tdon/types.js';
+export{tdonError,tdonWarning,isTdonWarning}from'./tdon/issues.js';
+export type{TdonIssue,TdonIssueCode,TdonValidationResult}from'./tdon/issues.js';
+export{checkTdonPath,isDangerousKey,TDON_MAX_PATH_LENGTH}from'./tdon/paths.js';
+export type{TdonPathCheck}from'./tdon/paths.js';
+export{
+  resolveTdonToken,isTdonTokenSyntax,listTdonColorRoles,listTdonTokens,tdonBuiltinTokensCss,tdonCustomShades
+}from'./tdon/resolve.js';
+export type{TdonTokenResult}from'./tdon/resolve.js';
+export{parseTdonDocument}from'./tdon/validate.js';
+export type{TdonParseResult}from'./tdon/validate.js';
+export{renderTdonPreview,escapeTdonHtml,TDON_PREVIEW_CSS}from'./tdon/render.js';
+export{createTdonExportTarget,describeTdonFiles}from'./tdon/export.js';

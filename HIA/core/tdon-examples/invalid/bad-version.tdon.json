@@ -1,0 +1,15 @@
+{
+  "specVersion": "tdon-9.9",
+  "target": {
+    "id": "a-b",
+    "name": "x"
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": "a.css",
+        "template": "x"
+      }
+    ]
+  }
+}

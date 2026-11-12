@@ -19,11 +19,14 @@ import{
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
-  type WebsiteThemeAnalysisV2
+  type WebsiteThemeAnalysisV2,
+  parseTdonDocument,renderTdonPreview,createTdonExportTarget,describeTdonFiles,TDON_PREVIEW_CSS,TDON_SPEC_VERSION,
+  type TdonDocument,type TdonValidationResult,type TdonIssue
 }from'@hia/theme-core';
 import{zipSync,strToU8}from'fflate';
 import{all,byId,inputValue,setInputValue,setText}from'./dom.js';
 import{t,setLocale,getLocale,applyAll}from'./i18n/index.js';
+import{fetchTdonFromUrl,readTdonFromFile}from'./tdon-connector.js';
 import type{ThemeManagerPlatform}from'./platform.js';
 
 // 操作台对宿主暴露的控制句柄：读取草稿/主题、应用外部草稿、销毁。
@@ -196,6 +199,19 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   let classicTargetId:'wordpress-child'|'tailwind-config'='wordpress-child';
   let exportTargetId='wordpress-child';
   let tdonSource:'url'|'local'='url';
+  // TDON 运行时状态（`W-tb-P26`）：已连接文档、校验结果、来源标签与进行中标志。
+  // <lang zh-CN>tdonDoc 非空即"已注册"；tdonResult 常驻保存错误/警告（连接失败时最需要）。
+  //   文档与校验结果分开保存——主题变更后可只重跑校验而不重新取回（TDON-8.3）。</lang>
+  // <lang en>tdonDoc non-null means "registered"; tdonResult keeps issues for persistent display.
+  //   Keeping doc and result separate lets a theme change re-validate without re-fetching (TDON-8.3).</lang>
+  let tdonDoc:TdonDocument|null=null;
+  let tdonResult:TdonValidationResult|null=null;
+  let tdonSourceLabel='';
+  let tdonConnecting=false;
+  // TDON 导出区当前选中文件（与经典导出的 selectedExportFile 相互独立，避免两个 Tab 互相干扰）。
+  // <lang zh-CN>两个 Tab 的产物来源不同，共用一个选中态会导致切换后错位。</lang>
+  // <lang en>The two tabs draw from different sources; sharing one selection would misalign on switch.</lang>
+  let selectedTdonFile:string|null=null;
   // 导出文件树当前选中文件（null=未选中，仅展示清单）。
   // <lang zh-CN>点击清单行后显示对应文件内容预览。</lang>
   // <lang en>After clicking a tree row its content shows in the preview pane.</lang>
@@ -718,8 +734,20 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     previewMode=mode;
     all<HTMLButtonElement>('#previewTypeSwitch .seg').forEach(btn=>btn.classList.toggle('active',btn.dataset.previewMode===mode));
     byId<HTMLElement>('classicTargetSelect').hidden=mode!=='classic';
-    byId<HTMLElement>('tdonSourceSelect').hidden=mode!=='tdon';
-    byId<HTMLButtonElement>('tdonConnectBtn').hidden=mode!=='tdon';
+    // TDON 控件组（`W-tb-P26`）：源选择、URL 输入、文件选择、连接/示例按钮随模式显示。
+    // <lang zh-CN>URL/本地两种子模式的输入控件互斥显隐，避免同时出现两个入口。</lang>
+    // <lang en>URL and local sub-modes show mutually exclusive inputs, never two entries at once.</lang>
+    const tdonMode=mode==='tdon';
+    byId<HTMLElement>('tdonSourceSelect').hidden=!tdonMode;
+    byId<HTMLElement>('tdonUrlInput').hidden=!tdonMode||tdonSource!=='url';
+    byId<HTMLElement>('tdonFileLabel').hidden=!tdonMode||tdonSource!=='local';
+    byId<HTMLElement>('tdonFileName').hidden=!tdonMode||tdonSource!=='local';
+    byId<HTMLButtonElement>('tdonConnectBtn').hidden=!tdonMode;
+    byId<HTMLButtonElement>('tdonLoadExampleBtn').hidden=!tdonMode;
+    // 断开按钮仅在已连接时出现（无连接时点它没有意义）。
+    // <lang zh-CN>与"连接"并列，避免用户找不到退出口。</lang>
+    // <lang en>Sits beside Connect so users always have an exit.</lang>
+    byId<HTMLButtonElement>('tdonDisconnectBtn').hidden=!tdonMode||!tdonDoc;
     byId<HTMLElement>('pcPreviewPanel').style.display=mode==='default'?'block':'none';
     byId<HTMLElement>('wxPreviewPanel').style.display=mode==='default'?'block':'none';
     byId<HTMLElement>('classicPreviewPanel').hidden=mode!=='classic';
@@ -735,6 +763,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     byId<HTMLElement>('exportViewDefault').hidden=mode!=='default';
     byId<HTMLElement>('exportViewClassic').hidden=mode!=='classic';
     byId<HTMLElement>('exportViewTdon').hidden=mode!=='tdon';
+    // 切到 TDON Tab 时按当前状态重绘（文件树不缓存，主题变更后需重算）。
+    // <lang zh-CN>仅在进入该 Tab 时重绘，避免每次切 Tab 都做无谓计算。</lang>
+    // <lang en>Redraws only when entering this tab, avoiding useless work on every switch.</lang>
+    if(mode==='tdon')renderTdonExport();
   }
 
   // 渲染经典支持场景预览：WordPress（前台 + 后台）或 Tailwind 落地页 mock。
@@ -801,15 +833,162 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     setText('classicTargetLabel',classicTargetId==='wordpress-child'?t('p9.classic.target.wp'):t('p9.classic.target.tw'));
   }
 
-  // 渲染 TDON 自定义支持面板占位（运行时延后）：说明连接器管线与规范出处。
-  // <lang zh-CN>连接按钮保持禁用（HTML disabled），不提供假交互。</lang>
-  // <lang en>The connect button stays disabled (HTML disabled); no fake interactions.</lang>
-  function renderTdonPreview(){
-    byId<HTMLElement>('tdonPreviewBody').innerHTML=`<div class="tdon-placeholder"><b>${t('p9.tdon.placeholder.title')}</b><p>${t('p9.tdon.placeholder.desc')}</p></div>`;
-    // 状态标签回显当前选中的源子 Tab（url/local），连接按钮保持禁用。
-    // <lang zh-CN>让"源子 Tab"状态可见，连接器接入后沿用同一状态位。</lang>
-    // <lang en>Makes the source sub-tab choice visible; the connector reuses this state once it lands.</lang>
-    setText('tdonStatusLabel',`${t('p9.tdon.status.pending')} · ${tdonSource==='url'?t('p9.tdon.source.url'):t('p9.tdon.source.local')}`);
+  // 渲染 TDON 面板（`W-tb-P26`）：未连接显示管线说明；已连接渲染预览 + 问题清单。
+  // <lang zh-CN>预览用 renderTdonPreview（纯函数，令牌实时解析），因此主题/令牌变更后重绘即生效；
+  //   问题清单常驻展示 errors/warnings，连接失败时也能看到具体到节点路径的原因。</lang>
+  // <lang en>Unconnected shows the pipeline note; connected renders the preview plus the issue list.
+  //   The preview is a pure function over live tokens, so re-rendering applies theme changes instantly;
+  //   issues persist so even a failed connection shows node-level paths.</lang>
+  function renderTdonPanel(){
+    const body=byId<HTMLElement>('tdonPreviewBody');
+    const issuesWrap=byId<HTMLElement>('tdonIssuesWrap');
+    // 未连接：说明 + 规范版本（避免"空白面板"让人怀疑功能坏了）。
+    // <lang zh-CN>提示里带上当前规范版本，便于用户核对文件版本串。</lang>
+    // <lang en>Shows the current spec version so users can compare their file's specVersion.</lang>
+    if(!tdonDoc){
+      body.innerHTML=`<div class="tdon-placeholder"><b>${t('p9.tdon.placeholder.title')}</b><p>${t('p9.tdon.placeholder.desc')}</p><p class="small">${t('p9.tdon.specVersion',{v:TDON_SPEC_VERSION})}</p></div>`;
+      issuesWrap.innerHTML=tdonResult?renderTdonIssues(tdonResult):'';
+      setText('tdonStatusLabel',tdonSourceLabel?t('p9.tdon.status.failed',{source:tdonSourceLabel}):`${t('p9.tdon.status.pending')} · ${tdonSource==='url'?t('p9.tdon.source.url'):t('p9.tdon.source.local')}`);
+      return;
+    }
+    // 已连接：预览 HTML + 目标元信息。
+    // <lang zh-CN>预览为空（无 preview 声明）时给出说明——合法但无预览是允许的组合。</lang>
+    // <lang en>An empty preview (no preview block) is legal; explain rather than show a blank area.</lang>
+    const html=tdonDoc.preview?renderTdonPreviewView(tdonDoc):`<div class="tdon-placeholder"><p>${t('p9.tdon.noPreview')}</p></div>`;
+    const meta=`<div class="tdon-meta"><b>${escapeHtml(tdonDoc.target.name)}</b><span class="small">${tdonDoc.target.nameEn!==tdonDoc.target.name?escapeHtml(tdonDoc.target.nameEn):''}</span>${tdonDoc.target.author?`<span class="small">· ${escapeHtml(tdonDoc.target.author)}</span>`:''}<span class="small">· ${t('p9.tdon.exportCount',{n:String(tdonDoc.exportManifest.files.length)})}</span></div>`;
+    body.innerHTML=meta+html;
+    issuesWrap.innerHTML=tdonResult?renderTdonIssues(tdonResult):'';
+    setText('tdonStatusLabel',t('p9.tdon.status.ok',{source:tdonSourceLabel}));
+  }
+
+  // 调用 core 渲染器生成预览 HTML（包装一次以便统一注入样式表）。
+  // <lang zh-CN>样式表为 core 常量（TDON_PREVIEW_CSS），不含任何用户输入拼接。</lang>
+  // <lang en>The stylesheet is a core constant (TDON_PREVIEW_CSS) with no user-input concatenation.</lang>
+  function renderTdonPreviewView(doc:TdonDocument):string{
+    ensureTdonStyle();
+    return renderTdonPreview(doc,theme());
+  }
+
+  // 注入 TDON 预览样式表（幂等，仅首次插入）。
+  // <lang zh-CN>用固定 id 判定，避免主题重绘时重复插入多条 style。</lang>
+  // <lang en>Guarded by a fixed id so theme re-renders never stack duplicate style tags.</lang>
+  function ensureTdonStyle(){
+    if(document.getElementById('tdonPreviewStyle'))return;
+    const style=document.createElement('style');
+    style.id='tdonPreviewStyle';
+    style.textContent=TDON_PREVIEW_CSS;
+    document.head.appendChild(style);
+  }
+
+  // 渲染校验问题清单：错误与警告分组，各条含定位路径。
+  // <lang zh-CN>超过上限时提示"仍有未列出问题"（truncated）；路径用等宽字体便于对照 JSON。</lang>
+  // <lang en>Notes truncation when the cap is hit; paths use a monospace face for JSON cross-reference.</lang>
+  function renderTdonIssues(result:TdonValidationResult):string{
+    if(result.errors.length===0&&result.warnings.length===0)return'';
+    const row=(issue:TdonIssue,isWarn:boolean)=>`<li class="tdon-issue ${isWarn?'is-warn':'is-error'}"><span class="tdon-issue-code">${issue.code}</span><code class="tdon-issue-path">${escapeHtml(issue.path)}</code><span class="tdon-issue-msg">${escapeHtml(getLocale()==='en'?issue.messageEn:issue.message)}</span></li>`;
+    const errors=result.errors.length>0?`<div class="tdon-issue-group"><b>${t('p9.tdon.errors',{n:String(result.errors.length)})}</b><ul>${result.errors.map(e=>row(e,false)).join('')}</ul></div>`:'';
+    const warnings=result.warnings.length>0?`<div class="tdon-issue-group"><b>${t('p9.tdon.warnings',{n:String(result.warnings.length)})}</b><ul>${result.warnings.map(w=>row(w,true)).join('')}</ul></div>`:'';
+    const truncated=result.truncated?`<p class="small tdon-issue-truncated">${t('p9.tdon.truncated')}</p>`:'';
+    return`<div class="tdon-issues">${errors}${warnings}${truncated}</div>`;
+  }
+
+  // 连接 TDON：按来源取回文本 → 解析校验 → 成功则注册（设置 tdonDoc）并刷新预览与导出树。
+  // <lang zh-CN>任何失败都清空 tdonDoc（避免旧文档继续生效造成误解），但保留 tdonResult 供面板展示。</lang>
+  // <lang en>Any failure clears tdonDoc (so a stale doc cannot keep applying) while keeping tdonResult for display.</lang>
+  async function connectTdon(){
+    if(tdonConnecting)return;
+    // 取源：URL 读输入框，本地读已选文件（未选则提示）。
+    // <lang zh-CN>两种来源都先取文本，再走同一解析路径——保证校验口径一致。</lang>
+    // <lang en>Both sources fetch text first and share one parse path, keeping validation identical.</lang>
+    let fetched;
+    if(tdonSource==='url'){
+      const url=inputValue('tdonUrlInput').trim();
+      if(!url){setText('tdonStatusLabel',t('p9.tdon.err.noUrl'));return;}
+      tdonConnecting=true;
+      setText('tdonStatusLabel',t('p9.tdon.status.loading'));
+      try{fetched=await fetchTdonFromUrl(url,platform.fetchText);}finally{tdonConnecting=false;}
+    }else{
+      const input=byId<HTMLInputElement>('tdonFileInput');
+      const file=input.files?.[0];
+      if(!file){setText('tdonStatusLabel',t('p9.tdon.err.noFile'));return;}
+      setText('tdonStatusLabel',t('p9.tdon.status.loading'));
+      fetched=await readTdonFromFile(file);
+    }
+    // 取回失败：清空文档，记录来源与结果（null 结果表示"没走到解析"）。
+    // <lang zh-CN>界面同时给出原因，避免只看到"失败"两个字。</lang>
+    // <lang en>The reason is shown too, never just the word "failed".</lang>
+    if(!fetched.ok){
+      tdonDoc=null;
+      tdonSourceLabel=fetched.source;
+      tdonResult={ok:false,errors:[{code:'E_JSON',path:'$',message:fetched.reason,messageEn:fetched.reason}],warnings:[],truncated:false};
+      // 两个面板都要重绘：只重绘预览会让导出区继续显示上一个目标的文件树与可点下载按钮。
+      // <lang zh-CN>导出区残留旧产物会让用户以为"连接失败但仍可导出"，属误导性状态。</lang>
+      // <lang en>Redrawing both matters: leaving the export pane stale implies "connect failed but you can still
+      //   export", which is misleading.</lang>
+      renderTdonPanel();renderTdonExport();
+      return;
+    }
+    tdonSourceLabel=fetched.source;
+    // 解析 + 校验 + 注册统一走 applyTdonText（与示例加载同一入口，防止口径分叉）。
+    // <lang zh-CN>失败时该函数自行清空文档并渲染问题清单。</lang>
+    // <lang en>That function clears the doc and renders the issue list on failure.</lang>
+    applyTdonText(fetched.text,fetched.source);
+  }
+
+  // 断开 TDON：清空状态并重绘两个面板。
+  // <lang zh-CN>导出区回到空说明态，避免残留上一个目标的文件树。</lang>
+  // <lang en>The export pane returns to the empty note so no stale tree lingers.</lang>
+  function disconnectTdon(){
+    tdonDoc=null;tdonResult=null;tdonSourceLabel='';selectedTdonFile=null;
+    renderTdonPanel();renderTdonExport();
+  }
+
+  // 加载内置示例（vitepress 文档站），用于无网络时快速体验。
+  // <lang zh-CN>示例文本来源于 core 的 tdon-examples（打包时由 Vite 以 ?raw 内联为字符串），
+  //   随后走与连接器完全相同的解析校验入口，避免两条路径的校验口径分叉。</lang>
+  // <lang en>Example text comes from core's tdon-examples (inlined as a string via Vite `?raw`), then goes
+  //   through exactly the same parse/validate entry as the connector so the two paths cannot diverge.</lang>
+  async function loadTdonExample(){
+    try{
+      // `?raw` 让 Vite 把示例 JSON 内联为字符串（无需网络与文件选择）。
+      // <lang zh-CN>路径指向 core 包内示例，保持"示例即文档"的单一来源。</lang>
+      // <lang en>The path targets the example inside the core package, keeping examples as the single source.</lang>
+      const mod=await import('../../core/tdon-examples/vitepress-docs.tdon.json?raw');
+      const text=String((mod as {default:string}).default??'');
+      applyTdonText(text,'vitepress-docs.tdon.json');
+    }catch(e){
+      tdonDoc=null;
+      tdonResult={ok:false,errors:[{code:'E_JSON',path:'$',message:`示例加载失败：${e instanceof Error?e.message:String(e)}`,messageEn:`Example load failed: ${e instanceof Error?e.message:String(e)}`}],warnings:[],truncated:false};
+      tdonSourceLabel='vitepress-docs.tdon.json';
+      renderTdonPanel();renderTdonExport();
+    }
+  }
+
+  // 把已取回的文本走完"JSON 解析 → 校验 → 注册"（连接器与示例共用）。
+  // <lang zh-CN>抽取为单独函数是必要的：示例路径曾漏掉 JSON.parse，直接把字符串交给校验器，
+  //   得到 E_NOT_OBJECT 而不是示例内容——两条路径必须共用同一入口。</lang>
+  // <lang en>Extracted deliberately: the example path once skipped JSON.parse and handed a raw string to the
+  //   validator, yielding E_NOT_OBJECT; both paths must share this single entry.</lang>
+  function applyTdonText(text:string,sourceLabel:string){
+    tdonSourceLabel=sourceLabel;
+    // JSON 语法错误单独成类（E_JSON），与结构校验错误区分。
+    // <lang zh-CN>带出引擎给出的位置描述，便于定位。</lang>
+    // <lang en>Carries the engine's position text for easy location.</lang>
+    let raw:unknown;
+    try{raw=JSON.parse(text);}catch(e){
+      tdonDoc=null;
+      tdonResult={ok:false,errors:[{code:'E_JSON',path:'$',message:`JSON 解析失败：${e instanceof Error?e.message:String(e)}`,messageEn:`JSON parse failed: ${e instanceof Error?e.message:String(e)}`}],warnings:[],truncated:false};
+      renderTdonPanel();renderTdonExport();
+      return;
+    }
+    // 结构 + 令牌 + 对比度三重校验（传入当前主题以获得完整判定）。
+    // <lang zh-CN>校验失败不注册文档（TDON-1.3）。</lang>
+    // <lang en>A failed validation never registers the document (TDON-1.3).</lang>
+    const parsed=parseTdonDocument(raw,{theme:theme()});
+    tdonResult=parsed.result;
+    tdonDoc=parsed.doc??null;
+    selectedTdonFile=null;
+    renderTdonPanel();renderTdonExport();
   }
 
   // 渲染导出文件树：目标产物清单（路径 + 字节）+ 选中文件内容预览 + ZIP 名回显。
@@ -863,6 +1042,81 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       setText('exportZipName',t('p9.export.zip.done',{name:target.archiveName(theme()),count:files.length}));
     }catch{
       platform.alert(t('p9.export.zip.fail'));
+    }
+  }
+
+  // 渲染 TDON 导出区（`W-tb-P26`）：已连接时列出该目标的文件树 + 选中内容 + ZIP 名；未连接显示说明。
+  // <lang zh-CN>清单来自 createTdonExportTarget(...).files(theme())，与 ZIP 内容同源；
+  //   但为避免大模板每行都现算，仅对选中项求内容（describeTdonFiles 提供路径与来源）。</lang>
+  // <lang en>The list comes from the same generator as the ZIP; to avoid expanding every large template,
+  //   only the selected entry is rendered, while describeTdonFiles supplies paths and provenance.</lang>
+  function renderTdonExport(){
+    const empty=byId<HTMLElement>('tdonExportEmpty');
+    const tree=byId<HTMLElement>('exportTdonFileTree');
+    const preview=byId<HTMLTextAreaElement>('exportTdonFilePreview');
+    const zipBtn=byId<HTMLButtonElement>('exportTdonZipBtn');
+    // 未连接：显示说明并禁用下载按钮（不提供无效操作）。
+    // <lang zh-CN>隐藏树与预览，避免残留上一目标内容。</lang>
+    // <lang en>Tree and preview are hidden so no stale target content lingers.</lang>
+    if(!tdonDoc){
+      empty.hidden=false;tree.hidden=true;preview.hidden=true;zipBtn.disabled=true;
+      // 清空 DOM 而不只是隐藏：隐藏节点仍留在页面里，读屏软件与"查看页面结构"仍会看到旧目标的路径。
+      // <lang zh-CN>清空同时消除"下载失败但仍显示旧文件名"的误导。</lang>
+      // <lang en>Cleared, not just hidden: hidden nodes still expose stale paths to screen readers and DOM
+      //   inspection, and the old ZIP name would wrongly suggest a downloadable target.</lang>
+      tree.innerHTML='';
+      preview.value='';
+      selectedTdonFile=null;
+      setText('tdonExportTargetLabel','');
+      setText('exportTdonZipName','');
+      return;
+    }
+    empty.hidden=true;tree.hidden=false;zipBtn.disabled=false;
+    const desc=describeTdonFiles(tdonDoc);
+    // 选中回落：未选中或已失效时取第一个。
+    // <lang zh-CN>与经典导出同一交互约定。</lang>
+    // <lang en>Same interaction convention as the classic export.</lang>
+    if(!selectedTdonFile||!desc.some(d=>d.path===selectedTdonFile))selectedTdonFile=desc[0]?.path??null;
+    tree.innerHTML=desc.map(d=>{
+      const sizeLabel=d.source==='builtin'?t('p9.tdon.builtinBadge'):(d.bytes<1024?`${d.bytes} B`:`${(d.bytes/1024).toFixed(1)} KB`);
+      return`<button type="button" class="export-file-row ${d.path===selectedTdonFile?'active':''}" data-tdon-file="${escapeHtml(d.path)}"><i class="export-file-icon" aria-hidden="true"></i><span>${escapeHtml(d.path)}</span><span class="export-file-size">${sizeLabel}</span></button>`;
+    }).join('');
+    // 选中项内容：现算（模板展开后才是真实产物，用户需要看到插值结果）。
+    // <lang zh-CN>求值失败（如主题变更导致令牌缺失）时展示错误而非空白。</lang>
+    // <lang en>On failure (e.g. a theme change removed a token) the error is shown, not a blank pane.</lang>
+    const target=createTdonExportTarget(tdonDoc);
+    let content='';
+    try{
+      content=target.files(theme()).find(f=>f.path===selectedTdonFile)?.content??'';
+    }catch(e){
+      content=`/* ${t('p9.tdon.exportFail',{reason:e instanceof Error?e.message:String(e)})} */`;
+    }
+    preview.hidden=false;preview.value=content;
+    setText('tdonExportTargetLabel',`${tdonDoc.target.name} · ${tdonDoc.target.id}`);
+    setText('exportTdonZipName',target.archiveName(theme()));
+    all<HTMLButtonElement>('[data-tdon-file]',tree).forEach(btn=>btn.addEventListener('click',()=>{
+      selectedTdonFile=btn.dataset.tdonFile||null;
+      renderTdonExport();
+    }));
+  }
+
+  // 下载 TDON 目标 ZIP（与经典导出同一 fflate 路径，产物来自 createTdonExportTarget）。
+  // <lang zh-CN>失败时 alert 出具体原因（如令牌不可解析），不吞错。</lang>
+  // <lang en>Failures alert the specific cause (e.g. unresolvable token) instead of being swallowed.</lang>
+  function downloadTdonZip(){
+    if(!tdonDoc)return;
+    const target=createTdonExportTarget(tdonDoc);
+    try{
+      const files=target.files(theme());
+      const zipped=zipSync(Object.fromEntries(files.map(f=>[f.path,strToU8(f.content)])));
+      const url=URL.createObjectURL(new Blob([zipped],{type:'application/zip'}));
+      const a=document.createElement('a');
+      a.href=url;a.download=target.archiveName(theme());
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      setText('exportTdonZipName',t('p9.export.zip.done',{name:target.archiveName(theme()),count:String(files.length)}));
+    }catch(e){
+      platform.alert(t('p9.tdon.exportFail',{reason:e instanceof Error?e.message:String(e)}));
     }
   }
 
@@ -2345,7 +2599,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       // <lang en>Reuses the same render chain so every panel re-renders in the new locale; `W-tb-P9` panels
       //   (typography console / classic mocks / TDON placeholder / preview hint) re-render too.</lang>
       syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();
-      renderTypography();renderClassicPreview();renderTdonPreview();applyPreviewMode(previewMode);renderExportTree();
+      renderTypography();renderClassicPreview();renderTdonPanel();applyPreviewMode(previewMode);renderExportTree();
       renderRemoteSources();renderRemoteList();renderHarmony();
       byId<HTMLButtonElement>('langToggleBtn').textContent=t('lang.switch');
       document.documentElement.lang=next;
@@ -2552,10 +2806,36 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>枚举校验后记录 classicTargetId。</lang>
     // <lang en>Records classicTargetId after enum validation.</lang>
     byId<HTMLSelectElement>('classicTargetSelect').addEventListener('change',()=>{const v=byId<HTMLSelectElement>('classicTargetSelect').value;if(v==='wordpress-child'||v==='tailwind-config')classicTargetId=v;renderClassicPreview();});
-    // TDON 源子 Tab：仅记录选择；连接按钮按规划延后（保持禁用），不提供假交互。
-    // <lang zh-CN>url/local 两源；后续接入 SSRF 管线/本地文件读取。</lang>
-    // <lang en>url/local sources; the SSRF pipeline / local-file read lands with the runtime.</lang>
-    byId<HTMLSelectElement>('tdonSourceSelect').addEventListener('change',()=>{const v=byId<HTMLSelectElement>('tdonSourceSelect').value;if(v==='url'||v==='local'){tdonSource=v;renderTdonPreview();}});
+    // TDON 源子 Tab：切换输入控件显隐并重绘（连接状态保持，不因切换源而丢失已加载文档）。
+    // <lang zh-CN>已连接的文档属于"上一次操作结果"，切换来源不应把它清掉。</lang>
+    // <lang en>A connected document is the result of a previous action; switching source must not clear it.</lang>
+    byId<HTMLSelectElement>('tdonSourceSelect').addEventListener('change',()=>{const v=byId<HTMLSelectElement>('tdonSourceSelect').value;if(v==='url'||v==='local'){tdonSource=v;applyPreviewMode(previewMode);}});
+    // 连接按钮：取回 → 解析校验 → 注册（`W-tb-P26`）。
+    // <lang zh-CN>见 connectTdon；按钮在连接期间由 tdonConnecting 防重复。</lang>
+    // <lang en>See connectTdon; tdonConnecting guards duplicate clicks.</lang>
+    byId<HTMLButtonElement>('tdonConnectBtn').addEventListener('click',()=>{void connectTdon();});
+    // 加载内置示例：无需网络与文件选择即可体验完整链路。
+    // <lang zh-CN>示例来自 core 包内 tdon-examples（单一来源）。</lang>
+    // <lang en>Examples come from core's tdon-examples (single source).</lang>
+    byId<HTMLButtonElement>('tdonLoadExampleBtn').addEventListener('click',()=>{void loadTdonExample();});
+    // 断开：清空已连接文档与校验结果，面板回到未连接说明态。
+    // <lang zh-CN>断开后按钮自身也随之隐藏（由 applyPreviewMode 统一刷新显隐）。</lang>
+    // <lang en>The button hides itself afterwards (visibility is refreshed by applyPreviewMode).</lang>
+    byId<HTMLButtonElement>('tdonDisconnectBtn').addEventListener('click',()=>{disconnectTdon();applyPreviewMode(previewMode);});
+    // 本地文件选择：回显文件名（不自动连接——用户确认后再点连接，避免误触读取）。
+    // <lang zh-CN>回显同时清空历史校验结果，避免"新文件配旧错误"的错位。</lang>
+    // <lang en>Echoing the name also clears stale results so a new file never shows old errors.</lang>
+    byId<HTMLInputElement>('tdonFileInput').addEventListener('change',()=>{
+      const f=byId<HTMLInputElement>('tdonFileInput').files?.[0];
+      const label=byId<HTMLElement>('tdonFileName');
+      label.textContent=f?f.name:'';
+      label.hidden=!f;
+      if(f){tdonResult=null;}
+    });
+    // TDON 导出区 ZIP 下载。
+    // <lang zh-CN>与经典导出的 downloadZip 分开实现，便于各自报告失败原因。</lang>
+    // <lang en>Separate from the classic downloadZip so each can report its own failure cause.</lang>
+    byId<HTMLButtonElement>('exportTdonZipBtn').addEventListener('click',downloadTdonZip);
     // 导出三 Tab：手动切换（默认/经典/自定义）。
     // <lang zh-CN>与预览联动独立：预览切换会跟随导出 Tab，导出切换不回写预览。</lang>
     // <lang en>Independent of preview linkage: preview follows export mode, but export clicks do not rewrite preview mode.</lang>
@@ -2654,7 +2934,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // `W-tb-P9` 首轮渲染：字体/间距操作台、经典 mock、TDON 占位、预览类型（默认）与导出文件树。
     // <lang zh-CN>applyPreviewMode 内部联动导出 Tab；经典 mock 依赖已注入变量，置于其后。</lang>
     // <lang en>applyPreviewMode links the export tabs; classic mocks need injected vars, hence placed after.</lang>
-    renderTypography();renderClassicPreview();renderTdonPreview();applyPreviewMode('default');renderExportTree();
+    renderTypography();renderClassicPreview();renderTdonPanel();applyPreviewMode('default');renderExportTree();
     // `W-tb-P10` 首轮渲染：市场子 Tab（默认本地）、远程源列表与分享 hash 还原。
     // <lang zh-CN>restoreFromHash 须在表单/渐变/候选初始化之后执行；还原后清 hash 防刷新重复。</lang>
     // <lang en>restoreFromHash runs after form/gradient/candidate init; the hash is stripped to avoid re-restore.</lang>

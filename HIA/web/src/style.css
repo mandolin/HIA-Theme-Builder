@@ -219,6 +219,26 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .tdon-placeholder b{display:block;margin-bottom:4px}
 .tdon-placeholder p{margin:0;color:var(--muted)}
 
+/* TDON 运行时面板（`W-tb-P26`）：目标元信息、校验问题清单与导出工具条。
+   TDON runtime panel: target meta, validation issue list and export toolbar. */
+.tdon-meta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:8px 12px;margin-bottom:10px;border-radius:8px;background:var(--p50);border:1px solid var(--line);font-size:12px}
+.tdon-meta b{font-size:13px}
+.tdon-issues{margin-bottom:12px;font-size:12px}
+.tdon-issue-group{margin-bottom:8px}
+.tdon-issue-group > b{display:block;margin-bottom:4px}
+.tdon-issue-group ul{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.tdon-issue{display:flex;gap:8px;align-items:baseline;padding:6px 9px;border-radius:6px;line-height:1.55;flex-wrap:wrap}
+.tdon-issue.is-error{background:#FEF2F2;border:1px solid #FECACA}
+.tdon-issue.is-warn{background:#FFFBEB;border:1px solid #FDE68A}
+.tdon-issue-code{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:#B91C1C;white-space:nowrap}
+.tdon-issue.is-warn .tdon-issue-code{color:#92400E}
+.tdon-issue-path{font-family:ui-monospace,Consolas,monospace;font-size:11px;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.tdon-issue-msg{color:var(--text)}
+.tdon-issue-truncated{color:var(--muted);margin:4px 0 0}
+.tdon-export-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-radius:8px;background:var(--p50);border:1px solid var(--line)}
+.tdon-export-bar .btn{margin-left:auto}
+#exportTdonFilePreview{width:100%;min-height:150px;max-height:260px;font:11px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;background:#0E1726;color:#D6E8F5;border:0;border-radius:8px;padding:10px;resize:vertical}
+
 /* W-tb-P9 经典支持场景预览（ADR-005 对应可视化）：WordPress 前台/后台与 Tailwind 落地页 mock。
    全部颜色/字体/间距引用当前主题变量，主题变更即时反映。
    W-tb-P9 classic-support scenario previews: WordPress front/admin and Tailwind landing mocks.
