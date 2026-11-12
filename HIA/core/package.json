@@ -22,8 +22,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
-    "test": "npm run build && node --test test/",
-    "test:watch": "node --test --watch test/"
+    "test": "npm run build && node --test",
+    "test:watch": "node --test --watch"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

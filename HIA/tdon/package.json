@@ -24,7 +24,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
-    "test": "npm run build && node --test test/"
+    "test": "npm run build && node --test"
   },
   "dependencies": {
     "@hia/theme-core": "file:../core"
