@@ -112,9 +112,21 @@ async function runPass(page,viewport,lang){
   await page.setViewport(viewport);
   await page.goto('http://127.0.0.1:18996/',{waitUntil:'networkidle2',timeout:30000});
   await page.waitForSelector('#pcPageTitle',{timeout:15000});
-  // EN 集：boot 即切英文（真实点击，i18n 全量生效），随后的所有截图/GIF 帧都是英文界面。
-  // <lang en>EN set: switch to English at boot so every shot/frame is the EN interface.</lang>
-  if(lang==='en')await ui.click(page,'#langToggleBtn');
+  // EN 集：boot 即切英文。竞态警示：waitForSelector('#pcPageTitle') 在元素出现即返回，
+  //   而 bind() 在初始渲染**之后**才挂事件——此刻点击可能落空（v0.5.0 的 demo-en.gif 整段中文即此因）。
+  //   故点击后轮询 documentElement.lang==='en' 确认生效，未生效则重试。
+  // <lang en>EN set: switch at boot. RACE: the selector resolves as soon as the element exists, but bind()
+  //   attaches listeners after initial render — the click can land on nothing (v0.5.0's demo-en.gif was
+  //   entirely Chinese for this reason). Poll documentElement.lang and retry until it flips to en.</lang>
+  if(lang==='en'){
+    let switched=false;
+    for(let i=0;i<6;i++){
+      await ui.click(page,'#langToggleBtn');
+      await new Promise(r=>setTimeout(r,500));
+      if(await page.evaluate(()=>document.documentElement.lang==='en')){switched=true;break;}
+    }
+    if(!switched)throw new Error('EN 切换失败：documentElement.lang 未变为 en（事件绑定竞态？）');
+  }
   const frames=[];
   for(const step of stepsFor(lang)){
     // 滚动定位先行：改动区域进入视口，截图与 GIF 帧才有信息量。
