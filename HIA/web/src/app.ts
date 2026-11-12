@@ -2290,8 +2290,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   function applyPreviewFilter(f:PreviewFilter){
     previewFilter=f;
     try{localStorage.setItem('hia-preview-filter',f);}catch{/* ignore */}
-    // 容器：PC 预览内容 + 小程序机身 + 经典 mock（存在则应用）。
-    const targets=['pcContent','wxFrame','classicPreviewBody'];
+    // 容器：PC 预览完整外壳（含顶部 banner/侧栏/内容）+ 小程序机身 + 经典 mock。
+    //   修复：原仅作用于 #pcContent，顶部 banner 在 #pcShell > .pc-topbar 之外，导致灰度不生效。
+    // <lang en>Apply to the whole pcShell (banner included), the phone frame and the classic mock.</lang>
+    const targets=['pcShell','wxFrame','classicPreviewBody'];
     for(const id of targets){
       const el=document.getElementById(id);
       if(el)el.style.filter=FILTER_CSS[f]||'';
