@@ -14,7 +14,7 @@ import{
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
-  tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,
+  tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
@@ -233,9 +233,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
 
   // 多源选色（W-tb-P17）：当前源（宝典/传统色）；下拉菜单开关与源切换在 bind() 接线。
   // <lang en>Multi-source picker state (W-tb-P17): current color source for the modal.</lang>
-  let colorSource:'baodian'|'traditional'='baodian';
+  let colorSource:'baodian'|'traditional'|'flag'|'brand'='baodian';
   // 传统色源内文化分组（日/中）。
   let baodianTcCulture:'en'|'cn'|'ja'|'kr'='en';
+  // 国旗源洲别 / 企业源行业（W-tb-P18）。
+  let baodianFlagGroup='asia';
+  let baodianBrandGroup='tech';
 
   function getAllPresets():Preset[]{
     // 内置库合入语气预设（W-tb-P15）：tone- 前缀内置对象随产品分发，与经典内置同权（不可删除）。
@@ -1087,11 +1090,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>每次主体色或模式变化后调用；成员卡色块=行内取色器（点击重选色），X 删除（仅剩 1 色隐藏）。</lang>
   // <lang en>Re-rendered on any series change; member swatches are inline color inputs, X removes (hidden at one member).</lang>
   function renderHarmony(){
-    // 规则补色下拉：九规则（除 manual）；当前值非法时归 complement。
+    // 规则补色下拉：保留"手动（现行）"作为合法当前值（色组/宝典直用等非规则来源需要它），
+    //   其补色动作按钮按既有语义置灰；值非法时才回退 manual。
+    //   维护者 P18 反馈链修复：原实现把 manual 判非法并强改 complement——国旗/企业色组被误标为互补关系。
+    // <lang en>Keep "manual" as a legal selection (non-rule sources need it); only invalid values fall back.</lang>
     const relSel=byId<HTMLSelectElement>('seriesRuleSelect');
-    const defs=SERIES_RELATION_DEFS.filter(r=>r.id!=='manual');
-    if(!defs.some(r=>r.id===draft.seriesRelation))draft.seriesRelation='complement';
-    const relation:SeriesRelationId=draft.seriesRelation??'complement';
+    const manualDef=SERIES_RELATION_DEFS.find(r=>r.id==='manual');
+    const defs=[...(manualDef?[manualDef]:[]),...SERIES_RELATION_DEFS.filter(r=>r.id!=='manual')];
+    if(!defs.some(r=>r.id===draft.seriesRelation))draft.seriesRelation='manual';
+    const relation:SeriesRelationId=draft.seriesRelation??'manual';
     relSel.innerHTML=defs.map(r=>`<option value="${r.id}"${r.id===relation?' selected':''}>${escapeHtml(t(r.name))}</option>`).join('');
     byId<HTMLButtonElement>('completeSecondaryBtn').disabled=!ruleCanSecondary(relation);
     byId<HTMLButtonElement>('completeThirdBtn').disabled=!ruleCanThird(relation);
@@ -1339,12 +1346,78 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   function openColorSourceModal(){
     byId<HTMLElement>('baodianModal').hidden=false;
     byId<HTMLInputElement>('baodianAnchorToggle').checked=baodianAnchor;
-    setText('baodianTitle',colorSource==='baodian'?t('p12.baodian.title'):t('p17.traditional.title'));
+    // 标题随源（宝典/传统色/国旗/企业）。
+    setText('baodianTitle',colorSource==='baodian'?t('p12.baodian.title'):colorSource==='traditional'?t('p17.traditional.title'):colorSource==='flag'?t('p18.flag.title'):t('p18.brand.title'));
     renderColorSourceModal();
   }
   function renderColorSourceModal(){
     if(colorSource==='baodian'){ensureBaodianEmotions();renderBaodianMenu();renderBaodianRight();return;}
-    renderTraditionalMenu();
+    if(colorSource==='traditional'){renderTraditionalMenu();return;}
+    if(colorSource==='flag'){renderFlagMenu();return;}
+    renderBrandMenu();
+  }
+  // 国旗源（W-tb-P18）：左=大洲菜单，右=该国色组卡（色块条+国名），点击=依次填主/副/第三（定案 3）。
+  // <lang en>Flag source: continent menu; country palette cards; apply fills primary/secondary/third in order.</lang>
+  function renderFlagMenu(){
+    const menu=byId<HTMLElement>('baodianMenu');
+    const groups:('asia'|'europe'|'americas'|'africa'|'oceania')[]=['asia','europe','americas','africa','oceania'];
+    menu.innerHTML=groups.map(g=>`<button type="button" class="baodian-emo${baodianFlagGroup===g?' active':''}" data-flag-group="${g}">${escapeHtml(t('p18.continent.'+g))}</button>`).join('');
+    all<HTMLButtonElement>('[data-flag-group]',menu).forEach(btn=>btn.addEventListener('click',()=>{
+      baodianFlagGroup=btn.dataset.flagGroup||'asia';renderFlagMenu();
+    }));
+    renderFlagRight();
+  }
+  function renderFlagRight(){
+    const right=byId<HTMLElement>('baodianRight');
+    const items=FLAG_COLORS.filter(f=>f.continent===baodianFlagGroup);
+    let html='';
+    for(const f of items){
+      html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(f.name)} · ${escapeHtml(f.nameEn)}</div><button type="button" class="tc-card bdc-card" data-bdc-colors="${f.colors.join(',')}" data-bdc-name="${escapeHtml(f.name)}" data-bdc-kind="flag"><span class="bdc-strip">${f.colors.map(c=>`<span style="background:${c}"></span>`).join('')}</span><span class="tc-name">${escapeHtml(f.name)} <span class="tc-hex">${f.colors.join(' ')}</span></span></button></div>`;
+    }
+    right.innerHTML=html||`<div class="small">${t('p12.baodian.empty')}</div>`;
+    bindPaletteApply(right);
+  }
+  // 企业源（W-tb-P18）：左=行业菜单，右=品牌色组卡（色块条+品牌名），点击=依次填主/副/第三。
+  // <lang en>Brand source: industry menu; brand palette cards; same apply semantics.</lang>
+  function renderBrandMenu(){
+    const menu=byId<HTMLElement>('baodianMenu');
+    const groups:('tech'|'auto'|'food'|'finance'|'retail'|'media'|'travel'|'apparel'|'other')[]=['tech','auto','food','finance','retail','media','travel','apparel','other'];
+    menu.innerHTML=groups.map(g=>`<button type="button" class="baodian-emo${baodianBrandGroup===g?' active':''}" data-brand-group="${g}">${escapeHtml(t('p18.industry.'+g))}</button>`).join('');
+    all<HTMLButtonElement>('[data-brand-group]',menu).forEach(btn=>btn.addEventListener('click',()=>{
+      baodianBrandGroup=btn.dataset.brandGroup||'tech';renderBrandMenu();
+    }));
+    renderBrandRight();
+  }
+  function renderBrandRight(){
+    const right=byId<HTMLElement>('baodianRight');
+    const items=BRAND_COLORS.filter(b=>b.industry===baodianBrandGroup);
+    let html='';
+    for(const b of items){
+      html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(b.name)}</div><button type="button" class="tc-card bdc-card" data-bdc-colors="${b.colors.slice(0,6).join(',')}" data-bdc-name="${escapeHtml(b.name)}" data-bdc-kind="brand"><span class="bdc-strip">${b.colors.slice(0,6).map(c=>`<span style="background:${c}"></span>`).join('')}</span><span class="tc-name">${escapeHtml(b.name)} <span class="tc-hex">${b.colors.slice(0,6).join(' ')}</span></span></button></div>`;
+    }
+    right.innerHTML=html||`<div class="small">${t('p12.baodian.empty')}</div>`;
+    bindPaletteApply(right);
+  }
+  // 多色组套用（国旗/企业共用）：依次填主/副/第三（色数 1/2/3+），辅助色按规则补足 2 槽。
+  // <lang en>Shared multi-color apply: fill primary/secondary/third by order, auxiliaries rule-generated.</lang>
+  function bindPaletteApply(root:HTMLElement){
+    all<HTMLButtonElement>('.bdc-card',root).forEach(btn=>btn.addEventListener('click',()=>{
+      const colors=(btn.dataset.bdcColors||'').split(',').filter(Boolean);
+      if(!colors.length)return;
+      const name=btn.dataset.bdcName||'';
+      const kind=btn.dataset.bdcKind||'flag';
+      seriesSnapshot={primary:draft.primary,primaryName:draft.primaryName,secondary:draft.secondary,secondaryName:draft.secondaryName,thirdColor:draft.thirdColor,seriesMode:draft.seriesMode,seriesRelation:draft.seriesRelation};
+      draft.primary=colors[0]!;
+      draft.seriesMode=colors.length===1?'single':colors.length===2?'dual':'triad';
+      draft.seriesRelation='manual';
+      draft.secondary=colors[1]??colors[0]!;
+      draft.thirdColor=colors.length>=3?makeRoleColor(colors[2]!,'第三色'):undefined;
+      draft.primaryName=name;draft.secondaryName='副色';
+      draft.auxiliary=generateAuxiliaryCandidates(colors[0]!).slice(0,TONE_AUX_SLOTS).map((c,i)=>({name:`辅助色 ${i+1}`,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}));
+      byId<HTMLElement>('baodianModal').hidden=true;
+      syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();updatePreviewMeta();
+      setText('generateStatus',t(kind==='flag'?'p18.applied.flag':'p18.applied.brand',{name,n:String(colors.length)}));
+    })); 
   }
   // 传统色源：左=文化两级（日/中），右=色系桶分组色卡（名+HEX），点击=单色即主色（P17 定案）。
   // <lang en>Traditional source: culture menu on the left; hue-bucket swatch grid on the right.</lang>

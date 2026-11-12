@@ -47,6 +47,10 @@ export{BAODIAN_PALETTE,FORM_PACKS,BAODIAN_FORM_NAMES}from'./data/palette-packs.j
 export type{BaodianCombo}from'./data/palette-packs.js';
 export{tonePresets,buildTonePreset,TONE_MOODS,TONE_FORM_PRIORITY,TONE_DEFAULT_PRIORITY,TONE_AUX_SLOTS}from'./data/tone-presets.js';
 export{TRADITIONAL_COLORS}from'./data/traditional-colors.js';
+export{FLAG_COLORS}from'./data/flags.js';
+export type{FlagEntry,Continent}from'./data/flags.js';
+export{BRAND_COLORS}from'./data/brand-colors.js';
+export type{BrandColorEntry,BrandIndustry}from'./data/brand-colors.js';
 export type{TraditionalColorEntry}from'./data/traditional-colors.js';
 
 // 渐变渲染：起止色停靠点、CSS 生成、运行时变量与导出变量行。

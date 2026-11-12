@@ -147,6 +147,28 @@ registerStrings({
   'p17.bucket.紫': { zh: '紫系', en: 'Purples' },
   'p17.bucket.品红/桃': { zh: '品红·桃', en: 'Magenta / Peach' },
   'p17.culture.en': { zh: '英文命名色', en: 'English Named' },
+  // 国旗/企业两源（W-tb-P18）：源名、分组标题、套用回执。
+  // <lang en>Flag/brand sources (W-tb-P18): source labels, group titles, apply receipts.</lang>
+  'p18.source.flag': { zh: '国旗选色', en: 'National Flags' },
+  'p18.source.brand': { zh: '知名企业选色', en: 'Brand Colors' },
+  'p18.flag.title': { zh: '国旗选色 · 国家旗帜官方色', en: 'National Flags · official colours' },
+  'p18.brand.title': { zh: '知名企业选色 · 品牌官方色', en: 'Brand Colors · official palettes' },
+  'p18.continent.asia': { zh: '亚洲', en: 'Asia' },
+  'p18.continent.europe': { zh: '欧洲', en: 'Europe' },
+  'p18.continent.americas': { zh: '美洲', en: 'Americas' },
+  'p18.continent.africa': { zh: '非洲', en: 'Africa' },
+  'p18.continent.oceania': { zh: '大洋洲', en: 'Oceania' },
+  'p18.industry.tech': { zh: '科技互联网', en: 'Tech & Internet' },
+  'p18.industry.auto': { zh: '汽车', en: 'Automotive' },
+  'p18.industry.food': { zh: '餐饮食品', en: 'Food & Drink' },
+  'p18.industry.finance': { zh: '金融', en: 'Finance' },
+  'p18.industry.retail': { zh: '零售电商', en: 'Retail & E-commerce' },
+  'p18.industry.media': { zh: '媒体娱乐', en: 'Media & Entertainment' },
+  'p18.industry.travel': { zh: '航空旅行', en: 'Travel & Airline' },
+  'p18.industry.apparel': { zh: '服饰运动', en: 'Apparel & Sports' },
+  'p18.industry.other': { zh: '其他品牌', en: 'Other Brands' },
+  'p18.applied.flag': { zh: '已套用国旗色组「{name}」（{n} 色依次填主体色）', en: 'Applied flag palette \"{name}\" ({n} colors into the body series)' },
+  'p18.applied.brand': { zh: '已套用品牌色「{name}」（{n} 色依次填主体色）', en: 'Applied brand palette \"{name}\" ({n} colors into the body series)' },
   'p17.culture.kr': { zh: '韩国传统色', en: 'Korean' },
   // 色卡信息浮层（W-tb-P17 扩充轮②）：行标签与复制提示。
   // <lang en>Info tip labels (W-tb-P17 expansion round).</lang>

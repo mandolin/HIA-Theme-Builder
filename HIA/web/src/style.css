@@ -391,6 +391,10 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .tc-chip{display:block;height:26px;border-bottom:1px solid rgba(15,23,42,.08)}
 .tc-name{display:block;padding:5px 7px 2px;font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tc-hex{display:block;padding:0 7px 6px;font-size:12px;color:var(--muted);font-family:Consolas,monospace}
+/* 国旗/企业色组卡（W-tb-P18）：横向色条=组内各色等分，整卡可点套用。 */
+.bdc-card{margin-bottom:2px}
+.bdc-strip{display:flex;height:34px;border-bottom:1px solid rgba(15,23,42,.08)}
+.bdc-strip>span{flex:1}
 .bd-anchor input{width:14px;height:14px;accent-color:var(--primary);cursor:pointer}
 .bd-bar{display:flex;align-items:flex-start;justify-content:flex-start;height:28px;width:74px;padding:2px 4px;font-size:12px;font-weight:700;color:rgba(0,0,0,.6);text-shadow:0 0 2px rgba(255,255,255,.4)}
 /* 色卡信息浮层（W-tb-P17 扩充轮②）：hover 显示色值(#hex/rgb/hsl)/说明/注意事项，逐项复制小图标。 */
