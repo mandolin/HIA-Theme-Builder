@@ -77,8 +77,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path artifacts -Force
-          Copy-Item "HIA\electron\dist\HIA-Theme-Builder-Electron-*-portable.exe" artifacts\
-          Copy-Item "HIA\electron\dist\HIA-Theme-Builder-Electron-*-setup.exe" artifacts\
+          # electron 产物目录为 release/（build.directories.output）；scoped 包名可能建子目录，递归查找。
+          # <lang en>electron outputs to release/; recurse to tolerate scoped subdirs.</lang>
+          Get-ChildItem -Path "HIA\electron\release" -Recurse -Filter "HIA-Theme-Builder-Electron-*-portable.exe" | Copy-Item -Destination artifacts\
+          Get-ChildItem -Path "HIA\electron\release" -Recurse -Filter "HIA-Theme-Builder-Electron-*-setup.exe" | Copy-Item -Destination artifacts\
           Copy-Item "HIA\tauri\src-tauri\target\release\bundle\msi\HIA Theme Builder_*_x64_en-US.msi" artifacts\
           Copy-Item "HIA\tauri\src-tauri\target\release\HIA Theme Builder.exe" artifacts\HIA-Theme-Builder-Tauri-portable.exe
           $ver = (Get-Content "HIA\electron\package.json" | ConvertFrom-Json).version
@@ -161,8 +163,10 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          cp HIA/electron/dist/*.dmg artifacts/ 2>/dev/null || true
-          cp HIA/electron/dist/*-mac.zip artifacts/ 2>/dev/null || true
+          # electron 产物输出到 release/（build.directories.output）；scoped 包名会建子目录，故递归收集。
+          # <lang en>electron outputs to release/; scoped package names create subdirs, so recurse.</lang>
+          find HIA/electron/release -maxdepth 2 -name '*.dmg' -exec cp {} artifacts/ \; 2>/dev/null || true
+          find HIA/electron/release -maxdepth 2 -name '*-mac.zip' -exec cp {} artifacts/ \; 2>/dev/null || true
           cp "HIA/tauri/src-tauri/target/release/bundle/dmg/"*.dmg artifacts/ 2>/dev/null || true
           ver=$(node -p "require('./HIA/electron/package.json').version")
           echo "sealed version: $ver"
@@ -234,8 +238,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          cp HIA/electron/dist/*.AppImage artifacts/ 2>/dev/null || true
-          cp HIA/electron/dist/*.deb artifacts/ 2>/dev/null || true
+          # electron 产物输出到 release/（含 scoped 包名子目录），递归收集。
+          # <lang en>electron outputs to release/ (scoped subdirs); collect recursively.</lang>
+          find HIA/electron/release -maxdepth 2 \( -name '*.AppImage' -o -name '*.deb' \) -exec cp {} artifacts/ \; 2>/dev/null || true
           cp HIA/tauri/src-tauri/target/release/bundle/appimage/*.AppImage artifacts/ 2>/dev/null || true
           cp HIA/tauri/src-tauri/target/release/bundle/deb/*.deb artifacts/ 2>/dev/null || true
           ver=$(node -p "require('./HIA/electron/package.json').version")
