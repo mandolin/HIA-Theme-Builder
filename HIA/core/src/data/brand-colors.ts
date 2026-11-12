@@ -6,7 +6,7 @@
  * @lang en Brand colors: 691 official brand palettes from brandcolors.net (names + hex + slug only).
  */
 export type BrandIndustry='tech'|'auto'|'food'|'finance'|'retail'|'media'|'travel'|'apparel'|'other';
-export interface BrandColorEntry{id:string;name:string;nameEn:string;industry:BrandIndustry;slug:string;colors:string[];bucket:string}
+export interface BrandColorEntry{id:string;name:string;nameEn:string;industry:BrandIndustry;slug:string;colors:string[];bucket:string;hasLogo:boolean}
 
 import{part0}from'./brand-colors-part0.js';
 import{part1}from'./brand-colors-part1.js';

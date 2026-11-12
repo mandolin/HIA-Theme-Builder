@@ -1473,7 +1473,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const iso=f.id.replace('flag-','');
       html+=`<div class="bdc-card" role="button" tabindex="0" data-bdc-colors="${f.colors.join(',')}" data-bdc-name="${escapeHtml(f.name)}" data-bdc-kind="flag" data-bdc-note="${escapeHtml(note)}">
         <div class="bdc-strip">${f.colors.map(c=>`<span style="background:${c}"></span>`).join('')}</div>
-        <div class="bdc-name"><span class="flag-thumb" data-thumb="flag"><span class="flag-bars">${f.colors.slice(0,4).map(c=>`<i style="background:${c}"></i>`).join('')}</span><img class="flag-img" src="https://flagcdn.com/w40/${escapeHtml(iso)}.png" alt="" data-iso="${escapeHtml(iso)}"></span><span class="bdc-title">${escapeHtml(f.name)}</span><span class="bdc-sub">${escapeHtml(f.nameEn)}</span></div>
+        <div class="bdc-name"><span class="flag-thumb" data-thumb="flag"><span class="flag-bars">${f.colors.slice(0,4).map(c=>`<i style="background:${c}"></i>`).join('')}</span><img class="flag-img" src="./flags/${escapeHtml(iso)}.png" alt="" data-iso="${escapeHtml(iso)}"></span><span class="bdc-title">${escapeHtml(f.name)}</span><span class="bdc-sub">${escapeHtml(f.nameEn)}</span></div>
         <div class="bdc-hex">${f.colors.join(' ')}</div>
         <div class="bdc-note">${escapeHtml(note)}</div>
       </div>`;
@@ -1563,7 +1563,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const note=BRAND_NOTES[b.name]||composedBrandNote(b.name,b.colors,b.industry);
       // 品牌 logo：simple-icons CDN（CC0 图标库）按 slug 取图；加载失败由 bindBrandLogos 回退首字母徽标（离线可用）。
       // <lang en>Brand logo via simple-icons CDN (CC0); bindBrandLogos swaps in a monogram when loading fails.</lang>
-      const logo=`<span class="brand-thumb"><span class="brand-mono" style="background:${escapeHtml(b.colors[0]||'#1F2937')}">${escapeHtml((b.name[0]||'?').toUpperCase())}</span><img class="brand-logo" src="https://cdn.simpleicons.org/${encodeURIComponent(b.slug)}" alt="" data-logo="1"></span>`;
+      // 本地内置 logo（public/logos）；缺图品牌只显示字母徽标（无网络请求）。
+      // <lang en>Bundled logo for available slugs; monogram only otherwise (no network requests).</lang>
+      const mono=`<span class="brand-mono" style="background:${escapeHtml(b.colors[0]||'#1F2937')}">${escapeHtml((b.name[0]||'?').toUpperCase())}</span>`;
+      const logo=b.hasLogo
+        ?`<span class="brand-thumb">${mono}<img class="brand-logo" src="./logos/${escapeHtml(b.slug)}.svg" alt="" data-logo="1"></span>`
+        :`<span class="brand-thumb">${mono}</span>`;
       html+=`<div class="bdc-card" role="button" tabindex="0" data-bdc-colors="${b.colors.slice(0,6).join(',')}" data-bdc-name="${escapeHtml(b.name)}" data-bdc-kind="brand" data-bdc-note="${escapeHtml(note)}">
         <div class="bdc-strip">${b.colors.slice(0,6).map(c=>`<span style="background:${c}"></span>`).join('')}</div>
         <div class="bdc-name">${logo}<span class="bdc-title">${escapeHtml(b.name)}</span></div>
