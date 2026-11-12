@@ -14,7 +14,7 @@ import{
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
-  tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,
+  tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,NATURE_COLORS,SOCIAL_COLORS,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
@@ -233,12 +233,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
 
   // 多源选色（W-tb-P17）：当前源（宝典/传统色）；下拉菜单开关与源切换在 bind() 接线。
   // <lang en>Multi-source picker state (W-tb-P17): current color source for the modal.</lang>
-  let colorSource:'baodian'|'traditional'|'flag'|'brand'='baodian';
+  let colorSource:'baodian'|'traditional'|'flag'|'brand'|'nature'|'social'='baodian';
   // 传统色源内文化分组（日/中）。
   let baodianTcCulture:'en'|'cn'|'ja'|'kr'='en';
   // 国旗源洲别 / 企业源行业（W-tb-P18）。
   let baodianFlagGroup='asia';
   let baodianBrandGroup='tech';
+  // 自然源分类 / 社会场景分类（W-tb-P19）。
+  let baodianNatureGroup='sky';
+  let baodianSocialGroup='emergency';
 
   function getAllPresets():Preset[]{
     // 内置库合入语气预设（W-tb-P15）：tone- 前缀内置对象随产品分发，与经典内置同权（不可删除）。
@@ -1365,14 +1368,21 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     byId<HTMLElement>('baodianModal').hidden=false;
     byId<HTMLInputElement>('baodianAnchorToggle').checked=baodianAnchor;
     // 标题随源（宝典/传统色/国旗/企业）。
-    setText('baodianTitle',colorSource==='baodian'?t('p12.baodian.title'):colorSource==='traditional'?t('p17.traditional.title'):colorSource==='flag'?t('p18.flag.title'):t('p18.brand.title'));
+    setText('baodianTitle',colorSource==='baodian'?t('p12.baodian.title')
+      :colorSource==='traditional'?t('p17.traditional.title')
+      :colorSource==='flag'?t('p18.flag.title')
+      :colorSource==='brand'?t('p18.brand.title')
+      :colorSource==='nature'?t('p19.nature.title')
+      :t('p19.social.title'));
     renderColorSourceModal();
   }
   function renderColorSourceModal(){
     if(colorSource==='baodian'){ensureBaodianEmotions();renderBaodianMenu();renderBaodianRight();return;}
     if(colorSource==='traditional'){renderTraditionalMenu();return;}
     if(colorSource==='flag'){renderFlagMenu();return;}
-    renderBrandMenu();
+    if(colorSource==='brand'){renderBrandMenu();return;}
+    if(colorSource==='nature'){renderNatureMenu();return;}
+    renderSocialMenu();
   }
   // 国旗源（W-tb-P18）：左=大洲菜单，右=该国色组卡（色块条+国名），点击=依次填主/副/第三（定案 3）。
   // <lang en>Flag source: continent menu; country palette cards; apply fills primary/secondary/third in order.</lang>
@@ -1581,6 +1591,54 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     bindPaletteApply(right);
     bindBrandLogos(right);
   }
+  // 自然源（W-tb-P19）：左=场景大类（天空/海洋/大地/植物/气象/矿物），右=色组卡（色条+名+说明）。
+  // <lang en>Nature source: category menu + scene palette cards.</lang>
+  function renderNatureMenu(){
+    const menu=byId<HTMLElement>('baodianMenu');
+    const groups:('sky'|'ocean'|'land'|'plant'|'weather'|'mineral')[]=['sky','ocean','land','plant','weather','mineral'];
+    menu.innerHTML=groups.map(g=>`<button type="button" class="baodian-emo${baodianNatureGroup===g?' active':''}" data-nature-group="${g}">${escapeHtml(t('p19.nature.'+g))}</button>`).join('');
+    all<HTMLButtonElement>('[data-nature-group]',menu).forEach(btn=>btn.addEventListener('click',()=>{
+      baodianNatureGroup=btn.dataset.natureGroup||'sky';renderNatureMenu();
+    }));
+    renderNatureRight();
+  }
+  function renderNatureRight(){
+    const right=byId<HTMLElement>('baodianRight');
+    const items=NATURE_COLORS.filter(n=>n.category===baodianNatureGroup);
+    renderPaletteGrid(right,items,'nature',n=>`<span class="bdc-title">${escapeHtml(n.name)}</span><span class="bdc-sub">${escapeHtml(n.nameEn)}</span>`);
+  }
+  // 社会场景源（W-tb-P19）：左=场景大类（应急/医疗/邮政/交通/安全/行业/文化），右=色组卡。
+  // <lang en>Social source: convention category menu + palette cards.</lang>
+  function renderSocialMenu(){
+    const menu=byId<HTMLElement>('baodianMenu');
+    const groups:('emergency'|'medical'|'postal'|'transport'|'safety'|'industry'|'cultural')[]=['emergency','medical','postal','transport','safety','industry','cultural'];
+    menu.innerHTML=groups.map(g=>`<button type="button" class="baodian-emo${baodianSocialGroup===g?' active':''}" data-social-group="${g}">${escapeHtml(t('p19.social.'+g))}</button>`).join('');
+    all<HTMLButtonElement>('[data-social-group]',menu).forEach(btn=>btn.addEventListener('click',()=>{
+      baodianSocialGroup=btn.dataset.socialGroup||'emergency';renderSocialMenu();
+    }));
+    renderSocialRight();
+  }
+  function renderSocialRight(){
+    const right=byId<HTMLElement>('baodianRight');
+    const items=SOCIAL_COLORS.filter(n=>n.category===baodianSocialGroup);
+    renderPaletteGrid(right,items,'social',n=>`<span class="bdc-title">${escapeHtml(n.name)}</span><span class="bdc-sub">${escapeHtml(n.nameEn)}</span>`);
+  }
+  // 通用色组网格（自然/社会共用）：色条+标题+HEX+说明；点击走多色组套用。
+  // <lang en>Shared palette grid renderer for nature/social sources.</lang>
+  function renderPaletteGrid(right:HTMLElement,items:{id:string;name:string;nameEn:string;colors:string[];note:string}[],kind:'nature'|'social',titleHtml:(n:{name:string;nameEn:string})=>string){
+    let html='<div class="bdc-grid">';
+    for(const n of items){
+      html+=`<div class="bdc-card" role="button" tabindex="0" data-bdc-colors="${n.colors.join(',')}" data-bdc-name="${escapeHtml(n.name)}" data-bdc-kind="${kind}" data-bdc-note="${escapeHtml(n.note)}">
+        <div class="bdc-strip">${n.colors.map(c=>`<span style="background:${c}"></span>`).join('')}</div>
+        <div class="bdc-name">${titleHtml(n)}</div>
+        <div class="bdc-hex">${n.colors.join(' ')}</div>
+        <div class="bdc-note">${escapeHtml(n.note)}</div>
+      </div>`;
+    }
+    html+='</div>';
+    right.innerHTML=html||`<div class="small">${t('p12.baodian.empty')}</div>`;
+    bindPaletteApply(right);
+  }
   // 远程图标渐进增强：本地缩略（旗帜色条/品牌字母）默认可见且离线可用；
   //   真旗/品牌 logo 加载成功后加 .loaded 覆盖缩略图，失败则静默保留缩略。
   // <lang en>Progressive enhancement: local thumbnail is the default (offline-safe); a successfully
@@ -1615,7 +1673,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       draft.auxiliary=generateAuxiliaryCandidates(colors[0]!).slice(0,TONE_AUX_SLOTS).map((c,i)=>({name:`辅助色 ${i+1}`,value:c.hex,scale:tonalScale(c.hex),on:bestOnColor(c.hex).hex}));
       byId<HTMLElement>('baodianModal').hidden=true;
       syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();updatePreviewMeta();
-      setText('generateStatus',t(kind==='flag'?'p18.applied.flag':'p18.applied.brand',{name,n:String(colors.length)}));
+      // 回执按来源选择词条（国旗/企业/自然/社会）。
+      // <lang en>Receipt keyed by source kind.</lang>
+      setText('generateStatus',t(kind==='flag'?'p18.applied.flag':kind==='brand'?'p18.applied.brand':kind==='nature'?'p19.applied.nature':'p19.applied.social',{name,n:String(colors.length)}));
     })); 
   }
   // 传统色源：左=文化两级（日/中），右=色系桶分组色卡（名+HEX），点击=单色即主色（P17 定案）。

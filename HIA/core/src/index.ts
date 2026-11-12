@@ -50,6 +50,10 @@ export{TRADITIONAL_COLORS}from'./data/traditional-colors.js';
 export{FLAG_COLORS}from'./data/flags.js';
 export type{FlagEntry,Continent}from'./data/flags.js';
 export{BRAND_COLORS}from'./data/brand-colors.js';
+export{NATURE_COLORS}from'./data/nature-colors.js';
+export type{NatureColorEntry,NatureCategory}from'./data/nature-colors.js';
+export{SOCIAL_COLORS}from'./data/social-colors.js';
+export type{SocialColorEntry,SocialCategory}from'./data/social-colors.js';
 export type{BrandColorEntry,BrandIndustry}from'./data/brand-colors.js';
 export type{TraditionalColorEntry}from'./data/traditional-colors.js';
 

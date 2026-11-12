@@ -169,6 +169,27 @@ registerStrings({
   'p18.industry.other': { zh: '其他品牌', en: 'Other Brands' },
   'p18.applied.flag': { zh: '已套用国旗色组「{name}」（{n} 色依次填主体色）', en: 'Applied flag palette \"{name}\" ({n} colors into the body series)' },
   'p18.applied.brand': { zh: '已套用品牌色「{name}」（{n} 色依次填主体色）', en: 'Applied brand palette \"{name}\" ({n} colors into the body series)' },
+  // 自然/社会场景两源（W-tb-P19）：源名/标题/分类/回执。
+  // <lang en>Nature/social sources (W-tb-P19).</lang>
+  'p19.source.nature': { zh: '自然选色', en: 'Nature Scenes' },
+  'p19.source.social': { zh: '社会场景选色', en: 'Social Conventions' },
+  'p19.nature.title': { zh: '自然选色 · 天文地理场景色', en: 'Nature · scene palettes' },
+  'p19.social.title': { zh: '社会场景选色 · 惯例用色', en: 'Social · convention palettes' },
+  'p19.nature.sky': { zh: '天空天象', en: 'Sky & Sky Events' },
+  'p19.nature.ocean': { zh: '海洋水体', en: 'Ocean & Water' },
+  'p19.nature.land': { zh: '大地地貌', en: 'Landforms' },
+  'p19.nature.plant': { zh: '植物植被', en: 'Plants' },
+  'p19.nature.weather': { zh: '气象', en: 'Weather' },
+  'p19.nature.mineral': { zh: '矿物', en: 'Minerals' },
+  'p19.social.emergency': { zh: '应急消防', en: 'Emergency & Fire' },
+  'p19.social.medical': { zh: '医疗', en: 'Medical' },
+  'p19.social.postal': { zh: '邮政物流', en: 'Postal & Logistics' },
+  'p19.social.transport': { zh: '交通', en: 'Transport' },
+  'p19.social.safety': { zh: '安全', en: 'Safety' },
+  'p19.social.industry': { zh: '行业惯例', en: 'Industry Codes' },
+  'p19.social.cultural': { zh: '文化礼仪', en: 'Cultural Customs' },
+  'p19.applied.nature': { zh: '已套用自然场景「{name}」（{n} 色依次填主体色）', en: 'Applied nature palette \"{name}\" ({n} colors into the body series)' },
+  'p19.applied.social': { zh: '已套用社会场景色「{name}」（{n} 色依次填主体色）', en: 'Applied social palette \"{name}\" ({n} colors into the body series)' },
   'p17.culture.kr': { zh: '韩国传统色', en: 'Korean' },
   // 色卡信息浮层（W-tb-P17 扩充轮②）：行标签与复制提示。
   // <lang en>Info tip labels (W-tb-P17 expansion round).</lang>
