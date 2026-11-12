@@ -1,0 +1,74 @@
+<!doctype html>
+<!-- @lang zh-CN Product Hunt 画廊图模板（`W-tb-P28`）：1270×760 规格。由 promo-shots 系脚本用 puppeteer
+     渲染为 PNG。品牌：钴蓝 #0047AB / 清透青 #00A8D3；三要点文案与 README/文档一致。
+     @lang en Product Hunt gallery template (`W-tb-P28`): 1270×760, rendered to PNG via puppeteer.
+     Brand cobalt/clear-cyan; three callouts consistent with README/docs. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1270px;height:760px;overflow:hidden;font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:linear-gradient(135deg,#EAF3FB 0%,#DFF0F8 55%,#E8F6F9 100%);color:#1E2B3A;position:relative}
+  .deco{position:absolute;border-radius:50%;filter:blur(.5px)}
+  .d1{width:340px;height:340px;right:-90px;top:-120px;background:radial-gradient(circle,#00A8D3 0%,rgba(0,168,211,0) 70%);opacity:.35}
+  .d2{width:260px;height:260px;left:-80px;bottom:-100px;background:radial-gradient(circle,#0047AB 0%,rgba(0,71,171,0) 70%);opacity:.22}
+  .wrap{position:relative;width:100%;height:100%;display:flex;flex-direction:column;padding:56px 64px}
+  .brand{display:flex;align-items:center;gap:16px}
+  .logo{width:64px;height:64px;border-radius:16px;background:#0047AB;display:grid;place-items:center;font-size:34px;font-weight:900;color:#fff;box-shadow:0 6px 18px rgba(0,40,90,.25)}
+  .brand-name{font-size:30px;font-weight:900;color:#003378}
+  .brand-sub{font-size:14px;color:#5B6B7C;margin-top:2px}
+  .headline{margin-top:36px;font-size:44px;line-height:1.25;font-weight:900;color:#12233A}
+  .headline b{color:#0047AB}
+  .tagline{margin-top:14px;font-size:20px;color:#41556B;line-height:1.6;max-width:980px}
+  .points{margin-top:34px;display:flex;gap:22px;flex:1}
+  .point{flex:1;background:#fff;border:1px solid #DCE6EF;border-radius:16px;padding:22px 24px;box-shadow:0 10px 26px rgba(23,55,94,.08)}
+  .point .ico{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;margin-bottom:14px}
+  .point:nth-child(1) .ico{background:#E3F2FD;color:#0047AB}
+  .point:nth-child(2) .ico{background:#E0F7FA;color:#007C91}
+  .point:nth-child(3) .ico{background:#EAF6EF;color:#1B6B3A}
+  .point h3{font-size:19px;font-weight:900;margin-bottom:8px;color:#1E2B3A}
+  .point p{font-size:14.5px;color:#5B6B7C;line-height:1.65}
+  .foot{display:flex;align-items:center;justify-content:space-between;margin-top:26px;font-size:14px;color:#5B6B7C}
+  .foot .chips{display:flex;gap:10px}
+  .chip{padding:6px 14px;border-radius:999px;background:#fff;border:1px solid #DCE6EF;font-weight:700;color:#003378}
+  .foot .url{font-weight:800;color:#0047AB}
+</style>
+</head>
+<body>
+  <div class="deco d1"></div>
+  <div class="deco d2"></div>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">H</div>
+      <div>
+        <div class="brand-name">HIA-Theme-Builder</div>
+        <div class="brand-sub">Theme builder · from color extraction to a full color system</div>
+      </div>
+    </div>
+    <div class="headline">从<b>一个主色</b>，到一套<b>可直接落地</b>的完整主题</div>
+    <div class="tagline">网址取色 · 配色宝典 · 6 类色源 4000+ 色 · 主体色系三模式 + 辅助色 · PC/小程序双预览 · WordPress / Tailwind / TDON 一键导出。Web 直接用，Electron / Tauri 桌面端离线可用。</div>
+    <div class="points">
+      <div class="point">
+        <div class="ico">🎯</div>
+        <h3>配色体系，不只是色块</h3>
+        <p>主体色系单色/双色/三色 + 独立辅助色槽位；对比度、可读前景、自定义色阶自动算好。</p>
+      </div>
+      <div class="point">
+        <div class="ico">🧭</div>
+        <h3>六类色源 4000+ 色</h3>
+        <p>配色宝典 1440 组合、传统色 1637、国旗 196、品牌 691、自然 41、社会场景 31 —— 全部离线内置。</p>
+      </div>
+      <div class="point">
+        <div class="ico">🚀</div>
+        <h3>导出即用</h3>
+        <p>CSS/JSON 令牌、WordPress 子主题、Tailwind 配置、声明式 TDON 适配文件；ZIP 一键下载。</p>
+      </div>
+    </div>
+    <div class="foot">
+      <div class="chips"><span class="chip">MIT 开源</span><span class="chip">零依赖内核</span><span class="chip">中英双语</span><span class="chip">无障碍门禁</span></div>
+      <div class="url">mandolin.github.io/HIA-Theme-Builder</div>
+    </div>
+  </div>
+</body>
+</html>

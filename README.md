@@ -6,6 +6,19 @@ HIA Theme Builder. Rebuilds the original single-file tool `HIA_theme_manager.htm
 
 **Current release [v0.4.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.4.0)** (2026-11-12): three-end consistent release · [Web app (GitHub Pages)](https://mandolin.github.io/HIA-Theme-Builder/) · [Docs](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [Desktop downloads](https://github.com/mandolin/HIA-Theme-Builder/releases)
 
+## Demo
+
+The whole loop, recorded from the production build (auto-generated, re-runnable): pick a primary → generate the color system → baodian combos → six color sources → EN interface → filters → dark mode → exports.
+
+![Demo](promo/demo.gif)
+
+| | |
+| --- | --- |
+| ![Console](promo/screenshots/01-default-light.png) | ![Baodian combos](promo/screenshots/02-baodian-modal.png) |
+| ![Traditional colors](promo/screenshots/04-traditional-colors.png) | ![Dark mode](promo/screenshots/07-dark-mode.png) |
+
+More stills in [`promo/screenshots/`](promo/screenshots) · Product Hunt gallery art: [`promo/ph-gallery-1270x760.png`](promo/ph-gallery-1270x760.png).
+
 ## Feature Overview
 
 - **Theme console**: primary candidate library (44 colors), secondary candidate area, name/category/industry metadata; apply or generate-and-import themes in one click.

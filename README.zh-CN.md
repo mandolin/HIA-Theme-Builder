@@ -6,6 +6,19 @@ HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具�
 
 **当前版本 [v0.4.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.4.0)**（2026-11-12）：三端同构发布 · [在线版（GitHub Pages）](https://mandolin.github.io/HIA-Theme-Builder/) · [文档子站](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [桌面下载](https://github.com/mandolin/HIA-Theme-Builder/releases)
 
+## 演示
+
+完整工作流一屏看完（从生产构建录制，脚本自动生成、可复跑）：选主色 → 生成配色 → 宝典组合 → 六类色源 → 英文界面 → 滤镜 → 深色模式 → 导出。
+
+![演示](promo/demo.gif)
+
+| | |
+| --- | --- |
+| ![操作台](promo/screenshots/01-default-light.png) | ![配色宝典](promo/screenshots/02-baodian-modal.png) |
+| ![传统色](promo/screenshots/04-traditional-colors.png) | ![深色模式](promo/screenshots/07-dark-mode.png) |
+
+更多静态图见 [`promo/screenshots/`](promo/screenshots) · Product Hunt 画廊图：[`promo/ph-gallery-1270x760.png`](promo/ph-gallery-1270x760.png)。
+
 ## 功能总览
 
 - **主题操作台**：主色候选库（44 色）、副色候选区、名称/分类/行业元信息；一键应用/生成导入主题库。

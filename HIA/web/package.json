@@ -19,6 +19,8 @@
   "devDependencies": {
     "@types/node": "^26.1.2",
     "axe-core": "^4.14.0",
+    "gifenc": "^1.0.3",
+    "pngjs": "^7.0.0",
     "puppeteer-core": "^23.11.1",
     "typescript": "^5.5.0",
     "vite": "^8.3.8"
