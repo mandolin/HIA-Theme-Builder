@@ -1261,13 +1261,23 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     el.style.left=x+'px';el.style.top=Math.max(6,y)+'px';
   }
   // ccTipShow：填充内容并触发定位。
-  function ccTipShow(target:Element,opts:{title:string;hex:string;desc?:string;caution?:string}){
+  function ccTipShow(target:Element,opts:{title:string;hex:string;desc?:string;caution?:string;palette?:string[]}){
     const tip=ccTipEnsure();
     const hex=opts.hex;
     const[r,g,b]=hexToRgb255(hex);
-    const rows:[string,string][]=[['HEX',hex],['RGB','rgb('+r+', '+g+', '+b+')'],['HSL',hexToHslStr(hex)]];
+    // 行集合：单色卡=HEX/RGB/HSL；色组卡=组内全部 HEX（逐色一行）+ 首色 RGB/HSL。
+    // <lang en>Single cards show HEX/RGB/HSL; palette cards list every hex plus lead RGB/HSL.</lang>
+    const rows:[string,string][]=opts.palette&&opts.palette.length>1
+      ?[['RGB','rgb('+r+', '+g+', '+b+')'],['HSL',hexToHslStr(hex)]]
+      :[['HEX',hex],['RGB','rgb('+r+', '+g+', '+b+')'],['HSL',hexToHslStr(hex)]];
     let html='<div class="cc-tip-title"><span class="cc-tip-swatch" style="background:'+hex+'"></span>'+escapeHtml(opts.title)+'</div>';
+    // HEX 组头行可整体复制（逗号分隔）。
+    if(opts.palette&&opts.palette.length>1){
+      html+='<div class="cc-tip-row"><span class="cc-tip-label">HEX</span><span class="cc-tip-val">'+opts.palette.join(', ')+'</span>'
+        +'<button type="button" class="cc-tip-copy" data-cc-copy="'+escapeHtml(opts.palette.join(', '))+'" title="'+t('p17.tip.copy')+'">⧉</button></div>';
+    }
     for(const[label,val]of rows){
+      if(!val)continue;
       html+='<div class="cc-tip-row"><span class="cc-tip-label">'+label+'</span><span class="cc-tip-val">'+val+'</span>'
         +'<button type="button" class="cc-tip-copy" data-cc-copy="'+val+'" title="'+t('p17.tip.copy')+'">⧉</button></div>';
     }
@@ -1299,7 +1309,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>Delegated hover/copy handling for the shared tip element.</lang>
   document.addEventListener('mouseover',e=>{
     const t0=e.target as Element;
-    const card=t0.closest('.bd-bar,.tc-card');
+    // 三类卡：宝典色块（.bd-bar）/ 传统色卡（.tc-card）/ 国旗企业色组卡（.bdc-card）。
+    // <lang en>Three card kinds: baodian swatch, traditional color card, flag/brand palette card.</lang>
+    const card=t0.closest('.bd-bar,.tc-card,.bdc-card');
     const tip=ccTipEnsure();
     if(card){
       if(tip.contains(card))return;
@@ -1307,6 +1319,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       if(card.classList.contains('bd-bar')){
         const hex=(card as HTMLElement).dataset.hex||'#cccccc';
         ccTipShow(card,{title:t('p12.baodian.tag')+' #'+(card.textContent||'').trim(),hex});
+      }else if(card.classList.contains('bdc-card')){
+        // 色组卡（国旗/企业）：标题=名称，色值行=组内全部 HEX，说明=设计说明（无 caution）。
+        // <lang en>Palette card: name title, all palette hexes, design note.</lang>
+        const el=card as HTMLElement;
+        const colors=(el.dataset.bdcColors||'').split(',').filter(Boolean);
+        ccTipShow(el,{title:el.dataset.bdcName||'',hex:colors[0]||'#cccccc',desc:el.dataset.bdcNote||undefined,palette:colors});
       }else{
         const el=card as HTMLElement;
         ccTipShow(el,{title:el.dataset.tcName||'',hex:el.dataset.tcHex||'#cccccc',desc:el.dataset.tcNote||undefined,caution:el.dataset.tcCaution||undefined});
@@ -1367,15 +1385,103 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     }));
     renderFlagRight();
   }
+  // 国旗色说明：手工考据表优先（30+ 主要国家），其余按"颜色→象征"通识规则合成一句。
+  // <lang en>Hand-curated notes first; the rest composed from conventional color symbolism.</lang>
+  const FLAG_NOTES:Record<string,string>={
+    'cn':'中华人民共和国国旗，红底黄星。红色象征革命，五颗黄星象征中国共产党领导下的人民大团结。',
+    'hk':'中国香港特别行政区区旗，红底白色紫荆花。红色与祖国国旗一致，紫荆花象征香港。',
+    'mo':'中国澳门特别行政区区旗，绿底白色莲花。绿色象征生机，莲花为澳门市花。',
+    'jp':'日本国旗"日之丸"，白底红圆。红色象征太阳，白色象征纯洁与诚实。',
+    'kr':'韩国国旗"太极旗"，白底太极图与四卦。白色象征和平，太极象征阴阳平衡。',
+    'in':'印度国旗三色旗：藏红花色（勇气）、白色（和平与真理）、绿色（信仰），中央蓝色法轮象征法。',
+    'th':'泰国国旗红白蓝三色横条，蓝色居中象征王室，红白象征国家与人民。',
+    'gb':'英国"米字旗"，红白蓝三色组合，象征英格兰、苏格兰、爱尔兰的联合。',
+    'fr':'法国三色旗蓝白红，源自法国大革命，象征自由、平等、博爱。',
+    'de':'德国三色旗黑红金，源自 1848 年革命，象征统一与自由。',
+    'it':'意大利三色旗绿白红，绿色象征希望，白色象征信仰，红色象征牺牲。',
+    'es':'西班牙红黄红三色旗，黄色居中象征西班牙王国，红色象征力量。',
+    'us':'美国"星条旗"，13 条红白相间象征建国 13 州，蓝底白星象征 50 州。',
+    'br':'巴西绿底黄菱形蓝圆，绿色象征森林，黄色象征矿产，蓝色天球象征夜空。',
+    'au':'澳大利亚蓝底米字旗加南十字星，象征英联邦与南半球。',
+    'ca':'加拿大"枫叶旗"，红白红三竖条，中央红枫叶象征国家象征。',
+    'mx':'墨西哥绿白红三色旗，中央国徽为鹰立仙人掌啄蛇，象征阿兹特克建国传说。',
+    'ar':'阿根廷天蓝白天蓝三色横条，中央太阳象征五月革命与独立。',
+    'za':'南非六色旗，Y 字形设计象征多种族融合，黑黄绿象征非洲，红白蓝象征欧洲遗产。',
+    'eg':'埃及红白黑三色旗，中央金色鹰象征萨拉丁，红色象征革命，黑色象征压迫。',
+    'ng':'尼日利亚绿白绿三色旗，绿色象征农业与森林，白色象征和平。',
+    'ke':'肯尼亚黑红绿三色旗加白边与马赛盾牌，象征人民、鲜血、土地。',
+    'et':'埃塞俄比亚绿黄红三色旗加蓝底金星，象征和平、繁荣、团结。',
+    'ru':'俄罗斯白蓝红三色旗，白色象征高贵与坦率，蓝色象征忠诚，红色象征勇气。',
+    'nl':'荷兰红白蓝三色旗，红色象征勇气，白色象征和平与诚实，蓝色象征忠诚。',
+    'be':'比利时黑黄红三竖条，源自布拉班特公国纹章色。',
+    'pl':'波兰白红双色旗，白色象征纯洁，红色象征热血与牺牲。',
+    'se':'瑞典蓝底黄十字，蓝色象征真理与忠诚，黄色十字象征基督教信仰。',
+    'no':'挪威红底蓝十字加白边，红白蓝取自法国三色，十字象征基督教传统。',
+    'dk':'丹麦红底白十字，世界上最古老的国旗之一，十字象征基督教。',
+    'fi':'芬兰白底蓝十字，白色象征冬雪，蓝色象征湖泊与天空。',
+    'ch':'瑞士红底白十字，红色象征力量与勇气，白十字象征基督教信仰与中立。',
+    'at':'奥地利红白红三横条，源自巴本堡家族纹章。',
+    'pt':'葡萄牙绿红双色旗，绿色象征希望，红色象征勇气与鲜血。',
+    'gr':'希腊蓝白条纹加左上角十字，蓝色象征天空与海洋，白色象征纯洁。',
+    'tr':'土耳其红底白星月，红色象征鲜血与胜利，星月为伊斯兰文化象征。',
+    'sa':'沙特阿拉伯绿底白色阿拉伯文与宝剑，绿色象征伊斯兰，文字为清真言。',
+    'ae':'阿联酋红绿白黑四色，源自泛阿拉伯色：红色象征勇气，绿色象征希望，白色象征纯洁，黑色象征力量。',
+    'il':'以色列白底蓝色大卫之星与上下蓝条，蓝色与白色取自犹太教祈祷披肩。',
+    'ir':'伊朗绿白红三色旗，绿色象征伊斯兰与希望，白色象征和平，红色象征勇气。',
+    'iq':'伊拉克红白黑三色旗，泛阿拉伯色组合。',
+    'vn':'越南红底黄星，红色象征革命与鲜血，黄星象征工人农民士兵团结。',
+    'id':'印度尼西亚红白双色旗，红色象征勇气，白色象征纯洁。',
+    'my':'马来西亚红白条纹加蓝色 canton 与黄色星月，象征十四州与伊斯兰。',
+    'sg':'新加坡红白双色旗，红色象征平等与友谊，白色象征纯洁与美德。',
+    'ph':'菲律宾蓝红双色旗加白色三角与太阳三星，象征和平、爱国与三大区域。',
+  };
+  // 颜色象征词典（合成说明用）。
+  const COLOR_SYMBOL:Record<string,string>={
+    '红色':'勇气、鲜血与革命','绿色':'自然、希望与伊斯兰文化','蓝色':'天空、海洋与忠诚','白色':'和平、纯洁与诚实',
+    '黄色':'财富、阳光与资源','黑色':'人民、力量与非洲遗产','橙色':'活力、温暖与勇气'
+  };
+  // 合成说明：按色系桶生成一句"颜色—象征"说明。
+  // <lang en>Composes a symbolism sentence from the palette's hue buckets.</lang>
+  function composedFlagNote(colors:string[]):string{
+    const seen=new Set<string>();
+    const parts:string[]=[];
+    for(const hex of colors.slice(0,3)){
+      const r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255;
+      const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
+      // 低彩度归白/黑，其余按色相归类。
+      let key='黄色';
+      if(d<0.08)key=mx>0.85?'白色':mx>0.4?'黑色':'黑色';
+      else{
+        let h;
+        if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;
+        h=(h*60+360)%360;
+        key=h<20||h>=340?'红色':h<50?'橙色':h<75?'黄色':h<180?'绿色':h<260?'蓝色':'黑色';
+      }
+      const sym=COLOR_SYMBOL[key];
+      if(sym&&!seen.has(key)){seen.add(key);parts.push(key+'象征'+sym);}
+    }
+    return parts.length?('国旗配色通识：'+parts.join('；')+'。'):'国旗配色：多色组合，象征国家历史与价值。';
+  }
   function renderFlagRight(){
     const right=byId<HTMLElement>('baodianRight');
     const items=FLAG_COLORS.filter(f=>f.continent===baodianFlagGroup);
-    let html='';
+    let html='<div class="bdc-grid">';
     for(const f of items){
-      html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(f.name)} · ${escapeHtml(f.nameEn)}</div><button type="button" class="tc-card bdc-card" data-bdc-colors="${f.colors.join(',')}" data-bdc-name="${escapeHtml(f.name)}" data-bdc-kind="flag"><span class="bdc-strip">${f.colors.map(c=>`<span style="background:${c}"></span>`).join('')}</span><span class="tc-name">${escapeHtml(f.name)} <span class="tc-hex">${f.colors.join(' ')}</span></span></button></div>`;
+      // note：手工考据优先，缺省合成。
+      // 键为 ISO 码（表内用 cn/hk/...），卡片 id 为 flag-<iso>。
+      const note=FLAG_NOTES[f.id.replace('flag-','')]||composedFlagNote(f.colors);
+      const iso=f.id.replace('flag-','');
+      html+=`<div class="bdc-card" role="button" tabindex="0" data-bdc-colors="${f.colors.join(',')}" data-bdc-name="${escapeHtml(f.name)}" data-bdc-kind="flag" data-bdc-note="${escapeHtml(note)}">
+        <div class="bdc-strip">${f.colors.map(c=>`<span style="background:${c}"></span>`).join('')}</div>
+        <div class="bdc-name"><span class="flag-thumb" data-thumb="flag"><span class="flag-bars">${f.colors.slice(0,4).map(c=>`<i style="background:${c}"></i>`).join('')}</span><img class="flag-img" src="https://flagcdn.com/w40/${escapeHtml(iso)}.png" alt="" data-iso="${escapeHtml(iso)}"></span><span class="bdc-title">${escapeHtml(f.name)}</span><span class="bdc-sub">${escapeHtml(f.nameEn)}</span></div>
+        <div class="bdc-hex">${f.colors.join(' ')}</div>
+        <div class="bdc-note">${escapeHtml(note)}</div>
+      </div>`;
     }
+    html+='</div>';
     right.innerHTML=html||`<div class="small">${t('p12.baodian.empty')}</div>`;
     bindPaletteApply(right);
+    bindFlagImages(right);
   }
   // 企业源（W-tb-P18）：左=行业菜单，右=品牌色组卡（色块条+品牌名），点击=依次填主/副/第三。
   // <lang en>Brand source: industry menu; brand palette cards; same apply semantics.</lang>
@@ -1388,16 +1494,104 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     }));
     renderBrandRight();
   }
+  // 企业色说明：手工考据表优先（40+ 知名品牌），其余合成"品牌主色—行业气质"说明。
+  // <lang en>Hand-curated brand notes first; others composed from primary colour + industry tone.</lang>
+  const BRAND_NOTES:Record<string,string>={
+    'Apple':'苹果标志性的银灰与白色，象征创新、简洁与现代科技美学。',
+    'Microsoft':'四色方块（红绿蓝黄）象征 Windows 生态多样性，蓝色代表信任与专业。',
+    'Google':'四色（蓝红黄绿）代表 Google 产品线的多样性与活力。',
+    'Facebook':'Facebook 蓝，象征信任、专业与社交连接，全球统一品牌色。',
+    'Twitter':'Twitter 蓝，象征沟通、开放与实时信息流。',
+    'LinkedIn':'LinkedIn 蓝，象征专业、信任与职业发展。',
+    'YouTube':'YouTube 红，象征活力、娱乐与全球视频平台。',
+    'Instagram':'Instagram 渐变色，象征创意、活力与视觉内容。',
+    'GitHub':'GitHub 黑，象征开发者文化、开源与专业工具。',
+    'Adobe':'Adobe 红，象征创意、设计与专业软件。',
+    'Intel':'Intel 蓝，象征科技、创新与半导体领导力。',
+    'NVIDIA':'NVIDIA 绿，象征 GPU 计算、AI 与图形性能。',
+    'Samsung':'Samsung 蓝，象征科技、创新与全球消费电子。',
+    'IBM':'IBM 蓝，象征企业级计算、咨询与科技服务。',
+    'Amazon':'Amazon 橙与箭头微笑，象征从 A 到 Z 的客户服务与电商。',
+    'Netflix':'Netflix 红，象征流媒体娱乐、原创内容与全球覆盖。',
+    'Spotify':'Spotify 绿，象征音乐流媒体、播客与音频内容。',
+    'Nike Football':'Nike 黑与白，象征运动、性能与"Just Do It"精神。',
+    'Adidas':'Adidas 黑与三道杠，象征运动性能、经典与全球体育。',
+    'Coca-Cola':'可口可乐红，象征经典、活力与全球饮料领导品牌。',
+    'Starbucks':'星巴克绿，象征咖啡文化、可持续与全球连锁。',
+    "McDonald's":'麦当劳黄红，象征快餐、快乐与全球连锁。',
+    'HBO':'HBO 黑底白字，象征高端原创内容、电影与电视剧。',
+    'Disney':'迪士尼蓝与红，象征童话、家庭娱乐与全球 IP。',
+    'PlayStation':'PlayStation 蓝，象征游戏、娱乐与索尼互动娱乐。',
+    'Xbox':'Xbox 绿，象征微软游戏生态与跨平台娱乐。',
+    'Nintendo':'任天堂红，象征游戏、创意与日本娱乐文化。',
+    'Tesla':'Tesla 红，象征电动车、可持续能源与科技创新。',
+    'PayPal':'PayPal 双蓝，象征在线支付、金融与信任。',
+    'Stripe':'Stripe 紫，象征开发者支付、金融科技与创新。',
+    'Airbnb':'Airbnb 红，象征旅行、住宿共享与全球社区。',
+    'Uber':'Uber 黑，象征出行、共享经济与全球交通。',
+    'Meta':'Meta 蓝，象征元宇宙、社交连接与科技平台。',
+    'OpenAI':'OpenAI 绿，象征 AI 研究、创新与未来技术。',
+    'BMW':'宝马蓝白，源自巴伐利亚州旗色，象征精密工程与驾驶乐趣。',
+    'Mercedes-Benz':'奔驰银与黑，象征豪华、精密与汽车工业标杆。',
+    'Ferrari':'法拉利红（Rosso Corsa），国际赛车运动的意大利代表色。',
+    'Coca Cola':'可口可乐红，象征经典与活力。',
+    'Visa':'Visa 蓝，象征全球支付网络的信任与速度。',
+    'Mastercard':'万事达红橙双圆，象征全球支付连接。',
+    'FedEx':'联邦快递紫橙，紫色象征高端，橙色象征速度与活力。',
+    'UPS':'UPS 棕，象征可靠、稳重与物流传统。',
+    'DHL':'DHL 黄红，黄色象征速度，红色象征活力。',
+  };
+  // 合成企业说明：主色 + 行业气质。
+  // <lang en>Composes a brand note from the lead colour and industry tone.</lang>
+  function composedBrandNote(name:string,colors:string[],industry:string):string{
+    const tone:Record<string,string>={
+      tech:'专业、创新与数字化',auto:'性能、精密与驾驶体验',food:'亲和、食欲与活力',finance:'信任、稳健与安全',
+      retail:'活力、便利与商业效率',media:'创意、娱乐与传播力',travel:'速度、远行与服务品质',
+      apparel:'风格、动感与生活方式',other:'品牌识别与差异化'
+    };
+    const hex=colors[0]||'#1F2937';
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    const d=Math.max(r,g,b)-Math.min(r,g,b);
+    const kind=d<24?(Math.max(r,g,b)>170?'浅中性色':'深中性色'):(r>=g&&r>=b?'暖色系':(b>=g?'冷蓝系':'绿系'));
+    return`${name} 品牌主色为${kind}（${hex}），传达${tone[industry]||tone.other}的品牌气质。`;
+  }
   function renderBrandRight(){
     const right=byId<HTMLElement>('baodianRight');
     const items=BRAND_COLORS.filter(b=>b.industry===baodianBrandGroup);
-    let html='';
+    let html='<div class="bdc-grid">';
     for(const b of items){
-      html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(b.name)}</div><button type="button" class="tc-card bdc-card" data-bdc-colors="${b.colors.slice(0,6).join(',')}" data-bdc-name="${escapeHtml(b.name)}" data-bdc-kind="brand"><span class="bdc-strip">${b.colors.slice(0,6).map(c=>`<span style="background:${c}"></span>`).join('')}</span><span class="tc-name">${escapeHtml(b.name)} <span class="tc-hex">${b.colors.slice(0,6).join(' ')}</span></span></button></div>`;
+      const note=BRAND_NOTES[b.name]||composedBrandNote(b.name,b.colors,b.industry);
+      // 品牌 logo：simple-icons CDN（CC0 图标库）按 slug 取图；加载失败由 bindBrandLogos 回退首字母徽标（离线可用）。
+      // <lang en>Brand logo via simple-icons CDN (CC0); bindBrandLogos swaps in a monogram when loading fails.</lang>
+      const logo=`<span class="brand-thumb"><span class="brand-mono" style="background:${escapeHtml(b.colors[0]||'#1F2937')}">${escapeHtml((b.name[0]||'?').toUpperCase())}</span><img class="brand-logo" src="https://cdn.simpleicons.org/${encodeURIComponent(b.slug)}" alt="" data-logo="1"></span>`;
+      html+=`<div class="bdc-card" role="button" tabindex="0" data-bdc-colors="${b.colors.slice(0,6).join(',')}" data-bdc-name="${escapeHtml(b.name)}" data-bdc-kind="brand" data-bdc-note="${escapeHtml(note)}">
+        <div class="bdc-strip">${b.colors.slice(0,6).map(c=>`<span style="background:${c}"></span>`).join('')}</div>
+        <div class="bdc-name">${logo}<span class="bdc-title">${escapeHtml(b.name)}</span></div>
+        <div class="bdc-hex">${b.colors.slice(0,6).join(' ')}</div>
+        <div class="bdc-note">${escapeHtml(note)}</div>
+      </div>`;
     }
+    html+='</div>';
     right.innerHTML=html||`<div class="small">${t('p12.baodian.empty')}</div>`;
     bindPaletteApply(right);
+    bindBrandLogos(right);
   }
+  // 远程图标渐进增强：本地缩略（旗帜色条/品牌字母）默认可见且离线可用；
+  //   真旗/品牌 logo 加载成功后加 .loaded 覆盖缩略图，失败则静默保留缩略。
+  // <lang en>Progressive enhancement: local thumbnail is the default (offline-safe); a successfully
+  //   loaded remote flag/logo overlays it via .loaded, failures silently keep the thumbnail.</lang>
+  function bindRemoteThumbs(root:HTMLElement,thumbSel:string,imgSel:string){
+    all<HTMLElement>(thumbSel,root).forEach(thumb=>{
+      // img：该缩略内图片（加载成功即覆盖）。
+      const img=thumb.querySelector<HTMLImageElement>(imgSel);
+      if(!img)return;
+      const done=()=>thumb.classList.add('loaded');
+      if(img.complete&&img.naturalWidth>0)done();
+      else img.addEventListener('load',done,{once:true});
+    });
+  }
+  function bindFlagImages(root:HTMLElement){bindRemoteThumbs(root,'.flag-thumb','.flag-img');}
+  function bindBrandLogos(root:HTMLElement){bindRemoteThumbs(root,'.brand-thumb','.brand-logo');}
   // 多色组套用（国旗/企业共用）：依次填主/副/第三（色数 1/2/3+），辅助色按规则补足 2 槽。
   // <lang en>Shared multi-color apply: fill primary/secondary/third by order, auxiliaries rule-generated.</lang>
   function bindPaletteApply(root:HTMLElement){

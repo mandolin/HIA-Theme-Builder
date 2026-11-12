@@ -8,4 +8,5 @@ export type Continent='asia'|'europe'|'americas'|'africa'|'oceania';
 export interface FlagEntry{id:string;name:string;nameEn:string;continent:Continent;colors:string[];bucket:string}
 
 import{part0}from'./flags-part0.js';
-export const FLAG_COLORS:readonly FlagEntry[]=[...part0];
+import{part1}from'./flags-part1.js';
+export const FLAG_COLORS:readonly FlagEntry[]=[...part0,...part1];
