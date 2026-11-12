@@ -1,13 +1,13 @@
-// @lang zh-CN HIA-Theme-Builder 桌面端发布工作流（W-tb-P25 三平台矩阵）：
-//   ①windows-latest：Electron 便携+NSIS、Tauri 便携+MSI（自签名）——沿用原逻辑；
-//   ②macos-latest：Electron dmg+zip、Tauri app+dmg（**未签名/未公证**，按维护者 2026-11-12 定案）；
-//   ③ubuntu-latest：Electron AppImage+deb、Tauri AppImage+deb（未签名，Linux 无强制签名要求）。
-//   各平台独立 job 构建后汇总到一个 Release，SHA-256 校验和按平台分别生成并合并上传。
-//   触发：手动 workflow_dispatch 或版本标签 v*。
-//   未签名说明：macOS 首次打开需「右键 → 打开」或在系统设置中允许；Windows 会提示未知发布者。
-// @lang en HIA-Theme-Builder desktop release workflow (W-tb-P25 three-platform matrix):
-//   windows (signed, as before), macOS (unsigned, per maintainer decision), Linux (unsigned).
-//   Each platform builds in its own job; artifacts merge into one Release with per-platform SHA-256.
+# @lang zh-CN HIA-Theme-Builder 桌面端发布工作流（W-tb-P25 三平台矩阵）：
+#   ①windows-latest：Electron 便携+NSIS、Tauri 便携+MSI（自签名）——沿用原逻辑；
+#   ②macos-latest：Electron dmg+zip、Tauri app+dmg（**未签名/未公证**，按维护者 2026-11-12 定案）；
+#   ③ubuntu-latest：Electron AppImage+deb、Tauri AppImage+deb（未签名，Linux 无强制签名要求）。
+#   各平台独立 job 构建后汇总到一个 Release，SHA-256 校验和按平台分别生成并合并上传。
+#   触发：手动 workflow_dispatch 或版本标签 v*。
+#   未签名说明：macOS 首次打开需「右键 → 打开」或在系统设置中允许；Windows 会提示未知发布者。
+# @lang en HIA-Theme-Builder desktop release workflow (W-tb-P25 three-platform matrix):
+#   windows (signed, as before), macOS (unsigned, per maintainer decision), Linux (unsigned).
+#   Each platform builds in its own job; artifacts merge into one Release with per-platform SHA-256.
 
 name: Release desktop
 
@@ -266,17 +266,15 @@ jobs:
           files: |
             artifacts/*
           body: |
-            ### 桌面端产物（三平台）
+            Desktop artifacts (three platforms)
 
-            | 平台 | 产物 | 签名 |
-            | --- | --- | --- |
-            | Windows | Electron 便携版 + NSIS 安装器、Tauri 便携版 + MSI | 自签名 |
-            | macOS | Electron dmg + zip、Tauri dmg | **未签名/未公证** |
-            | Linux | Electron AppImage + deb、Tauri AppImage + deb | 未签名 |
+            Windows: Electron portable + NSIS installer; Tauri portable + MSI (self-signed).
+            macOS: Electron dmg + zip; Tauri dmg (UNSIGNED / NOT NOTARIZED).
+            Linux: Electron AppImage + deb; Tauri AppImage + deb (unsigned).
 
-            **macOS 首次打开**：右键点击应用 → 选择「打开」（或在「系统设置 → 隐私与安全性」中允许）。
-            **Windows** 可能提示「未知发布者」，选择「仍要运行」。
+            macOS first launch: right-click the app and choose Open (or allow it in System Settings > Privacy & Security).
+            Windows may warn about an unknown publisher - choose "Run anyway".
 
-            各平台校验和见 `SHA256SUMS-*.txt`。
+            Per-platform checksums: SHA256SUMS-windows.txt / -macos.txt / -linux.txt.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
