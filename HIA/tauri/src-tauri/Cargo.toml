@@ -2,7 +2,7 @@
 # @lang en Tauri Rust backend manifest: window + extraction command. SSRF re-checked here.
 [package]
 name = "hia-theme-tauri"
-version = "0.3.0"
+version = "0.4.0"
 description = "HIA-Theme-Builder desktop (Tauri) backend"
 edition = "2021"
 

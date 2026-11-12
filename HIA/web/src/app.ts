@@ -2271,6 +2271,34 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     byId<HTMLInputElement>('settingsDarkToggle').checked=mode==='dark';
     updatePreviewMeta();
   }
+  // 预览滤镜族（W-tb-P21）：透明度淡化/低饱和褪色/亮度增减/灰度程度。
+  //   实现=CANVAS 无关的 CSS filter 叠加到预览容器（PC shell + 小程序机身 + 经典 mock），
+  //   仅影响预览呈现；导出令牌与主题数据不受影响（设计确定性）。
+  // <lang en>Preview-only CSS filters applied to preview containers; exports stay untouched.</lang>
+  type PreviewFilter='none'|'alpha'|'desat'|'bright'|'dim'|'gray25'|'gray50'|'gray100';
+  // 滤镜 → CSS filter 映射（alpha 用透明度+轻微降饱和模拟"淡化"）。
+  // <lang en>Filter → CSS filter mapping (alpha fades via opacity plus slight desaturation).</lang>
+  const FILTER_CSS:Record<PreviewFilter,string>={
+    none:'',alpha:'opacity(.85)',desat:'saturate(.55)',bright:'brightness(1.12)',
+    dim:'brightness(.88)',gray25:'grayscale(.25)',gray50:'grayscale(.5)',gray100:'grayscale(1)'
+  };
+  // previewFilter：当前滤镜（localStorage 持久化）。
+  let previewFilter:PreviewFilter='none';
+  try{const v=localStorage.getItem('hia-preview-filter');if(v&&v in FILTER_CSS)previewFilter=v as PreviewFilter;}catch{/* ignore */}
+  // applyPreviewFilter：写入容器 filter 并持久化。
+  // <lang en>Applies the filter to preview containers and persists the choice.</lang>
+  function applyPreviewFilter(f:PreviewFilter){
+    previewFilter=f;
+    try{localStorage.setItem('hia-preview-filter',f);}catch{/* ignore */}
+    // 容器：PC 预览内容 + 小程序机身 + 经典 mock（存在则应用）。
+    const targets=['pcContent','wxFrame','classicPreviewBody'];
+    for(const id of targets){
+      const el=document.getElementById(id);
+      if(el)el.style.filter=FILTER_CSS[f]||'';
+    }
+    const sel=byId<HTMLSelectElement>('previewFilterSelect');
+    if(sel)sel.value=f;
+  }
   // 切换 PC 预览页面标签：高亮激活页、隐藏其余、显示目标页并更新标题/面包屑。
   // <lang zh-CN>titles 给出“标题/面包屑”中英或中中对照。</lang>
   // <lang en>titles provides title/crumb text pairs.</lang>
@@ -2486,6 +2514,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>与开关状态保持同步。</lang>
     // <lang en>Stays in sync with the toggle state.</lang>
     all<HTMLButtonElement>('#appearanceSwitch .seg').forEach(btn=>btn.addEventListener('click',()=>{const mode=btn.dataset.appearance;if(mode==='light'||mode==='dark')applyAppearance(mode);}));
+    // 预览滤镜（W-tb-P21）：切换即应用并持久化；启动时恢复。
+    byId<HTMLSelectElement>('previewFilterSelect').addEventListener('change',e=>applyPreviewFilter((e.currentTarget as HTMLSelectElement).value as PreviewFilter));
+    applyPreviewFilter(previewFilter);
     // PC 页面标签：点击切换到对应预览页。
     // <lang zh-CN>六个页面枚举校验。</lang>
     // <lang en>Validates against the six page enums.</lang>

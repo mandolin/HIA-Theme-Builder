@@ -4,13 +4,16 @@
 
 HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具，以 TypeScript + 组件化的方式重构为一套可复用、可发布的主题管理体系，并抽离公共核心（`core`），在其基础上派生出网页版、Electron 版与 Tauri 版。
 
-**当前版本 [v0.3.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.3.0)**（2026-11-10）：三端同构发布 · [在线版（GitHub Pages）](https://mandolin.github.io/HIA-Theme-Builder/) · [文档子站](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [桌面下载](https://github.com/mandolin/HIA-Theme-Builder/releases)
+**当前版本 [v0.4.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.4.0)**（2026-11-12）：三端同构发布 · [在线版（GitHub Pages）](https://mandolin.github.io/HIA-Theme-Builder/) · [文档子站](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [桌面下载](https://github.com/mandolin/HIA-Theme-Builder/releases)
 
 ## 功能总览
 
 - **主题操作台**：主色候选库（44 色）、副色候选区、名称/分类/行业元信息；一键应用/生成导入主题库。
 - **配色关系模式与辅助色**（ADR-007 v2）：主体色单色/双色/三色模式（成员数派生）；十种经典配色设计映射为关系规则（互补/冲突/中性/类比/分裂补色/三次色/原色组合/二次色组合/纯色/手动）；规则补副色/补第三色；辅助色独立槽位（0..8，手动添加/按规则生成/↔主副三互换/拖拽排序）。
 - **配色宝典选色**：弹层内置 24 情感分类 × 10 形态组合（1440 组合/3739 色条，逐页对账零缺失），点击组合一键套用主体色；情感行 ⚡ 快捷套用。
+- **六源选色**：宝典组合 / 传统色 1,637 色（英/中/日/韩，含说明）/ 国旗 196 国与地区（内置旗帜图）/ 企业品牌色 691（内置 logo）/ 自然场景 41 / 社会场景 31——经“宝典选色”下拉切换。
+- **语气预设与锚定**：72 个内置情感预设成套套用；锚定模式以当前主色重推导组合成员。
+- **预览滤镜族**：透明度淡化 / 低饱和 / 亮度增减 / 灰度 25-50-100%，仅影响预览并记忆选择。
 - **取色探索**：桌面端输入网址真实渲染取色（多信号加权：主色/Logo/manifest 等），SSRF 双重校验（Electron 主进程 + Tauri Rust CDP 逐请求拦截）。
 - **预览**：PC 版企业后台完整预览（仪表盘/列表/表单/详情/分析/设置六页 × 左右/上下/混合三结构 × 明暗双模式）+ 小程序五页示例预览 + WordPress/Tailwind 经典场景注入预览。
 - **渐变**：8 渐变角色 × 色系来源（主/副/第三/辅助 N）× 色阶/角度/偏置，自定义下拉带色块预览。

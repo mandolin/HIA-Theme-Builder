@@ -169,6 +169,17 @@ registerStrings({
   'p18.industry.other': { zh: '其他品牌', en: 'Other Brands' },
   'p18.applied.flag': { zh: '已套用国旗色组「{name}」（{n} 色依次填主体色）', en: 'Applied flag palette \"{name}\" ({n} colors into the body series)' },
   'p18.applied.brand': { zh: '已套用品牌色「{name}」（{n} 色依次填主体色）', en: 'Applied brand palette \"{name}\" ({n} colors into the body series)' },
+  // 预览滤镜族（W-tb-P21）：透明度/低饱和/亮度档/灰度程度——仅影响预览呈现，不影响导出。
+  // <lang en>Preview filters (W-tb-P21): alpha/desaturation/brightness/grayscale degrees; preview-only.</lang>
+  'p21.filter.aria': { zh: '预览滤镜', en: 'Preview filter' },
+  'p21.filter.none': { zh: '无滤镜', en: 'No filter' },
+  'p21.filter.alpha': { zh: '透明度淡化', en: 'Alpha fade' },
+  'p21.filter.desat': { zh: '低饱和褪色', en: 'Desaturate' },
+  'p21.filter.bright': { zh: '亮度提高', en: 'Brighter' },
+  'p21.filter.dim': { zh: '亮度降低', en: 'Dimmer' },
+  'p21.filter.gray25': { zh: '灰度 25%', en: 'Grayscale 25%' },
+  'p21.filter.gray50': { zh: '灰度 50%', en: 'Grayscale 50%' },
+  'p21.filter.gray100': { zh: '灰度 100%', en: 'Grayscale 100%' },
   // 自然/社会场景两源（W-tb-P19）：源名/标题/分类/回执。
   // <lang en>Nature/social sources (W-tb-P19).</lang>
   'p19.source.nature': { zh: '自然选色', en: 'Nature Scenes' },

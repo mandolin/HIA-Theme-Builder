@@ -4,16 +4,19 @@ English | [简体中文](README.zh-CN.md)
 
 HIA Theme Builder. Rebuilds the original single-file tool `HIA_theme_manager.html` into a reusable, publishable theme management system based on TypeScript and componentization, with a shared core (`core`) from which the web, Electron and Tauri editions are derived.
 
-**Current release [v0.3.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.3.0)** (2026-11-10): three-end consistent release · [Web app (GitHub Pages)](https://mandolin.github.io/HIA-Theme-Builder/) · [Docs](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [Desktop downloads](https://github.com/mandolin/HIA-Theme-Builder/releases)
+**Current release [v0.4.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v0.4.0)** (2026-11-12): three-end consistent release · [Web app (GitHub Pages)](https://mandolin.github.io/HIA-Theme-Builder/) · [Docs](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [Desktop downloads](https://github.com/mandolin/HIA-Theme-Builder/releases)
 
 ## Feature Overview
 
 - **Theme console**: primary candidate library (44 colors), secondary candidate area, name/category/industry metadata; apply or generate-and-import themes in one click.
 - **Harmony modes & auxiliary colors** (ADR-007 v2): body color in single/dual/triad modes (derived from member count); ten classic color designs mapped to relation rules (complement/clash/neutral/analogous/split-complement/tertiary/primary-combo/secondary-combo/pure/manual); one-click "fill secondary / fill third"; auxiliary slots (0..12, manual or rule-generated, ↔Pri/↔Sec/↔3rd swaps, drag to reorder).
 - **Color baodian picker**: modal with 24 moods × 10 forms (1,440 combos / 3,739 bars, reconciled zero-missing against the source book); click a combo to apply; per-mood ⚡ quick apply.
+- **Six color sources**: baodian combos, traditional named colors (1,637 across EN/CN/JA/KR with notes), national flags (196 countries & regions, bundled flag images), brand palettes (691 brands, bundled logos), natural scenes (41), social conventions (31) — switch via the "Baodian pick" split button.
 - **URL color exploration** (desktop): real-render extraction with multi-signal scoring (text/borders/logo/manifest), dual-layer SSRF protection (Electron main process + Tauri Rust per-request CDP adjudication); apply-scope checkboxes (primary & secondary, other colors → auxiliary).
 - **Previews**: full fake enterprise admin (dashboard/list/form/detail/analytics/settings × three layouts × dark/light) + mini-program sample pages + WordPress/Tailwind classic-target injection previews.
 - **Gradients**: 8 gradient roles × color sources (primary/secondary/third/auxiliary N) × shade/angle/bias, custom dropdown with swatch previews.
+- **Tone presets & anchoring**: 72 built-in mood presets applied as full suites; anchor mode re-derives combos from your current primary.
+- **Preview filters**: alpha fade / desaturate / brightness / grayscale 25-50-100%, preview-only, persisted.
 - **Exports**: CSS variables / JSON tokens / WordPress theme.json + child-theme skeleton / Tailwind config; third & auxiliary colors propagate everywhere.
 - **Theme market**: local library (search/category/industry filters), pack import & export, share links (URL restores a theme), remote preset sources (official example source built in).
 - **i18n & a11y**: bilingual UI (zh/en, lossless round-trips), ARIA/keyboard baseline; docs site bilingual with language switch.
