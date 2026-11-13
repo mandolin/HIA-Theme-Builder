@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   evaluateTdot, lexTdot, parseTdot, shouldEvaluateTdot, isUnsupportedTdotVersion, tdotData,
-  TDOT_SPEC_VERSION, TDOT_MAX_EXPR_DEPTH, TDOT_MAX_NODES
+  TDOT_SPEC_VERSION, TDOT_MAX_EXPR_DEPTH, TDOT_MAX_NODES, evaluateTemplateBody
 } from '../dist/index.js';
 
 /** @lang zh-CN 求值包装：断言成功并返回输出。 @lang en Eval wrapper: asserts success and returns output. */
@@ -247,4 +247,70 @@ test('parseTdot 可独立使用（AST）', () => {
   const p = parseTdot('', lex.tokens);
   assert.equal(p.ok, true);
   assert.equal(p.nodes[0].kind, 'if');
+});
+
+// ===== 12. template.body 内嵌（ADR-011 §5.1）=====
+
+test('template.body：版本匹配时展开为文本', () => {
+  const doc = {
+    specVersion: 'tdon-0.2',
+    target: { id: 'a-b', name: 'x', nameEn: 'x' },
+    exportManifest: { files: [{ path: 'a.css', template: 'x' }] },
+    template: {
+      specVersion: 'tdot-0.1',
+      body: '{{#each features}}- {{ this }}\n{{/each}}',
+      data: { features: ['a', 'b'] }
+    }
+  };
+  const r = evaluateTemplateBody(doc);
+  assert.equal(r.ok, true);
+  assert.equal(r.text, '- a\n- b\n');
+});
+
+test('template.body：无 body → 跳过（ok 且无 text）', () => {
+  const doc = {
+    specVersion: 'tdon-0.2',
+    target: { id: 'a-b', name: 'x', nameEn: 'x' },
+    exportManifest: { files: [{ path: 'a.css', template: 'x' }] },
+    template: { specVersion: 'tdot-0.1', data: { a: 1 } }
+  };
+  const r = evaluateTemplateBody(doc);
+  assert.equal(r.ok, true);
+  assert.equal(r.text, undefined);
+});
+
+test('template.body：版本不匹配 → 跳过（方案 B）', () => {
+  const doc = {
+    specVersion: 'tdon-0.2',
+    target: { id: 'a-b', name: 'x', nameEn: 'x' },
+    exportManifest: { files: [{ path: 'a.css', template: 'x' }] },
+    template: { body: '{{ a }}', data: { a: 1 } }
+  };
+  const r = evaluateTemplateBody(doc);
+  assert.equal(r.ok, true);
+  assert.equal(r.text, undefined);
+});
+
+test('template.body：求值失败返回错误（整份文档应拒绝）', () => {
+  const doc = {
+    specVersion: 'tdon-0.2',
+    target: { id: 'a-b', name: 'x', nameEn: 'x' },
+    exportManifest: { files: [{ path: 'a.css', template: 'x' }] },
+    template: { specVersion: 'tdot-0.1', body: '{{ a * b }}', data: { a: 1, b: 2 } }
+  };
+  const r = evaluateTemplateBody(doc);
+  assert.equal(r.ok, false);
+  assert.equal(r.error.code, 'E_TDOT_SYNTAX');
+});
+
+test('template.body：@build 注入生效', () => {
+  const doc = {
+    specVersion: 'tdon-0.2',
+    target: { id: 'a-b', name: 'x', nameEn: 'x' },
+    exportManifest: { files: [{ path: 'a.css', template: 'x' }] },
+    template: { specVersion: 'tdot-0.1', body: 'built {{ @build.date }}', data: {} }
+  };
+  const r = evaluateTemplateBody(doc, { date: '2026-11-13' });
+  assert.equal(r.ok, true);
+  assert.equal(r.text, 'built 2026-11-13');
 });

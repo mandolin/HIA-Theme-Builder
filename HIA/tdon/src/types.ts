@@ -143,12 +143,19 @@ export type TdonEffect=
   |{type:'fade-in';duration:number;}
   |{type:'hover-lift';distance:number;};
 
-// TDOT 预留（§14）：`template` 段当前只做"存在即可"的接受 + 警告，内容不解释。
-// <lang zh-CN>单独建类型以便宿主原样透传给未来的 TDOT 运行时，不必二次解析。</lang>
-// <lang en>A distinct type lets hosts forward the block verbatim to a future TDOT runtime without re-parsing.</lang>
+// TDOT 段（§14）：版本匹配时求值（ADR-011 方案 B），其余情况保留原样并警告。
+// <lang zh-CN>单独建类型以便宿主原样透传给 TDOT 运行时，不必二次解析。</lang>
+// <lang en>A distinct type lets hosts forward the block verbatim to the TDOT runtime without re-parsing.</lang>
 export interface TdonTemplateReserved{
-  /** @lang zh-CN TDOT 规范版本串（由 TDOT 规范定义，本包不校验）。 @lang en TDOT spec version (owned by the TDOT spec; not validated here). */
+  /** @lang zh-CN TDOT 规范版本串（`tdot-0.1` 触发求值；ADR-011 §5）。 @lang en TDOT spec version (`tdot-0.1` triggers evaluation; ADR-011 §5). */
   specVersion?:string;
+  /**
+   * @lang zh-CN 模板正文（TDOT 源串，ADR-011 §5.1）：用 `data` 与 `@build.*` 生成文本，
+   *   结果替换 `{{token:…}}` 之外的模板，供导出使用；求值失败整份文档拒绝注册。
+   * @lang en Template source (TDOT source string, ADR-011 §5.1): generates text from `data` and `@build.*`;
+   *   the result feeds export. A failed evaluation rejects the whole document.
+   */
+  body?:string;
   /** @lang zh-CN 其余字段原样保留，供 TDOT 运行时消费。 @lang en Other fields are preserved verbatim for the TDOT runtime. */
   [key:string]:unknown;
 }

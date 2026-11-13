@@ -24,6 +24,10 @@ export const TDOT_MAX_NODES=2000;
 // <lang zh-CN>每渲染一个节点/求值一个表达式计 1 步。</lang>
 // <lang en>One step per rendered node / evaluated expression.</lang>
 export const TDOT_MAX_STEPS=10000;
+// 模板正文长度上限（ADR-011 §5.1）：与 TDON 单文件上限同量级，防止正文挤占文档配额。
+// <lang zh-CN>取 64 KB：足够写数百行模板，又不会让单个 template.body 吃掉整份文档的体积预算。</lang>
+// <lang en>64 KB: room for hundreds of template lines without consuming the whole document budget.</lang>
+export const TDOT_MAX_BODY_LENGTH=64*1024;
 
 // ===== 词法单元（ADR-011 §1 词汇表的直接映射）=====
 // 只在模板正文里出现的标记类型；不引入任何未列出的 token。

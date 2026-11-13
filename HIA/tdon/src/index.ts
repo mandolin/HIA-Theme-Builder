@@ -64,7 +64,7 @@ export{renderTdonPreview,escapeTdonHtml,TDON_PREVIEW_CSS}from'./render.js';
 // 导出适配（TDON → 与内置适配器同构的 ExportTarget）。
 // <lang zh-CN>describeTdonFiles 提供轻量清单（不展开模板），供 UI 列表使用。</lang>
 // <lang en>describeTdonFiles gives a light listing (no template expansion) for UI lists.</lang>
-export{createTdonExportTarget,describeTdonFiles}from'./export.js';
+export{createTdonExportTarget,describeTdonFiles,evaluateTemplateBody}from'./export.js';
 
 // TDOT 模板语言（`W-tb-P32` / ADR-011）：受限求值子集（变量/条件/遍历/比较/加减）。
 // <lang zh-CN>求值器是纯函数；时间与随机通过 `buildInfo` 由宿主注入（ADR-011 §4.1），

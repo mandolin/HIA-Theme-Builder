@@ -17,6 +17,12 @@ import{checkTdonPath}from'./paths.js';
 import{resolveTdonToken,tdonBuiltinTokensCss}from'./resolve.js';
 import{exportThemeJson}from'@hia/theme-core';
 import{slugifyThemeName}from'@hia/theme-core';
+// TDOT 求值（ADR-011 §5.1）：`template.body` 的展开在导出侧按需执行。
+// <lang zh-CN>放在导出侧而非校验侧——求值需要 buildInfo，而校验器不接触宿主环境。</lang>
+// <lang en>Evaluation lives here rather than in the validator: it needs buildInfo, and the validator never
+//   touches host state.</lang>
+import{evaluateTdot,shouldEvaluateTdot,tdotData}from'./tdot/eval.js';
+import type{TdotBuildInfo,TdotError,TdotWarning}from'./tdot/types.js';
 
 // 内置模板引用 → 文本生成器（白名单，TDON-6.5）。
 // <lang zh-CN>新增内置模板必须在此登记，并同步规范 §6.5 白名单与单测。</lang>
@@ -100,6 +106,26 @@ export function createTdonExportTarget(doc:TdonDocument):ExportTarget{
     archiveName:theme=>`${slugifyThemeName(theme.name)}-${doc.target.id}.zip`,
     files:theme=>tdonFiles(doc,theme)
   };
+}
+
+/**
+ * @lang zh-CN 求值 `template.body`（ADR-011 §5.1）：返回模板展开后的文本，供宿主写入导出产物或追加到预览。
+ *   未声明 body 或版本不匹配时返回 `{ok:true}`（无 text）——调用方据此跳过，不视为错误。
+ * @lang en Evaluates `template.body` (ADR-011 §5.1): returns expanded text for the host to write into artifacts
+ *   or append to previews. Returns `{ok:true}` with no text when absent or version-mismatched — not an error.
+ */
+export function evaluateTemplateBody(
+  doc:TdonDocument,
+  build?:TdotBuildInfo
+):{ok:true;text?:string;warnings:TdotWarning[]}|{ok:false;error:TdotError;warnings:TdotWarning[]}{
+  const tpl=doc.template;
+  // 方案 B（ADR-011 §5）：仅 `tdot-*` 且版本匹配才求值；无 body 则无需求值。
+  // <lang zh-CN>两条件任一不满足都静默跳过，与"忽略占位内容"一致。</lang>
+  // <lang en>Either condition failing means a silent skip, consistent with ignoring placeholders.</lang>
+  if(!tpl||typeof tpl.body!=='string'||!shouldEvaluateTdot(tpl))return{ok:true,warnings:[]};
+  const r=evaluateTdot(tpl.body,tdotData(tpl),build);
+  if(!r.ok)return{ok:false,error:r.error,warnings:r.warnings};
+  return{ok:true,text:r.output,warnings:r.warnings};
 }
 
 // 导出文件清单摘要（供 UI 在不生成内容时展示，避免大模板重复计算）。

@@ -302,7 +302,7 @@ export function evaluateTdot(
 // 判断 `template` 段是否应触发求值（ADR-011 §5 方案 B）。
 // <lang zh-CN>只有 specVersion 以 `tdot-` 开头且等于当前版本才求值；其余继续忽略。</lang>
 // <lang en>Only a `tdot-*` specVersion equal to the current one evaluates; everything else is ignored.</lang>
-export function shouldEvaluateTdot(template:unknown):template is{specVersion:string;data?:unknown}{
+export function shouldEvaluateTdot<T extends {specVersion?:unknown}>(template:T):boolean{
   if(!template||typeof template!=='object')return false;
   const sv=(template as {specVersion?:unknown}).specVersion;
   return typeof sv==='string'&&sv===TDOT_SPEC_VERSION;
@@ -311,7 +311,7 @@ export function shouldEvaluateTdot(template:unknown):template is{specVersion:str
 // 从 template 段取出 data（缺省为空对象）。
 // <lang zh-CN>data 非对象时按空处理——求值会因缺变量产生警告而非崩溃。</lang>
 // <lang en>A non-object data becomes empty; evaluation then warns instead of crashing.</lang>
-export function tdotData(template:{data?:unknown}):Record<string,unknown>{
+export function tdotData(template:{data?:unknown;[key:string]:unknown}):Record<string,unknown>{
   const d=template.data;
   return d&&typeof d==='object'&&!Array.isArray(d)?(d as Record<string,unknown>):{};
 }

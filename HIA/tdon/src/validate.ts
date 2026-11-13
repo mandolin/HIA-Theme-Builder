@@ -21,7 +21,7 @@ import{
 import{tdonError,tdonWarning,type TdonIssue,type TdonIssueCode,type TdonValidationResult}from'./issues.js';
 import{checkTdonPath,isDangerousKey,TDON_MAX_PATH_LENGTH}from'./paths.js';
 import{resolveTdonToken,isTdonTokenSyntax,listTdonColorRoles}from'./resolve.js';
-import{TDOT_SPEC_VERSION}from'./tdot/types.js';
+import{TDOT_SPEC_VERSION,TDOT_MAX_BODY_LENGTH}from'./tdot/types.js';
 
 // 校验上下文：问题收集器 + 可选主题 + 节点计数。
 // <lang zh-CN>theme 缺省时跳过引用解析与对比度断言（只做结构校验）。</lang>
@@ -714,10 +714,22 @@ function validateTemplateReserved(ctx:Ctx,raw:unknown,path:string):TdonTemplateR
       pushError(ctx,'E_TDOT_VERSION',`${path}.specVersion`,`不支持的 TDOT 版本「${sv}」，当前支持 ${TDOT_SPEC_VERSION}。`,`Unsupported TDOT version "${sv}"; this build supports ${TDOT_SPEC_VERSION}.`);
       return out;
     }
-    // 版本匹配：交给求值期校验（结构校验阶段不做模板语法分析——模板源在 `template` 的其它字段里，
-    //   由调用方按宿主约定提供；此处只做版本路由，避免校验器依赖具体模板字段形状）。
-    // <lang en>On a version match, syntax validation happens at evaluation time; the validator only routes by
-    //   version and does not depend on the template's inner field shape.</lang>
+    // 版本匹配：只校验 `body` 的**形状**（字符串 + 长度上限），语法错误留给求值期（那里能给出精确位置）。
+    // <lang zh-CN>body 缺省合法：仅有 data 的模板可交付给宿主提供源串（ADR-011 §5.1）。</lang>
+    // <lang en>An absent body is legal: a data-only template may receive its source from the host (ADR-011 §5.1).</lang>
+    if(raw.body!==undefined){
+      if(typeof raw.body!=='string'){
+        pushError(ctx,'E_TYPE',`${path}.body`,'template.body 应为字符串（TDOT 源串）。','template.body must be a string (TDOT source).');
+      }else if(raw.body.length>TDOT_MAX_BODY_LENGTH){
+        pushError(ctx,'E_LIMIT',`${path}.body`,`template.body 长度 ${raw.body.length} 超过 ${TDOT_MAX_BODY_LENGTH} 上限。`,`template.body length ${raw.body.length} exceeds the ${TDOT_MAX_BODY_LENGTH} cap.`);
+      }
+    }
+    // `data` 若提供必须是对象（模板按路径访问）。
+    // <lang zh-CN>数组/标量无法按路径取值，属文档缺陷。</lang>
+    // <lang en>Arrays/scalars cannot be path-addressed, so they are document defects.</lang>
+    if(raw.data!==undefined&&!isPlainObject(raw.data)){
+      pushError(ctx,'E_TYPE',`${path}.data`,'template.data 应为对象。','template.data must be an object.');
+    }
     return out;
   }
   pushWarning(ctx,'W_TDOT_RESERVED',path,'template 段未声明 `tdot-*` 版本，按占位内容忽略（不产生导出效果）。','The template block declares no `tdot-*` version and is ignored as a placeholder.');
