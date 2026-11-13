@@ -1,0 +1,32 @@
+{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "template-demo",
+    "name": "TDOT 模板演示",
+    "nameEn": "TDOT Template Demo"
+  },
+  "preview": {
+    "title": "模板能力演示",
+    "layout": "stack",
+    "nodes": [
+      { "type": "hero", "title": "TDOT 模板语言", "subtitle": "条件、遍历、比较、加减", "bgToken": "gradient:carousel" }
+    ]
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": "styles/generated.css",
+        "template": "/* 由 TDOT 生成 */\n:root{--brand:{{token:primary.500}};}"
+      }
+    ]
+  },
+  "template": {
+    "specVersion": "tdot-0.1",
+    "data": {
+      "features": ["harmony", "sources", "exports"],
+      "hasDark": true,
+      "count": 3,
+      "mode": "dual"
+    }
+  }
+}

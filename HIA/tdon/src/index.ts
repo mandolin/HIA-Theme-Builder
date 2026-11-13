@@ -65,3 +65,22 @@ export{renderTdonPreview,escapeTdonHtml,TDON_PREVIEW_CSS}from'./render.js';
 // <lang zh-CN>describeTdonFiles 提供轻量清单（不展开模板），供 UI 列表使用。</lang>
 // <lang en>describeTdonFiles gives a light listing (no template expansion) for UI lists.</lang>
 export{createTdonExportTarget,describeTdonFiles}from'./export.js';
+
+// TDOT 模板语言（`W-tb-P32` / ADR-011）：受限求值子集（变量/条件/遍历/比较/加减）。
+// <lang zh-CN>求值器是纯函数；时间与随机通过 `buildInfo` 由宿主注入（ADR-011 §4.1），
+//   求值器自身不产生任何不确定性。触发条件是 `template.specVersion === 'tdot-0.1'`（方案 B）。</lang>
+// <lang en>Restricted evaluation subset (variables/conditionals/iteration/comparison/add-subtract).
+//   The evaluator is pure; time and randomness are host-injected via `buildInfo` (ADR-011 §4.1), so the
+//   evaluator itself introduces no non-determinism. Trigger: `template.specVersion === 'tdot-0.1'` (option B).</lang>
+export{
+  TDOT_SPEC_VERSION,TDOT_MAX_EXPR_DEPTH,TDOT_MAX_NODES,TDOT_MAX_STEPS
+}from'./tdot/types.js';
+export type{
+  TdotTokenType,TdotToken,TdotExpr,TdotBinaryOp,TdotNode,TdotBuildInfo,TdotEvalContext,
+  TdotEvalResult,TdotError,TdotWarning
+}from'./tdot/types.js';
+export{lexTdot,TDOT_KEYWORDS}from'./tdot/lexer.js';
+export type{TdotLexResult}from'./tdot/lexer.js';
+export{parseTdot}from'./tdot/parser.js';
+export type{TdotParseResult}from'./tdot/parser.js';
+export{evaluateTdot,shouldEvaluateTdot,tdotData,isUnsupportedTdotVersion}from'./tdot/eval.js';

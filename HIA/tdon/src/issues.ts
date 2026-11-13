@@ -25,7 +25,10 @@ export type TdonIssueCode=
   // 非阻断提示
   |'W_CONTRAST'|'W_TOKEN_UNRESOLVED'
   // 软阈值与预留提示（TDON-1.7 / §10.1 / §14）
-  |'W_TOO_LARGE'|'W_NODE_LIMIT'|'W_FILE_COUNT'|'W_TEMPLATE_SIZE'|'W_TDOT_RESERVED'|'W_FONT_RESERVED';
+  |'W_TOO_LARGE'|'W_NODE_LIMIT'|'W_FILE_COUNT'|'W_TEMPLATE_SIZE'|'W_TDOT_RESERVED'|'W_FONT_RESERVED'
+  // TDOT 模板语言（ADR-011 §6）
+  // <lang en>TDOT template language codes (ADR-011 §6).</lang>
+  |'E_TDOT_VERSION'|'E_TDOT_SYNTAX'|'E_TDOT_TYPE'|'E_TDOT_LIMIT'|'W_TDOT_UNDEFINED';
 
 // 单条校验问题。
 // <lang zh-CN>path 用点/中括号定位（如 preview.nodes[2].bgToken），便于 UI 直接高亮。</lang>

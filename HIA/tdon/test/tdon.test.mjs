@@ -337,15 +337,24 @@ test('imageUrl：仅 https，其他协议 E_MEDIA_URL', () => {
   assert.ok(hasCode(parseTdonDocument(makeDoc({ preview: { nodes: [{ type: 'card', title: 't', imageUrl: long }] } })), 'E_LIMIT'));
 });
 
-test('template 段（TDOT 预留）：接受 + 警告，原样保留，不解释', () => {
-  const res = parseTdonDocument(makeDoc({
-    template: { specVersion: 'tdot-0.1', data: { features: [{ name: 'x', on: true }] }, blocks: [{ when: 'x.on' }] }
+test('template 段：tdot-0.1 版本路由（方案 B）与占位内容兼容', () => {
+  // 版本匹配 → 不警告 W_TDOT_RESERVED（交给求值期处理，见 tdot.test.mjs）。
+  const matched = parseTdonDocument(makeDoc({
+    template: { specVersion: 'tdot-0.1', data: { features: [{ name: 'x', on: true }] } }
   }));
-  assert.equal(res.result.ok, true, JSON.stringify(res.result.errors));
-  assert.ok(res.result.warnings.some(w => w.code === 'W_TDOT_RESERVED'));
-  // 内容原样保留，供未来 TDOT 运行时接管。
-  assert.equal(res.doc.template.specVersion, 'tdot-0.1');
-  assert.deepEqual(res.doc.template.data, { features: [{ name: 'x', on: true }] });
+  assert.equal(matched.result.ok, true, JSON.stringify(matched.result.errors));
+  assert.ok(!matched.result.warnings.some(w => w.code === 'W_TDOT_RESERVED'), '版本匹配时不应再提示占位');
+  assert.equal(matched.doc.template.specVersion, 'tdot-0.1');
+  assert.deepEqual(matched.doc.template.data, { features: [{ name: 'x', on: true }] });
+
+  // 未声明 tdot-* 版本 → 继续忽略 + 保留警告（向后兼容存量占位内容）。
+  const placeholder = parseTdonDocument(makeDoc({ template: { blocks: [{ when: 'x' }] } }));
+  assert.equal(placeholder.result.ok, true, JSON.stringify(placeholder.result.errors));
+  assert.ok(placeholder.result.warnings.some(w => w.code === 'W_TDOT_RESERVED'));
+
+  // 显式声明不支持的 tdot 版本 → E_TDOT_VERSION（文档缺陷）。
+  assert.ok(hasCode(parseTdonDocument(makeDoc({ template: { specVersion: 'tdot-0.9' } })), 'E_TDOT_VERSION'));
+
   // 非对象 → E_TYPE；危险键仍被拦截。
   assert.ok(hasCode(parseTdonDocument(makeDoc({ template: 'nope' })), 'E_TYPE'));
 });

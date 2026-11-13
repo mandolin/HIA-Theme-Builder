@@ -21,6 +21,7 @@ import{
 import{tdonError,tdonWarning,type TdonIssue,type TdonIssueCode,type TdonValidationResult}from'./issues.js';
 import{checkTdonPath,isDangerousKey,TDON_MAX_PATH_LENGTH}from'./paths.js';
 import{resolveTdonToken,isTdonTokenSyntax,listTdonColorRoles}from'./resolve.js';
+import{TDOT_SPEC_VERSION}from'./tdot/types.js';
 
 // 校验上下文：问题收集器 + 可选主题 + 节点计数。
 // <lang zh-CN>theme 缺省时跳过引用解析与对比度断言（只做结构校验）。</lang>
@@ -702,7 +703,24 @@ function validateTemplateReserved(ctx:Ctx,raw:unknown,path:string):TdonTemplateR
   if(sv!==undefined&&(typeof sv!=='string'||sv.length>32)){
     pushError(ctx,'E_TYPE',`${path}.specVersion`,'template.specVersion 应为 ≤32 字符的字符串。','template.specVersion must be a string of at most 32 characters.');
   }
-  pushWarning(ctx,'W_TDOT_RESERVED',path,'template（TDOT）段已接受但暂不生效——模板语言尚未落地。','The template (TDOT) block is accepted but inert — the template language has not landed yet.');
+  // TDOT 求值触发判定（ADR-011 §5 方案 B）：只有 specVersion 等于当前 TDOT 版本才求值。
+  //   - 等于 `tdot-0.1` → 求值（模板语法/类型错误在求值期报 E_TDOT_*）。
+  //   - 以 `tdot-` 开头但版本不同 → E_TDOT_VERSION（显式声明了 TDOT 却版本不符，属文档缺陷）。
+  //   - 其它（缺 specVersion、非 tdot 前缀）→ 继续忽略 + 保留 W_TDOT_RESERVED（向后兼容存量占位内容）。
+  // <lang en>TDOT trigger (ADR-011 §5 option B): evaluate only when specVersion equals the current TDOT version.
+  //   A different `tdot-*` version is E_TDOT_VERSION; anything else stays ignored with W_TDOT_RESERVED.</lang>
+  if(typeof sv==='string'&&sv.startsWith('tdot-')){
+    if(sv!==TDOT_SPEC_VERSION){
+      pushError(ctx,'E_TDOT_VERSION',`${path}.specVersion`,`不支持的 TDOT 版本「${sv}」，当前支持 ${TDOT_SPEC_VERSION}。`,`Unsupported TDOT version "${sv}"; this build supports ${TDOT_SPEC_VERSION}.`);
+      return out;
+    }
+    // 版本匹配：交给求值期校验（结构校验阶段不做模板语法分析——模板源在 `template` 的其它字段里，
+    //   由调用方按宿主约定提供；此处只做版本路由，避免校验器依赖具体模板字段形状）。
+    // <lang en>On a version match, syntax validation happens at evaluation time; the validator only routes by
+    //   version and does not depend on the template's inner field shape.</lang>
+    return out;
+  }
+  pushWarning(ctx,'W_TDOT_RESERVED',path,'template 段未声明 `tdot-*` 版本，按占位内容忽略（不产生导出效果）。','The template block declares no `tdot-*` version and is ignored as a placeholder.');
   return out;
 }
 
