@@ -107,10 +107,19 @@
       <tr class="err"><td class="code-col">E_EFFECT_RANGE</td><td><span class="zh">参数值越界</span><span class="en">Param value out of range</span></td><td><code>duration</code> 100–2000/50 · <code>distance</code> 1–8</td></tr>
     </table>
 
-    <h2><span class="zh">预留能力（v0.2 新增）</span><span class="en">Reserved (new in v0.2)</span></h2>
+    <h2><span class="zh">TDOT 模板（<code>tdot-0.1</code>）</span><span class="en">TDOT templates (<code>tdot-0.1</code>)</span></h2>
+    <table>
+      <tr><th><span class="zh">码</span><span class="en">Code</span></th><th><span class="zh">触发</span><span class="en">Trigger</span></th><th><span class="zh">修法</span><span class="en">Fix</span></th></tr>
+      <tr class="err"><td class="code-col">E_TDOT_VERSION</td><td><span class="zh"><code>specVersion</code> 带 <code>tdot-</code> 前缀但不是 <code>tdot-0.1</code></span><span class="en"><code>specVersion</code> has the <code>tdot-</code> prefix but is not <code>tdot-0.1</code></span></td><td><span class="zh">改用 <code>tdot-0.1</code>（旧运行时不会猜测新版本语义）</span><span class="en">Use <code>tdot-0.1</code> — an older runtime never guesses a newer version's semantics</span></td></tr>
+      <tr class="err"><td class="code-col">E_TDOT_SYNTAX</td><td><span class="zh">标签未闭合、表达式写法非法</span><span class="en">Unclosed tag, malformed expression</span></td><td><span class="zh">错误带位置，按位置修</span><span class="en">The error carries a position — fix there</span></td></tr>
+      <tr class="err"><td class="code-col">E_TDOT_TYPE</td><td><span class="zh">值类型不支持该运算（如对字符串做 <code>&gt;</code>）</span><span class="en">Value type does not support the operation (e.g. <code>&gt;</code> on a string)</span></td><td><span class="zh">先确认 <code>data</code> 里该字段的实际类型</span><span class="en">Check the field's actual type in <code>data</code></span></td></tr>
+      <tr class="err"><td class="code-col">E_TDOT_LIMIT</td><td><span class="zh">超三道上限之一：表达式 8 层 / 节点 2000 / 步数 10000；或 <code>body</code> 超 64 KB</span><span class="en">One of three caps: depth 8 / 2000 nodes / 10000 steps; or <code>body</code> over 64 KB</span></td><td><span class="zh">拆小模板；<code>#each</code> 源数组过长时先在数据侧收敛</span><span class="en">Split the template; trim long <code>#each</code> sources on the data side</span></td></tr>
+      <tr class="warn"><td class="code-col">W_TDOT_RESERVED</td><td><span class="zh"><code>specVersion</code> 不带 <code>tdot-</code> 前缀（纯声明模式）</span><span class="en"><code>specVersion</code> without the <code>tdot-</code> prefix (pure declarative mode)</span></td><td><span class="zh">无——<code>template</code> 段被忽略；要逻辑就写 <code>tdot-0.1</code></span><span class="en">None — <code>template</code> is ignored; write <code>tdot-0.1</code> if you need logic</span></td></tr>
+    </table>
+
+    <h2><span class="zh">预留能力</span><span class="en">Reserved</span></h2>
     <table>
       <tr><th><span class="zh">码</span><span class="en">Code</span></th><th><span class="zh">含义</span><span class="en">Meaning</span></th><th><span class="zh">影响</span><span class="en">Impact</span></th></tr>
-      <tr class="warn"><td class="code-col">W_TDOT_RESERVED</td><td><span class="zh"><code>template</code> 段（TDOT）已接受但暂不生效</span><span class="en"><code>template</code> (TDOT) accepted but inert</span></td><td><span class="zh">无——可提前编写，等 TDOT 运行时落地</span><span class="en">None — write ahead and wait for the TDOT runtime</span></td></tr>
       <tr class="warn"><td class="code-col">W_FONT_RESERVED</td><td><span class="zh"><code>tokens.fontUrl</code> 远程字体预留，暂不加载</span><span class="en"><code>tokens.fontUrl</code> reserved, not loaded</span></td><td><span class="zh">字体不会生效；其余功能正常</span><span class="en">Font is not applied; everything else works</span></td></tr>
     </table>
   </section>

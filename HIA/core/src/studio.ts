@@ -20,7 +20,16 @@ export const DEFAULT_THEME_DRAFT:ThemeDraft={id:'preset-default',name:'HIA 默�
 // 依据主副色中文名自动拼出主题名，缺省提供可读回退。
 // <lang zh-CN>用于用户未手动命名时给出“主色·副色”式默认标题。</lang>
 // <lang en>Yields a "primary·secondary" default title when the user has not named the theme.</lang>
-export function autoThemeName(primaryName:string,secondaryName:string):string{return`${primaryName||'主题'}·${secondaryName||'副色'}`;}
+export function autoThemeName(primaryName:string,secondaryName:string):string{
+  const p=primaryName||'主题',s=secondaryName||'副色';
+  // 主副同名时不要拼出"鲜橙·鲜橙"这种废话标题。
+  //   色名是"修饰语+色相"两档粒度，同色系的深浅两阶会落到同一个名字上（`#F1AF00`/`#D59B00` 都是"鲜橙"）——
+  //   这不是命名错误，但把两个相同词拼成标题就是明显的敷衍。
+  // <lang en>Never emit a "Vivid Orange · Vivid Orange" title. Colour names have modifier+hue granularity, so two
+  //   shades of one hue can land on the same name (`#F1AF00`/`#D59B00` are both "Vivid Orange") — that is not a
+  //   naming error, but joining two identical words into a title is plainly careless.</lang>
+  return p===s?p:`${p}·${s}`;
+}
 
 // 由部分字段创建完整草稿，基色规范化、渐变深拷贝，保证可预测初值。
 // <lang zh-CN>覆盖式合并到默认模板，避免未传字段出现 undefined；纯函数无副作用。</lang>

@@ -1,6 +1,6 @@
 {
   "name": "@hia/theme-core",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "HIA cross-platform theme domain core: models, OKLCH algorithms, theme studio state, gradient rendering, token export and website-color analysis.",
   "license": "MIT",
   "author": "HIA Theme Builder contributors",

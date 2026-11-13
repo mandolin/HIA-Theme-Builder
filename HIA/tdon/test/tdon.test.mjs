@@ -56,7 +56,31 @@ test('合法最小文档通过校验并返回重建文档', () => {
 test('顶层不是对象 → E_NOT_OBJECT', () => {
   assert.equal(firstCode(parseTdonDocument([])), 'E_NOT_OBJECT');
   assert.equal(firstCode(parseTdonDocument(null)), 'E_NOT_OBJECT');
-  assert.equal(firstCode(parseTdonDocument('x')), 'E_NOT_OBJECT');
+  // 数字/布尔等非字符串标量也走"不是对象"；字符串是特例，见下条。
+  // <lang en>Non-string scalars are still "not an object"; strings are the special case, covered next.</lang>
+  assert.equal(firstCode(parseTdonDocument(42)), 'E_NOT_OBJECT');
+});
+
+// JSON 文本输入（v0.2.0 起的公开契约）：合法文本应等价于传对象，坏文本给专用 E_JSON。
+// <lang en>JSON text input (public contract since v0.2.0): valid text equals passing the object; malformed text
+//   reports its own E_JSON.</lang>
+test('JSON 文本输入：合法文本与对象等价', () => {
+  const doc = makeDoc();
+  const fromText = parseTdonDocument(JSON.stringify(doc));
+  const fromObject = parseTdonDocument(doc);
+  assert.equal(fromText.result.ok, true, JSON.stringify(fromText.result.errors));
+  assert.deepEqual(fromText.doc, fromObject.doc);
+  // 坏 JSON 不能退化成 E_NOT_OBJECT——"写错 JSON"与"顶层不是对象"必须可区分。
+  // <lang en>Malformed JSON must not degrade to E_NOT_OBJECT; the two defects must stay distinguishable.</lang>
+  assert.equal(firstCode(parseTdonDocument('{"specVersion":')), 'E_JSON');
+  assert.equal(firstCode(parseTdonDocument('x')), 'E_JSON');
+  // 合法 JSON 但不是对象（如 "[]"、"null"）才是 E_NOT_OBJECT。
+  // <lang en>Valid JSON that is not an object ("[]", "null") is the real E_NOT_OBJECT case.</lang>
+  assert.equal(firstCode(parseTdonDocument('[]')), 'E_NOT_OBJECT');
+  assert.equal(firstCode(parseTdonDocument('null')), 'E_NOT_OBJECT');
+  // 文本超限必须在解析前被拦（否则超大文本白白解析一遍）。
+  // <lang en>Oversized text must be rejected before parsing, so huge input is never parsed for nothing.</lang>
+  assert.equal(firstCode(parseTdonDocument('x'.repeat(4 * 1024 * 1024 + 1))), 'E_TOO_LARGE');
 });
 
 test('未知顶层键 → E_UNKNOWN_KEY（不静默忽略）', () => {

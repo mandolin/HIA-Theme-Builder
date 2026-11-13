@@ -1089,9 +1089,13 @@ function relativeLuminance(hex:string):number|null{
 
 // ===== 顶层入口 =====
 // 解析并校验一份 TDON 文档（unknown 输入，绝不假设形状）。
-// <lang zh-CN>theme 可选：给出时执行引用解析与对比度断言；否则只做结构与语法校验（TDON-8.3）。</lang>
-// <lang en>theme is optional: when given, reference resolution and contrast assertions run; otherwise only
-//   structure and syntax are checked (TDON-8.3).</lang>
+// <lang zh-CN>`raw` 接受两种形态：JSON 文本（推荐，宿主直接喂文件内容）或已解析对象。
+//   文本形态的解析失败给 `E_JSON`；两者都以 `$` 为路径根。
+//   theme 可选：给出时执行引用解析与对比度断言；否则只做结构与语法校验（TDON-8.3）。</lang>
+// <lang en>`raw` accepts two shapes: JSON text (preferred — hand it the file content) or an already parsed
+//   object. A text parse failure reports `E_JSON`; both use `$` as the path root. theme is optional: when given,
+//   reference resolution and contrast assertions run; otherwise only structure and syntax are checked
+//   (TDON-8.3).</lang>
 export interface TdonParseResult{
   result:TdonValidationResult;
   /** @lang zh-CN 校验通过时的文档（已按白名单重建）；失败为 undefined。 @lang en Rebuilt document on success; undefined on failure. */
@@ -1117,36 +1121,56 @@ export function parseTdonDocument(raw:unknown,options:{theme?:Theme}={}):TdonPar
     pushError(ctx,'E_TOO_LARGE','$',`文档超过 ${TDON_MAX_BYTES} 字符上限。`,`Document exceeds the ${TDON_MAX_BYTES}-character cap.`);
     return{result:{ok:false,errors:ctx.errors,warnings:ctx.warnings,truncated:ctx.truncated}};
   }
+  // 字符串输入先解析：公开契约（README/规范站）承诺 `raw` 可为 JSON 文本，否则调用方要自己
+  //   写一遍 parse + 错误归并（这正是宿主上次漏解析导致误报的根因）。
+  //   解析失败给专用 E_JSON，而不是笼统的 E_NOT_OBJECT——"JSON 写错了"和"顶层不是对象"是两类问题。
+  // <lang en>String input is parsed here: the public contract (README/spec site) says `raw` may be JSON text;
+  //   otherwise every caller re-implements parse plus error merging — exactly the omission that produced a
+  //   bogus error in the host last time. Parse failure gets its own E_JSON, not a blanket E_NOT_OBJECT:
+  //   "bad JSON" and "top level is not an object" are different problems.</lang>
+  let parsed:unknown=raw;
+  if(typeof raw==='string'){
+    // <lang zh-CN>字节数预检仍然用原始文本长度，故超限文档不会进入 JSON.parse（避免大文本解析开销）。</lang>
+    // <lang en>The size pre-check already used the raw text length, so oversized documents never reach
+    //   JSON.parse — no needless work on huge input.</lang>
+    try{
+      parsed=JSON.parse(raw) as unknown;
+    }catch(e){
+      pushError(ctx,'E_JSON','$',`JSON 解析失败：${e instanceof Error?e.message:String(e)}`,`JSON parse failed: ${e instanceof Error?e.message:String(e)}`);
+      return{result:{ok:false,errors:ctx.errors,warnings:ctx.warnings,truncated:ctx.truncated}};
+    }
+  }
   // 顶层必须是对象（TDON-2.4）。
-  if(!isPlainObject(raw)){
+  if(!isPlainObject(parsed)){
     pushError(ctx,'E_NOT_OBJECT','$','TDON 顶层必须是 JSON 对象。','The TDON top level must be a JSON object.');
     return{result:{ok:false,errors:ctx.errors,warnings:ctx.warnings,truncated:ctx.truncated}};
   }
-  if(rejectDangerousKeys(ctx,raw,'$'))return{result:{ok:false,errors:ctx.errors,warnings:ctx.warnings,truncated:ctx.truncated}};
+  const obj=parsed;
+  if(rejectDangerousKeys(ctx,obj,'$'))return{result:{ok:false,errors:ctx.errors,warnings:ctx.warnings,truncated:ctx.truncated}};
   // 顶层键白名单（TDON-2.1）。
-  checkKnownKeys(ctx,raw,'$',['specVersion','target','tokens','preview','exportManifest','constraints','effects','template']);
+  checkKnownKeys(ctx,obj,'$',['specVersion','target','tokens','preview','exportManifest','constraints','effects','template']);
   // 版本路由（TDON-1.5）：未知版本直接拒绝，不尝试兼容猜测。
   // <lang zh-CN>提示当前支持的版本串，降低排查成本。</lang>
   // <lang en>The message names the supported version to speed up diagnosis.</lang>
-  const specVersion=requireString(ctx,raw.specVersion,'$.specVersion',32);
+  const specVersion=requireString(ctx,obj.specVersion,'$.specVersion',32);
   if(specVersion!==undefined&&specVersion!==TDON_SPEC_VERSION){
     pushError(ctx,'E_VERSION','$.specVersion',`不支持的规范版本「${specVersion}」，当前支持 ${TDON_SPEC_VERSION}。`,`Unsupported spec version "${specVersion}"; this build supports ${TDON_SPEC_VERSION}.`);
   }
-  const target=validateTarget(ctx,raw.target,'$.target');
+  const target=validateTarget(ctx,obj.target,'$.target');
   // 其余各组独立校验：可选组缺失不报错（TDON-2.2）。
   // <lang zh-CN>tokens 返回 undefined 表示未提供或全空，语义等价。</lang>
   // <lang en>tokens returning undefined means absent or empty — semantically equivalent.</lang>
-  const tokens=raw.tokens===undefined?undefined:validateTokens(ctx,raw.tokens,'$.tokens');
-  const preview=raw.preview===undefined?undefined:validatePreview(ctx,raw.preview,'$.preview');
-  const exportManifest=validateExportManifest(ctx,raw.exportManifest,'$.exportManifest');
-  const constraints=raw.constraints===undefined?undefined:validateConstraints(ctx,raw.constraints,'$.constraints');
-  const effects=raw.effects===undefined?undefined:validateEffects(ctx,raw.effects,'$.effects');
+  const tokens=obj.tokens===undefined?undefined:validateTokens(ctx,obj.tokens,'$.tokens');
+  const preview=obj.preview===undefined?undefined:validatePreview(ctx,obj.preview,'$.preview');
+  const exportManifest=validateExportManifest(ctx,obj.exportManifest,'$.exportManifest');
+  const constraints=obj.constraints===undefined?undefined:validateConstraints(ctx,obj.constraints,'$.constraints');
+  const effects=obj.effects===undefined?undefined:validateEffects(ctx,obj.effects,'$.effects');
   // TDOT 预留段（TDON-14.1/14.2）：只做"存在即可"的接受 + 警告，**不解释内容**、不产生错误。
   // <lang zh-CN>先接受再警告，作者可以提前写模板；等 TDOT 运行时落地后无需改文件。
   //   仍做危险键与对象形态检查——透传给未来运行时也必须是一棵干净的对象树。</lang>
   // <lang en>Accepted-then-warned so authors can write ahead without touching the file later. Dangerous keys
   //   and object shape are still checked: whatever is forwarded to a future runtime must be a clean tree.</lang>
-  const template=validateTemplateReserved(ctx,raw.template,'$.template');
+  const template=validateTemplateReserved(ctx,obj.template,'$.template');
   // effect 引用存在性：结构层面通过后再判，避免前向引用误报。
   // <lang zh-CN>缺失的 effect 引用记错误——声明了不存在的东西属文档缺陷。</lang>
   // <lang en>A missing effect reference is an error: declaring something nonexistent is a document defect.</lang>

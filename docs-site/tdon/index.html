@@ -37,7 +37,7 @@
   <div class="cards">
     <a class="card" href="spec/">
       <h3>📐 <span class="zh">规范全文</span><span class="en">Full Spec</span></h3>
-      <p><span class="zh">13 节条款：结构 / 令牌 / 预览 / 导出 / 约束 / 特效 / 安全边界 / TDOT 预留。每条带编号，可逐条引用。</span><span class="en">13 sections: structure, tokens, preview, export, constraints, effects, security, TDOT reservation — every clause numbered.</span></p>
+      <p><span class="zh">14 节条款：结构 / 令牌 / 预览 / 导出 / 约束 / 特效 / 安全边界 / TDOT 模板语言。每条带编号，可逐条引用。</span><span class="en">14 sections: structure, tokens, preview, export, constraints, effects, security, the TDOT template language — every clause numbered.</span></p>
     </a>
     <a class="card" href="nodes/">
       <h3>🧩 <span class="zh">节点参考</span><span class="en">Node Reference</span></h3>
@@ -77,9 +77,9 @@
     </p>
 
     <h2><span class="zh">在代码里使用</span><span class="en">Use it in code</span></h2>
-    <pre><code># v0.1.0 — published 2026-11-13
+    <pre><code># v0.2.0 — published 2026-11-13
 npm install @hia/tdon</code></pre>
-    <p><span class="zh">包已在 npm 公开发布（MIT）：<code>@hia/tdon@0.1.0</code>，依赖 <code>@hia/theme-core@^0.5.0</code>。</span><span class="en">Published on npm (MIT): <code>@hia/tdon@0.1.0</code>, depends on <code>@hia/theme-core@^0.5.0</code>.</span></p>
+    <p><span class="zh">包已在 npm 公开发布（MIT）：<code>@hia/tdon@0.2.0</code>，依赖 <code>@hia/theme-core@^0.6.0</code>。</span><span class="en">Published on npm (MIT): <code>@hia/tdon@0.2.0</code>, depends on <code>@hia/theme-core@^0.6.0</code>.</span></p>
     <pre><code>import { parseTdonDocument, renderTdonPreview, createTdonExportTarget } from '@hia/tdon';
 
 const { result, doc } = parseTdonDocument(raw, { theme });
@@ -93,8 +93,8 @@ if (!result.ok) {
 
     <div class="tip">
       <b><span class="zh">设计边界</span><span class="en">Design boundary</span></b><br>
-      <span class="zh">TDON 只读、纯声明。需要条件逻辑/循环/变量时走预留的 <b>TDOT</b>（<code>template</code> 段），当前接受但暂不生效。</span>
-      <span class="en">TDON is read-only and purely declarative. For conditionals/loops/variables use the reserved <b>TDOT</b> block (<code>template</code>), accepted today but inert.</span>
+      <span class="zh">TDON 只读、纯声明。需要条件逻辑/循环/变量时用 <b>TDOT</b>（<code>template</code> 段，<code>tdot-0.1</code> 起可求值）：能力白名单内、无任意 JS、非确定性值由宿主注入。</span>
+      <span class="en">TDON is read-only and purely declarative. For conditionals/loops/variables use <b>TDOT</b> (the <code>template</code> block, evaluable since <code>tdot-0.1</code>): whitelisted capabilities, no arbitrary JS, non-determinism injected by the host.</span>
     </div>
   </section>
 </main>

@@ -15,7 +15,7 @@ import{
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
   tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,NATURE_COLORS,SOCIAL_COLORS,
-  deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,nameColor,
+  deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,nameColor,MOOD_PRIMARY_COLORS,moodPrimaryColorFor,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
@@ -221,6 +221,18 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang zh-CN>点击清单行后显示对应文件内容预览。</lang>
   // <lang en>After clicking a tree row its content shows in the preview pane.</lang>
   let selectedExportFile:string|null=null;
+  // 主色候选库当前 tab（`W-tb-P34` UI 整合，维护者二次校正）：候选库按来源分四组，
+  //   前三组是数据自带 group（12 / 20 / 12），第四组是情感映射。
+  // <lang en>Active primary-library tab (`W-tb-P34`, maintainer's second correction): four source groups —
+  //   the first three come from the data's own group field (12 / 20 / 12), the fourth is the mood map.</lang>
+  type PrimaryLibTab='hia'|'award'|'trending'|'mood';
+  const PICKER_GROUP_OF:Record<PrimaryLibTab,string|null>={
+    hia:'HIA 默认与蓝色基准',
+    award:'获奖网站主色',
+    trending:'通用流行主题色',
+    mood:null
+  };
+  let primaryLibTab:PrimaryLibTab='hia';
 
   // `W-tb-P10` 市场状态：子 Tab、远程源列表与已加载的远程预设（内存态，不自动混入本地库）。
   // <lang zh-CN>remoteSources 含默认源（首位，不可移除）；remoteLoading 防重复提交。</lang>
@@ -513,19 +525,34 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const auxes=mode==='full'?generateAuxiliaryCandidates(c.hex).slice(0,2).map(a=>({hex:a.hex,name:a.name})):[];
     return{members,auxes};
   }
+  // 渲染主色候选面板：按「来源分组 tab」只渲染当前组。
+  //   `primaryLibTab` 为 'hia' | 'award' | 'trending' | 'mood'；前三者对应候选数据自带的 group 字段，
+  //   'mood' 走另一张视图（`#primaryViewMood`），此处直接返回不写内容。
+  // <lang en>Renders the primary panel for the active source-group tab. `primaryLibTab` is 'hia' | 'award' |
+  //   'trending' | 'mood'; the first three map to the candidate data's own `group` field, while 'mood' is a
+  //   separate view (`#primaryViewMood`), so this returns without writing anything for it.</lang>
   function renderPrimaryCandidates(){
-    // 按 group 把候选分组，便于展示“蓝色基准/获奖网站”等区块。
-    // <lang zh-CN>分组键来自候选数据的 group 字段。</lang>
-    // <lang en>Group key comes from each candidate's group field.</lang>
+    // 分组键来自候选数据的 group 字段；只渲染当前 tab 对应的组。
+    // <lang zh-CN>一次性按组索引，避免每个 tab 都重扫 44 条。</lang>
+    // <lang en>Index by group once instead of rescanning all 44 candidates per tab.</lang>
     const groups:Record<string,PrimaryCandidate[]>={};
     primaryCandidates.forEach(c=>(groups[c.group]||(groups[c.group]=[])).push(c));
     const wrap=byId<HTMLElement>('primaryCandidatesWrap');
-    // 逐组拼出标题与色卡网格；色卡为 div+role=button（内含模式芯片，避免 button 嵌套非法）；
-    // 色条按模式渲染多段（每段一成员色，全色含辅助段）。
-    // <lang zh-CN>active 类标记当前主色（normalizeHex 比较）。</lang>
-    // <lang en>Div cards with role=button host mode chips without illegal nesting; bar shows per-member segments.</lang>
+    const group=PICKER_GROUP_OF[primaryLibTab];
+    if(!group){
+      // 情感 tab 由独立视图渲染；清空本容器避免残留上一组卡片。
+      // <lang zh-CN>不清空的话，切到情感 tab 后旧卡片仍在 DOM 里（虽被 hidden 包住）。</lang>
+      // <lang en>Without clearing, the previous group's cards would linger in the DOM behind the hidden view.</lang>
+      wrap.innerHTML='';
+      return;
+    }
+    const items=groups[group]??[];
+    // 逐张拼色卡：色卡为 div+role=button（内含模式芯片，避免 button 嵌套非法）；
+    // 色条按模式渲染多段（每段一成员色，全色含辅助段），active 标记当前主色。
+    // <lang en>Cards are divs with role=button, so the mode chips inside stay legal; the bar renders one segment
+    //   per member (full mode adds the auxiliary segments); active marks the current primary.</lang>
     const en=getLocale()==='en';
-    wrap.innerHTML=Object.entries(groups).map(([group,items])=>`<div class="group-title">${escapeHtml(t(group))} · ${items.length}</div><div class="grid-3">${items.map(c=>{
+    wrap.innerHTML=`<div class="grid-3">${items.map(c=>{
       const isAward=c.category==='award'||group.includes('获奖');
       const mode=cardModes[c.id]??'dual';
       const combo=candidateCombo(c,mode);
@@ -535,7 +562,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const chips=modesList.map(m=>`<button type="button" class="cm-chip${mode===m?' active':''}" data-card-mode="${m}" data-card-id="${escapeHtml(c.id)}" aria-label="${m==='dual'?t('p12.card.dual'):m==='triad'?t('p12.card.triad'):t('p12.card.full')}">${m==='dual'?t('p12.card.dual'):m==='triad'?t('p12.card.triad'):t('p12.card.full')}</button>`).join('');
       const dots=combo.members.map(m=>`<i style="background:${m.hex}"></i>`).join('')+combo.auxes.map(a=>`<i class="cm-aux-dot" style="background:${a.hex}"></i>`).join('');
       return`<div class="color-card ${normalizeHex(c.hex)===draft.primary?'active':''}" data-primary="${escapeHtml(c.id)}" title="${escapeHtml(c.desc)}"><button type="button" class="card-apply" aria-label="${t('p12.card.apply')}：${escapeHtml(t(c.name))}"></button><div class="color-top" style="background:linear-gradient(90deg,${stops})"><span>${escapeHtml(t(c.tag))}</span></div><div class="color-name">${escapeHtml(t(c.name))}</div><div class="color-meta">${en?'':escapeHtml(c.en)}</div><div class="color-hex">${c.hex}</div><div class="cm-chips">${chips}</div><span class="pair-chip">${dots}${escapeHtml(t(c.secondaryName))}</span></div>`;
-    }).join('')}</div>`).join('');
+    }).join('')}</div>`;
     // 模式芯片：切换该卡展示态（stopPropagation 防触发应用）。
     all<HTMLButtonElement>('[data-card-mode]',wrap).forEach(chip=>chip.addEventListener('click',e=>{
       e.stopPropagation();
@@ -599,6 +626,80 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       draft.secondaryName=c.name;
       syncInputs();applyCurrentTheme(false);renderSecondaryCandidates();
     }));
+  }
+
+  // 渲染「情感主色」视图（`W-tb-P34`，维护者校正后重做）：每个情感一张独立的色卡。
+  //   数据来自 `MOOD_PRIMARY_COLORS`——**独立数据集**，自带色值与色名，不与 44 主色候选库关联。
+  //   早前版本把情感映射到候选库（最近邻 + 投票），语义错乱（低沉→亮黄、平静→粉红），根因是串了数据源。
+  // <lang en>Renders the mood-primary view (`W-tb-P34`, redone after the maintainer's correction): one card per
+  //   mood. Data comes from `MOOD_PRIMARY_COLORS` — a **standalone dataset** carrying its own colours and names,
+  //   decoupled from the 44-candidate library. The earlier version mapped moods onto that library (nearest
+  //   neighbour plus voting), producing semantically wrong pairs (低沉→bright yellow, 平静→pink) because the
+  //   method mixed datasets.</lang>
+  function renderMoodPrimary(){
+    const wrap=byId<HTMLElement>('moodPrimaryWrap');
+    const en=getLocale()==='en';
+    // 逐情感生成色卡：色块用该情感的核本色相；标题是情感名，正文是主色名 + HEX + 配套副色。
+    // <lang zh-CN>不再显示"票数"——独立数据集不是投票结果，硬凑一个可信度指标等于自欺。</lang>
+    // <lang en>No more "votes": a standalone dataset is not the product of a vote, and inventing a confidence
+    //   figure would be self-deception.</lang>
+    wrap.innerHTML=MOOD_PRIMARY_COLORS.map(m=>{
+      // 当前主色命中该情感色时高亮（与候选库色卡同一判据）。
+      // <lang en>Highlights when the current primary matches this mood's colour, the same rule as library cards.</lang>
+      const isActive=normalizeHex(m.hex)===draft.primary;
+      return `<button type="button" class="color-card ${isActive?'active':''}" data-mood-primary="${escapeHtml(m.mood)}" title="${escapeHtml(t(m.mood))} · ${escapeHtml(m.hex)}"><div class="color-top" style="background:${m.hex}"><span>${escapeHtml(t(m.mood))}</span></div><div class="color-name">${escapeHtml(en?m.en:m.zh)}</div><div class="color-meta">${escapeHtml(m.hex)}</div><div class="pair-chip"><i style="background:${m.secondaryHex}"></i>${escapeHtml(en?m.secondaryEn:m.secondaryZh)}</div></button>`;
+    }).join('');
+    // 点击：把该情感的主色与配套副色一并套用（与候选库色卡相同的写回字段）。
+    // <lang zh-CN>主副色都是本数据集自带的色值，不再从候选库反查。</lang>
+    // <lang en>Both colours come from this dataset; nothing is looked up in the candidate library.</lang>
+    all<HTMLButtonElement>('[data-mood-primary]',wrap).forEach(btn=>btn.addEventListener('click',()=>{
+      const mood=btn.dataset.moodPrimary;if(!mood)return;
+      const m=moodPrimaryColorFor(mood);if(!m)return;
+      const priName=en?m.en:m.zh, secName=en?m.secondaryEn:m.secondaryZh;
+      // 主色候选元数据在情感路径下失效（本数据集不属于候选库），显式清空，
+      //   避免"生成副色"误用上一个候选的预设副色。
+      // <lang en>The candidate metadata is meaningless on the mood path (this dataset is not part of the library),
+      //   so clear it — otherwise "generate secondaries" would reuse the previous candidate's preset.</lang>
+      primaryMeta=null;
+      draft.primary=normalizeHex(m.hex);
+      draft.secondary=normalizeHex(m.secondaryHex);
+      draft.primaryName=priName;
+      draft.secondaryName=secName;
+      draft.category='custom';
+      draft.name=autoThemeName(priName,secName);
+      secondaryCandidates=generateSecondarySet(m.hex,{hex:m.secondaryHex,name:secName,scheme:'tone'});
+      syncInputs();applyCurrentTheme(false);renderSecondaryCandidates();renderPrimaryCandidates();renderHarmony();renderGradients();renderMoodPrimary();
+    }));
+  }
+
+  // 切换主色候选库的四个来源 tab（`W-tb-P34`，维护者二次校正）：
+  //   HIA 默认与蓝色基准 / 获奖网站主色 / 通用流行主题色 / 情感主色。
+  //   前三者共用 `#primaryCandidatesWrap`（只渲染当前组），情感走独立的 `#primaryViewMood`。
+  // <lang en>Switches the four source tabs of the primary library: HIA default & blue baseline / award sites /
+  //   general trending / mood. The first three share `#primaryCandidatesWrap` (only the active group renders);
+  //   mood uses the separate `#primaryViewMood`.</lang>
+  function applyPrimaryLibTab(tab:PrimaryLibTab){
+    primaryLibTab=tab;
+    all<HTMLButtonElement>('#primaryLibTabs .tab').forEach(b=>b.classList.toggle('active',b.dataset.primaryTab===tab));
+    // 情感 tab 用独立视图；其余三组共用候选容器。
+    // <lang zh-CN>两者互斥显示，避免同屏出现两套色卡。</lang>
+    // <lang en>The two are mutually exclusive so two card sets never show at once.</lang>
+    const isMood=tab==='mood';
+    byId<HTMLElement>('primaryViewMood').hidden=!isMood;
+    byId<HTMLElement>('primaryCandidatesWrap').hidden=isMood;
+    if(isMood){
+      renderMoodPrimary();
+      // 徽标显示情感条数（含中性说明卡），与卡片数一致。
+      // <lang en>The badge counts mood entries (including the neutral note card), matching the rendered cards.</lang>
+      setText('primaryLibBadge',t('picker.badge.mood',{n:String(MOOD_PRIMARY_COLORS.length)}));
+    }else{
+      renderPrimaryCandidates();
+      // 徽标显示当前组的候选数——用户切 tab 前就能知道每组有多少。
+      // <lang en>Shows the active group's size so each tab's contents are known before switching.</lang>
+      const group=PICKER_GROUP_OF[tab];
+      const n=group?primaryCandidates.filter(c=>c.group===group).length:primaryCandidates.length;
+      setText('primaryLibBadge',t('picker.badge.primary',{n:String(n)}));
+    }
   }
 
   // 渲染渐变设置面板：对每个渐变角色生成配置卡（启用/色系/方向/起止阶/占比 + 预览 + 交换重置）。
@@ -986,27 +1087,22 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     }
   }
 
-  // 把已取回的文本走完"JSON 解析 → 校验 → 注册"（连接器与示例共用）。
+  // 把已取回的文本走完"校验 → 注册"（连接器与示例共用）。
   // <lang zh-CN>抽取为单独函数是必要的：示例路径曾漏掉 JSON.parse，直接把字符串交给校验器，
-  //   得到 E_NOT_OBJECT 而不是示例内容——两条路径必须共用同一入口。</lang>
+  //   得到 E_NOT_OBJECT 而不是示例内容——两条路径必须共用同一入口。
+  //   自 `@hia/tdon` 0.2.0 起校验器自己接受 JSON 文本（解析失败给 `E_JSON`），
+  //   故此处不再本地 JSON.parse——重复解析等于把同一份文本扫两遍。</lang>
   // <lang en>Extracted deliberately: the example path once skipped JSON.parse and handed a raw string to the
-  //   validator, yielding E_NOT_OBJECT; both paths must share this single entry.</lang>
+  //   validator, yielding E_NOT_OBJECT; both paths must share this single entry. Since `@hia/tdon` 0.2.0 the
+  //   validator accepts JSON text itself (reporting `E_JSON` on failure), so no local parse here — parsing
+  //   twice would scan the same text twice.</lang>
   function applyTdonText(text:string,sourceLabel:string){
     tdonSourceLabel=sourceLabel;
-    // JSON 语法错误单独成类（E_JSON），与结构校验错误区分。
-    // <lang zh-CN>带出引擎给出的位置描述，便于定位。</lang>
-    // <lang en>Carries the engine's position text for easy location.</lang>
-    let raw:unknown;
-    try{raw=JSON.parse(text);}catch(e){
-      tdonDoc=null;
-      tdonResult={ok:false,errors:[{code:'E_JSON',path:'$',message:`JSON 解析失败：${e instanceof Error?e.message:String(e)}`,messageEn:`JSON parse failed: ${e instanceof Error?e.message:String(e)}`}],warnings:[],truncated:false};
-      renderTdonPanel();renderTdonExport();
-      return;
-    }
     // 结构 + 令牌 + 对比度三重校验（传入当前主题以获得完整判定）。
-    // <lang zh-CN>校验失败不注册文档（TDON-1.3）。</lang>
-    // <lang en>A failed validation never registers the document (TDON-1.3).</lang>
-    const parsed=parseTdonDocument(raw,{theme:theme()});
+    // <lang zh-CN>校验失败不注册文档（TDON-1.3）。JSON 语法错误由校验器归为 `E_JSON`。</lang>
+    // <lang en>A failed validation never registers the document (TDON-1.3); the validator classes JSON syntax
+    //   errors as `E_JSON`.</lang>
+    const parsed=parseTdonDocument(text,{theme:theme()});
     tdonResult=parsed.result;
     tdonDoc=parsed.doc??null;
     selectedTdonFile=null;
@@ -2628,6 +2724,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();
       renderTypography();renderClassicPreview();renderTdonPanel();applyPreviewMode(previewMode);renderExportTree();
       renderRemoteSources();renderRemoteList();renderHarmony();
+      // 主色候选库停在用户当前所在的 tab，并按新语言刷新徽标计数文案。
+      // <lang zh-CN>重绘会把四个视图都刷新一遍，若不回填 tab 状态，切换语言后会跳回第一组。</lang>
+      // <lang en>Re-rendering refreshes all four views; reapplying the tab keeps the user's current group and
+      //   refreshes the badge text in the new locale.</lang>
+      applyPrimaryLibTab(primaryLibTab);
       const langBtn=byId<HTMLButtonElement>('langToggleBtn');
       langBtn.textContent=t('lang.switch');
       // 可访问名须含可见文本（语音输入用户直接说按钮上的字）；切换时同步更新。
@@ -2668,6 +2769,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>“应用”按钮，确保手填主题名生效。</lang>
     // <lang en>Apply button; ensures a hand-typed theme name takes effect.</lang>
     byId('applyThemeBtn').addEventListener('click',()=>applyCurrentTheme(true));
+    // 选色区 tab 切换（`W-tb-P34` UI 整合）：主色候选 / 副色候选 / 按情感选主色。
+    // <lang zh-CN>点击即切视图并按需重绘；枚举值由 data-picker-tab 白名单校验。</lang>
+    // <lang en>Switches views and redraws on demand; the enum is validated against a whitelist.</lang>
+    // 主色候选库 tab 切换（`W-tb-P34`）：四组来源，枚举值按白名单校验。
+    // <lang en>Primary-library tab switching: four source groups, enum validated against a whitelist.</lang>
+    all<HTMLButtonElement>('#primaryLibTabs .tab').forEach(btn=>btn.addEventListener('click',()=>{
+      const v=btn.dataset.primaryTab;
+      if(v==='hia'||v==='award'||v==='trending'||v==='mood')applyPrimaryLibTab(v);
+    }));
     // 保存预设：先应用再保存为新自定义预设。
     // <lang zh-CN>“保存预设”按钮。</lang>
     // <lang en>Save preset button.</lang>
@@ -2967,6 +3077,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>applyPreviewMode 内部联动导出 Tab；经典 mock 依赖已注入变量，置于其后。</lang>
     // <lang en>applyPreviewMode links the export tabs; classic mocks need injected vars, hence placed after.</lang>
     renderTypography();renderClassicPreview();renderTdonPanel();applyPreviewMode('default');renderExportTree();
+    // 选色区初始 tab 与徽标（`W-tb-P34`）：默认主色候选。
+    // <lang en>Initial color-picker tab and badge (W-tb-P34); defaults to the primary list.</lang>
+    applyPrimaryLibTab('hia');
     // `W-tb-P10` 首轮渲染：市场子 Tab（默认本地）、远程源列表与分享 hash 还原。
     // <lang zh-CN>restoreFromHash 须在表单/渐变/候选初始化之后执行；还原后清 hash 防刷新重复。</lang>
     // <lang en>restoreFromHash runs after form/gradient/candidate init; the hash is stripped to avoid re-restore.</lang>

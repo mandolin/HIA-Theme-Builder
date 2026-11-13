@@ -74,8 +74,8 @@ const CONSOLE: Record<string, StringEntry> = {
   // ---- 主色候选库 / 副色候选区 ----
   'primary.lib.title': { zh: '主色候选库', en: 'Primary Candidates' },
   'primary.lib.desc': {
-    zh: '包含默认主题、20 个获奖网站颜色候选，以及一批适合业务项目与示例项目的流行主题色。每个主色都附带一个预设副色系。',
-    en: 'Includes the default theme, 20 award-winning site colors, and popular theme colors for business and sample projects. Each primary ships with a preset secondary.'
+    zh: '按来源分组切换：HIA 默认与蓝色基准、20 个获奖网站颜色候选、适合业务项目与示例项目的流行主题色，以及按情感推荐的主色。每个主色都附带一个预设副色系。',
+    en: 'Switch by source: HIA default and blue baseline, 20 award-winning site colors, popular theme colors for business and sample projects, and mood-suggested primaries. Each primary ships with a preset secondary.'
   },
   'secondary.lib.title': { zh: '副色候选区', en: 'Secondary Candidates' },
   'secondary.lib.desc': { zh: '点击“生成副色系”后，可在此挑选更合适的副色。当前主题库预设副色会优先置顶。', en: 'After "Generate Secondaries", pick a better fit here. Preset secondaries from the library are pinned first.' },

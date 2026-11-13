@@ -41,6 +41,47 @@ if (!result.ok) {
 
 `theme` 可选：不传则只做结构与语法校验（便于先加载文件、后随主题变更重新解析）。
 
+## TDOT 模板语言（`tdot-0.1`）
+
+`template` 段不再只是预留：`specVersion` 恰为 `tdot-0.1` 时，`template.body` 会被求值。
+
+```js
+import { parseTdonDocument, evaluateTemplateBody } from '@hia/tdon';
+
+const { result, doc } = parseTdonDocument(rawText, { theme });
+if (result.ok) {
+  // build 是宿主注入的非确定性值；不传则占位符为空串
+  const out = evaluateTemplateBody(doc, { year: 2026, date: '2026-11-13' });
+  if (out.ok) console.log(out.text);
+}
+```
+
+模板正文里的 `template.data` 对表达式可见：
+
+```json
+{
+  "specVersion": "tdon-0.2",
+  "target": { "id": "demo", "name": "Demo" },
+  "template": {
+    "specVersion": "tdot-0.1",
+    "data": { "features": [ "主题令牌", "导出适配" ] },
+    "body": "{{meta:name}}\n{{#each features}}- {{this}}\n{{/each}}{{#if build.year >= 2026}}© {{build.year}}{{/if}}"
+  }
+}
+```
+
+**能力白名单**：变量、`{{#if}}`/`{{#each}}`、六种比较（`==` `!=` `>` `<` `>=` `<=`）、`+`/`-` 算术、字面量、`!` 取反、`@build.*` 宿主占位符。
+**没有**函数调用、`*`/`/`/`%`、正则、闭包、赋值、include/import 或任意 JS —— 这是安全边界，不是尚未实现。
+
+| 上限 | 值 |
+| --- | --- |
+| 表达式嵌套深度 | 8 |
+| 模板节点数 | 2000 |
+| 求值步数 | 10000 |
+| `template.body` 长度 | 64 KB |
+
+非确定性（年份/日期/时间戳/随机数）**由宿主注入**：解释器不读时钟、不取随机数，同一文档加同一注入值必然产出同一结果。
+
 ## 两级阈值
 
 规模限制分**软阈值（警告）/ 硬阈值（错误）**，硬阈值远高于真实需求：

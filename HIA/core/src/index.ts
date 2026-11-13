@@ -48,11 +48,15 @@ export{GRADIENT_DEFS,GRADIENT_DEFAULTS,cloneGradientSettings}from'./data/gradien
 export{BAODIAN_PALETTE,FORM_PACKS,BAODIAN_FORM_NAMES}from'./data/palette-packs.js';
 export type{BaodianCombo}from'./data/palette-packs.js';
 export{tonePresets,buildTonePreset,TONE_MOODS,TONE_FORM_PRIORITY,TONE_DEFAULT_PRIORITY,TONE_AUX_SLOTS}from'./data/tone-presets.js';
-// 情感 → 主色候选映射（`W-tb-P34`，生成器产出）：用于按情感推荐主色。
-// <lang zh-CN>映射来自宝典组合首色的 OKLab 最近邻 + 加权投票，可复算。</lang>
-// <lang en>Derived from baodian leading colours via OKLab nearest neighbour plus weighted voting; recomputable.</lang>
-export{MOOD_PRIMARY_MAP,moodPrimaryFor}from'./data/mood-primary-map.js';
-export type{MoodPrimaryMapping}from'./data/mood-primary-map.js';
+// 情感主色：**独立数据集**（维护者校正后重做），自带色值，不与主色候选库关联。
+//   早前版本曾把情感映射到 44 主色候选（首色频次 + OKLab 最近邻），结果语义错乱，
+//   根因是串了数据源——候选库讲"网站/流行色"，与情感语义无关。此表已与候选库完全解耦。
+// <lang en>Mood primaries: a **standalone dataset** (redone after the maintainer's correction) carrying its own
+//   colours and decoupled from the primary candidate library. An earlier version mapped moods onto the 44
+//   candidates (leading-colour frequency + OKLab nearest neighbour); the results were semantically wrong because
+//   the method mixed datasets — the library is about site/trending colours and says nothing about mood.</lang>
+export{MOOD_PRIMARY_COLORS,moodPrimaryColorFor}from'./data/mood-primary-colors.js';
+export type{MoodPrimaryColor}from'./data/mood-primary-colors.js';
 export{TRADITIONAL_COLORS}from'./data/traditional-colors.js';
 export{FLAG_COLORS}from'./data/flags.js';
 export type{FlagEntry,Continent}from'./data/flags.js';

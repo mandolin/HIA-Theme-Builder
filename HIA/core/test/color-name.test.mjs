@@ -21,6 +21,30 @@ test('色名：色相分区（红/蓝/绿/紫/中性）', () => {
   assert.equal(hueNameFor(0,0.1,0.01),'black');
 });
 
+// 色相环基准回归：分区必须按 **OKLCH** 色相角，不能按 sRGB。
+//   这里拿标准色过 nameColor（而非直接喂角度），因为那才是真实调用路径——
+//   早前版本正是"分区按 sRGB、角度按 OKLCH"，整环错位约 30°，纯红被判成橙。
+// <lang en>Hue-ring baseline regression: sectors must follow **OKLCH** angles, not sRGB. Canonical colours go
+//   through nameColor (the real call path) rather than feeding angles directly — the earlier bug was exactly
+//   "sRGB sectors on OKLCH angles", shifting the ring ~30° so pure red read as orange.</lang>
+test('色名：标准色的色相名必须对得上（OKLCH 基准，防整环错位）', () => {
+  const cases = [
+    ['#FF0000', 'red', '红'], ['#FF8000', 'orange', '橙'], ['#FFFF00', 'yellow', '黄'],
+    ['#00CC00', 'green', '绿'], ['#00CCCC', 'cyan', '青'], ['#0000FF', 'blue', '蓝'],
+    ['#8000FF', 'purple', '紫']
+  ];
+  for (const [hex, hue, zh] of cases) {
+    const n = nameColor(hex);
+    assert.equal(n.hue, hue, `${hex} 应为 ${hue}，实为 ${n.hue}（${n.zh}）`);
+    assert.ok(n.zh.includes(zh), `${hex} 的中文名应含"${zh}"，实为"${n.zh}"`);
+  }
+  // 亮黄的修饰语应是"亮/鲜"之类，绝不能落到"绿、青、蓝"色相上。
+  // <lang en>A bright yellow must never land on a green/cyan/blue hue.</lang>
+  const yellow = nameColor('#F1AF00');
+  assert.equal(yellow.hue, 'orange'); // 金黄在金与橙之间，OKLCH 81° 落在橙区
+  assert.ok(!['green', 'cyan', 'blue'].includes(yellow.hue));
+});
+
 test('色名：代表色双语断言（钴蓝=深蓝/Deep Blue，樱色=浅红/Light Red）', () => {
   const blue=nameColor('#0047AB');
   assert.equal(blue.zh,'深蓝');assert.equal(blue.en,'Deep Blue');

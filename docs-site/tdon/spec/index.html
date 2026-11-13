@@ -51,7 +51,7 @@
       <li><a href="#s10"><span class="zh">未实现 vs 禁止</span><span class="en">Unimplemented vs forbidden</span></a></li>
       <li><a href="#s11"><span class="zh">安全边界</span><span class="en">Security boundary</span></a></li>
       <li><a href="#s13"><span class="zh">演进</span><span class="en">Evolution</span></a></li>
-      <li><a href="#s14"><span class="zh">TDOT 预留</span><span class="en">TDOT reservation</span></a></li>
+      <li><a href="#s14"><span class="zh">TDOT 模板语言</span><span class="en">TDOT template language</span></a></li>
     </ol>
   </div>
 
@@ -77,7 +77,7 @@
   "exportManifest": { … },   // 必填
   "constraints":    { … },   // 可选
   "effects":        { … },   // 可选
-  "template":       { … }    // TDOT 预留
+  "template":       { … }    // TDOT 模板（见 §14）
 }</code></pre>
     <table class="clause-table">
       <tr><th><span class="zh">编号</span><span class="en">Clause</span></th><th><span class="zh">条款</span><span class="en">Rule</span></th></tr>
@@ -188,7 +188,7 @@
     <h2 id="s10">10 <span class="zh">未实现 ≠ 禁止</span><span class="en">Unimplemented ≠ forbidden</span></h2>
     <table>
       <tr><th><span class="zh">能力</span><span class="en">Capability</span></th><th><span class="zh">当前行为</span><span class="en">Current behavior</span></th></tr>
-      <tr><td><span class="zh">条件/循环/变量/表达式</span><span class="en">Conditionals/loops/vars/expressions</span></td><td><span class="zh"><code>template</code> 段接受但警告 <code>W_TDOT_RESERVED</code>、内容忽略</span><span class="en"><code>template</code> accepted but warned (<code>W_TDOT_RESERVED</code>), content ignored</span></td></tr>
+      <tr><td><span class="zh">条件/循环/变量/表达式</span><span class="en">Conditionals/loops/vars/expressions</span></td><td><span class="zh"><b>已支持</b>（<code>tdot-0.1</code>）：<code>{{ }}</code> 插值、<code>#if</code>/<code>#each</code>、比较与 <code>+</code>/<code>-</code>。不带 <code>tdot-</code> 前缀的 <code>specVersion</code> 仍只警告</span><span class="en"><b>Supported</b> (<code>tdot-0.1</code>): <code>{{ }}</code>, <code>#if</code>/<code>#each</code>, comparisons and <code>+</code>/<code>-</code>. Versions without the <code>tdot-</code> prefix still only warn</span></td></tr>
       <tr><td><span class="zh">远程字体 URL</span><span class="en">Remote font URL</span></td><td><span class="zh"><code>tokens.fontUrl</code> 接受但警告 <code>W_FONT_RESERVED</code></span><span class="en"><code>tokens.fontUrl</code> accepted but warned (<code>W_FONT_RESERVED</code>)</span></td></tr>
       <tr><td><span class="zh">远程图片</span><span class="en">Remote images</span></td><td><span class="zh"><b>已支持</b>：<code>hero</code>/<code>card</code> 的 <code>imageUrl</code></span><span class="en"><b>Supported</b>: <code>imageUrl</code> on <code>hero</code>/<code>card</code></span></td></tr>
     </table>
@@ -215,20 +215,23 @@
       <tr><td>TDON-13.3</td><td><span class="zh">1.0 条件：9 类节点与 3 种效果经 ≥3 个真实场景验证，且无待审条款。</span><span class="en">1.0 requires nine node types and three effects proven in ≥3 real scenarios, with no pending clauses.</span></td></tr>
     </table>
 
-    <h2 id="s14">14 <span class="zh">TDOT 预留</span><span class="en">TDOT reservation</span></h2>
-    <p><span class="zh"><b>TDOT</b> = Theme Design Object <b>Template</b>。TDON 保持纯声明；需要逻辑的目标走 TDOT，由受限解释器在沙箱内求值（能力白名单，无任意 JS）。当前 <code>template</code> 段被接受但忽略。</span><span class="en"><b>TDOT</b> = Theme Design Object <b>Template</b>. TDON stays declarative; targets needing logic move to TDOT, evaluated by a restricted interpreter in a sandbox (capability whitelist, no arbitrary JS). Today the <code>template</code> block is accepted but ignored.</span></p>
+    <h2 id="s14">14 <span class="zh">TDOT 模板语言</span><span class="en">TDOT template language</span></h2>
+    <p><span class="zh"><b>TDOT</b> = Theme Design Object <b>Template</b>。TDON 保持纯声明；需要逻辑的目标走 TDOT，由受限解释器在沙箱内求值（能力白名单，无任意 JS）。<b>自 `tdot-0.1` 起 <code>template</code> 段真正生效</b>：<code>specVersion</code> 恰为 <code>tdot-0.1</code> 时才求值，其他 <code>tdot-*</code> 版本报 <code>E_TDOT_VERSION</code>（前向兼容：新版本不会被旧运行时错误解释）。</span><span class="en"><b>TDOT</b> = Theme Design Object <b>Template</b>. TDON stays declarative; targets needing logic move to TDOT, evaluated by a restricted interpreter in a sandbox (capability whitelist, no arbitrary JS). <b>Since `tdot-0.1` the <code>template</code> block is live</b>: it evaluates only when <code>specVersion</code> is exactly <code>tdot-0.1</code>; any other <code>tdot-*</code> version yields <code>E_TDOT_VERSION</code> — forward compatibility, so a newer version is never silently misread by an older runtime.</span></p>
     <pre><code>"template": {
-  "specVersion": "tdot-0.1",   // 独立版本串
+  "specVersion": "tdot-0.1",   // 独立版本串 / own version string
   "data": { "features": [ … ] },
-  "blocks": [ … ]              // 条件/循环/变量（待 TDOT 规范定义）
+  "body": "…"                  // 模板正文（≤64 KB），支持 {{ }} 插值与 #if/#each 块
 }</code></pre>
     <table class="clause-table">
       <tr><th><span class="zh">编号</span><span class="en">Clause</span></th><th><span class="zh">条款</span><span class="en">Rule</span></th></tr>
       <tr><td>TDON-14.1</td><td><span class="zh"><code>template</code> 为 TDOT 专属命名空间，内容由 TDOT 规范定义。</span><span class="en"><code>template</code> is the TDOT namespace; its content is defined by the TDOT spec.</span></td></tr>
-      <tr><td>TDON-14.2</td><td><span class="zh">当前只做"存在即可"的接受 + 警告，不得报错。</span><span class="en">Currently accepted with a warning only — never an error.</span></td></tr>
-      <tr><td>TDON-14.3</td><td><span class="zh">TDOT 落地须出独立 ADR（沙箱/求值边界/与 TDON 分工）。</span><span class="en">TDOT landing requires its own ADR (sandbox, evaluation boundary, split with TDON).</span></td></tr>
+      <tr><td>TDON-14.2</td><td><span class="zh">不带 <code>tdot-</code> 前缀的 <code>specVersion</code> 只接受并警告 <code>W_TDOT_RESERVED</code>，不报错。</span><span class="en">A <code>specVersion</code> without the <code>tdot-</code> prefix is accepted with <code>W_TDOT_RESERVED</code> only — never an error.</span></td></tr>
+      <tr><td>TDON-14.3</td><td><span class="zh">TDOT 能力边界见 ADR-011；扩展能力须先改 ADR 再改实现。</span><span class="en">TDOT's capability boundary lives in ADR-011; extend the ADR before the implementation.</span></td></tr>
       <tr><td>TDON-14.4</td><td><span class="zh">TDOT 不得削弱 §10.2 的禁止项。</span><span class="en">TDOT must not weaken the prohibitions in §10.2.</span></td></tr>
     </table>
+    <p><span class="zh"><b>能力白名单</b>：变量、<code>#if</code>/<code>#each</code>、六种比较、<code>+</code>/<code>-</code> 算术、字面量、<code>!</code> 取反、<code>@build.*</code> 宿主占位符。<b>明确不提供</b>函数调用、<code>*</code>/<code>/</code>/<code>%</code>、正则、闭包、赋值、include/import 与任意 JS。</span><span class="en"><b>Capability whitelist</b>: variables, <code>#if</code>/<code>#each</code>, six comparisons, <code>+</code>/<code>-</code> arithmetic, literals, <code>!</code> negation, and <code>@build.*</code> host placeholders. <b>Explicitly absent</b>: function calls, <code>*</code>/<code>/</code>/<code>%</code>, regex, closures, assignment, include/import, and arbitrary JS.</span></p>
+    <p><span class="zh"><b>非确定性由宿主注入</b>：<code>@build.year</code>/<code>date</code>/<code>timestamp</code>/<code>random</code> 是占位符，值由调用方（Theme Builder）写入，解释器本身不读时钟也不取随机数——因此同一文档 + 同一注入值必然产出同一结果，可测试、可复现。</span><span class="en"><b>Non-determinism is host-injected</b>: <code>@build.year</code>/<code>date</code>/<code>timestamp</code>/<code>random</code> are placeholders filled by the caller (Theme Builder); the interpreter reads no clock and draws no random numbers — same document plus same injected values always yields the same output, so it is testable and reproducible.</span></p>
+    <p><span class="zh"><b>三道上限</b>：表达式嵌套 8 层、节点 2000、求值步数 10000；借它们把"模板写错"变成可读的错误码而不是卡死。</span><span class="en"><b>Three caps</b>: expression depth 8, 2000 nodes, 10000 evaluation steps — they turn "bad template" into a readable error code instead of a hang.</span></p>
   </section>
 </main>
 <footer class="site-foot">

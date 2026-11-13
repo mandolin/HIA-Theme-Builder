@@ -20,6 +20,7 @@ import './p10.js';
 import './p11.js';
 import './candidates.js';
 import './tone.js';
+import './p34.js';
 
 export { t, applyAll, applyDomTranslations, translateTextNodes, setLocale, getLocale } from './i18n.js';
 export type { Locale, StringEntry } from './i18n.js';

@@ -43,20 +43,37 @@ export function modifierFor(L:number,C:number):ColorModifier{
   return C>0.12?'deep':'dark';
 }
 
-// 色相角 → 色相名（12 分区，含棕与品红/粉的明度区分）。
-// <lang en>Hue angle → hue name (12 sectors; brown/pink resolved by lightness).</lang>
+// 色相角 → 色相名（含棕与品红/粉的明度区分）。
+//   **分区锚点是 OKLCH 色相角，不是 sRGB 色相角**——两者的零点与刻度都不同：
+//   纯红 sRGB 0° / OKLCH 29°，纯黄 60° / 110°，纯绿 120° / 143°，纯蓝 240° / 264°。
+//   早前版本按 sRGB 分区（`<15` 判红等）却传入 OKLCH 角，导致整环错位约 30°：
+//   纯红 `#FF0000` 被叫成"强橙"、纯黄 `#FFFF00` 被叫成"亮绿"。分区锚点即以标准色的 OKLCH 角为准。
+// <lang en>Hue angle → hue name (brown/pink resolved by lightness). **The sector anchors are OKLCH hue angles,
+//   not sRGB ones** — the two differ in both origin and spacing: pure red is sRGB 0° but OKLCH 29°, yellow 60° vs
+//   110°, green 120° vs 143°, blue 240° vs 264°. An earlier version used sRGB sectors on OKLCH angles, shifting
+//   the whole ring by ~30° so pure red `#FF0000` was named "strong orange" and pure yellow "brilliant green".
+//   The anchors below are the OKLCH angles of the canonical hues.</lang>
 export function hueNameFor(h:number,L:number,C:number):HueName{
   if(C<0.04)return L>0.9?'white':L>0.35?'grey':'black';
   const deg=((h%360)+360)%360;
-  if(deg<15||deg>=345)return L<0.45?'brown':'red';
-  if(deg<45)return L<0.45?'brown':'orange';
-  if(deg<70)return'yellow';
-  if(deg<165)return'green';
-  if(deg<195)return'cyan';
-  if(deg<270)return'blue';
-  if(deg<300)return'purple';
-  if(deg<315)return L>0.7?'pink':'magenta';
-  return L>0.7?'pink':'magenta';
+  // 红 29° / 橙 53° / 黄 110° / 绿 143° / 青 195° / 蓝 264° / 紫 294° / 品红 328°。
+  //   区间边界取相邻锚点的中点：红↔橙 41、橙↔黄 82、黄↔绿 126、绿↔青 169、青↔蓝 230、蓝↔紫 279、紫↔品红 311。
+  //   红与品红在 360/0 处首尾相接：品红锚点 328° 到红锚点 29°，中点 358.5°——
+  //   故 ≥358.5 归品红、18–41 归红。这样洋红 `#A2007C`（342°）读作品红而不是"深红"。
+  // <lang en>Sector boundaries are midpoints between adjacent anchors: red↔orange 41, orange↔yellow 82,
+  //   yellow↔green 126, green↔cyan 169, cyan↔blue 230, blue↔purple 279, purple↔magenta 311. Red and magenta
+  //   meet across 360/0: magenta 328° to red 29° has its midpoint at 358.5°, so ≥358.5 reads magenta and 18–41
+  //   reads red. That keeps magenta `#A2007C` (342°) out of the red sector.</lang>
+  if(deg<18)return L<0.45?'brown':'red';
+  if(deg<41)return L<0.45?'brown':'red';
+  if(deg<82)return L<0.5?'brown':'orange';
+  if(deg<126)return'yellow';
+  if(deg<169)return'green';
+  if(deg<230)return'cyan';
+  if(deg<279)return'blue';
+  if(deg<311)return'purple';
+  if(deg<358.5)return L>0.7?'pink':'magenta';
+  return L<0.45?'brown':'red';
 }
 
 /** @lang zh-CN 由 HEX 生成结构化色名（修饰语+色相，中英双语）。
