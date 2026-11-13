@@ -61,8 +61,14 @@ function effectAttrs(effect:TdonEffect|undefined):{cls:string;styleAttr:string}{
 }
 
 // 渲染单个节点（含 children 递归）。
-// <lang zh-CN>effect 通过 doc.effects 查表；未声明时静默忽略（校验阶段已报 E_EFFECT_UNKNOWN）。</lang>
-// <lang en>Effect is looked up in doc.effects; an undeclared id is silently skipped (validation already flagged it).</lang>
+// <lang zh-CN>effect 通过 doc.effects 查表；未声明时静默忽略（校验阶段已报 E_EFFECT_UNKNOWN）。
+//   **前置契约**：node 必须是校验器重建后的节点（含 `attrs`）。直接传裸 JSON 会在 `node.attrs.children`
+//   处抛错——冒烟测试（`W-tb-P31`）踩到过。这里补一层防御：缺 attrs 时按空对象处理并跳过 children，
+//   让误用在运行时退化为"渲染空内容"而不是崩栈。</lang>
+// <lang en>Effect is looked up in doc.effects; an undeclared id is silently skipped (validation already flagged it).
+//   **Precondition**: node must be a validated node (with `attrs`). Passing raw JSON used to throw at
+//   `node.attrs.children` — hit during the `W-tb-P31` smoke test. Defensive: missing attrs becomes an empty
+//   object and children are skipped, degrading to "renders empty" instead of a stack crash.</lang>
 function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):string{
   const eff=node.effect?doc.effects?.[node.effect]:undefined;
   const fx=effectAttrs(eff);
@@ -70,8 +76,8 @@ function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):str
   // 递归渲染 children：深度上限由校验器保证（TDON_MAX_NESTING），此处按同一常量判定。
   // <lang zh-CN>子节点包在统一容器内，便于布局类控制间距。</lang>
   // <lang en>Children are wrapped in a uniform container so layout classes control spacing.</lang>
-  const kids=depth<TDON_MAX_NESTING-1?renderChildren(theme,node.attrs.children as TdonNode[]|undefined,doc,depth+1):'';
-  const a=node.attrs;
+  const kids=depth<TDON_MAX_NESTING-1?renderChildren(theme,(node.attrs??{}).children as TdonNode[]|undefined,doc,depth+1):'';
+  const a=node.attrs??{};
   switch(node.type){
     // hero：主视觉。bgToken 常为渐变；标题字号取 fs 档变量。
     // <lang zh-CN>actions 渲染为 span（非按钮）——预览不提供交互（TDON-5.9 同理）。</lang>
@@ -208,13 +214,17 @@ function nl2br(text:string):string{
 }
 
 // 渲染整份预览：标题 + 布局类 + 节点序列。
-// <lang zh-CN>布局只影响外层容器类名，具体排布由随包 CSS 提供（不生成任意 CSS）。</lang>
-// <lang en>Layout only selects a container class; concrete arrangement comes from the packaged CSS (no generated CSS).</lang>
+// <lang zh-CN>布局只影响外层容器类名，具体排布由随包 CSS 提供（不生成任意 CSS）。
+//   入参 doc 应为 `parseTdonDocument` 返回的文档（节点已归一化）。传裸 JSON 时节点缺 `attrs`，
+//   渲染为空内容而非抛错——门槛在 API 注释与返回类型上，不在运行时崩栈。</lang>
+// <lang en>Layout only selects a container class; concrete arrangement comes from the packaged CSS (no generated CSS).
+//   `doc` should come from `parseTdonDocument` (nodes normalized). Raw JSON yields empty node content rather
+//   than throwing — the contract lives in the API docs and types, not in a runtime crash.</lang>
 export function renderTdonPreview(doc:TdonDocument,theme:Theme):string{
-  const preview=doc.preview;
+  const preview=doc?.preview;
   if(!preview)return'';
   const title=preview.title?`<div class="tdon-preview-title">${escapeTdonHtml(preview.title)}</div>`:'';
-  const nodes=preview.nodes.map(n=>renderNode(theme,n,doc,0)).join('\n');
+  const nodes=(preview.nodes??[]).map(n=>renderNode(theme,n,doc,0)).join('\n');
   return`<div class="tdon-preview tdon-layout-${preview.layout}">${title}${nodes}</div>`;
 }
 

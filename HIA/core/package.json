@@ -3,6 +3,16 @@
   "version": "0.5.0",
   "description": "HIA cross-platform theme domain core: models, OKLCH algorithms, theme studio state, gradient rendering, token export and website-color analysis.",
   "license": "MIT",
+  "author": "HIA Theme Builder contributors",
+  "homepage": "https://mandolin.github.io/HIA-Theme-Builder/docs/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mandolin/HIA-Theme-Builder.git",
+    "directory": "HIA/core"
+  },
+  "bugs": {
+    "url": "https://github.com/mandolin/HIA-Theme-Builder/issues"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -14,16 +24,18 @@
     }
   },
   "files": [
-    "dist",
-    "src",
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
     "README.md",
     "LICENSE"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
     "test": "npm run build && node --test",
-    "test:watch": "node --test --watch"
+    "test:watch": "node --test --watch",
+    "prepublishOnly": "npm run clean && npm run build && node --test"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
@@ -32,11 +44,16 @@
   "engines": {
     "node": ">=18"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "theme",
     "design-token",
+    "design-system",
     "oklch",
     "color",
+    "css-variables",
     "hia"
   ]
 }

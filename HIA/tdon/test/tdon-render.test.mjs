@@ -157,3 +157,22 @@ test('渲染确定性：同文档同主题两次渲染逐字节相同', () => {
   const d = doc({ preview: { nodes: [{ type: 'card', title: 't', text: 'x' }] } });
   assert.equal(renderTdonPreview(d, THEME), renderTdonPreview(d, THEME));
 });
+
+test('防御：传裸 JSON（未校验、无 attrs）渲染空内容而不崩栈', () => {
+  // W-tb-P31 冒烟发现：renderTdonPreview 曾直接读 node.attrs.children 抛 TypeError。
+  //   契约仍要求传校验后的文档，但误用应退化为"空内容"而非崩溃。
+  const raw = {
+    specVersion: 'tdon-0.2',
+    target: { id: 'a-b', name: 'x' },
+    exportManifest: { files: [{ path: 'a.css', template: 'x' }] },
+    preview: { layout: 'stack', nodes: [{ type: 'hero', title: 'H' }, { type: 'card', title: 'C' }] }
+  };
+  assert.doesNotThrow(() => renderTdonPreview(raw, THEME));
+  const html = renderTdonPreview(raw, THEME);
+  // 结构容器仍在，节点内容为空（标题缺失）。
+  assert.ok(html.includes('tdon-layout-stack'));
+  assert.ok(html.includes('tdon-hero'));
+  // 无文档或无预览时返回空串。
+  assert.equal(renderTdonPreview({}, THEME), '');
+  assert.equal(renderTdonPreview(undefined, THEME), '');
+});

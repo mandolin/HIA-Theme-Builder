@@ -36,3 +36,7 @@ HIA/tauri/tauri-render-log.txt
 
 # W-tb-P27 无障碍/复验运行产物（证据归 WorkZone dev/evidence/assets）
 HIA/web/test/shots/
+
+# npm 打包产物（发布用，不入库）
+*.tgz
+temp/npm-smoke/

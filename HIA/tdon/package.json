@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "HIA TDON runtime: declarative theme-adapter documents (tdon-0.2) — zero-dependency validator, preview renderer and export adapter. Pure functions, no IO.",
   "license": "MIT",
+  "author": "HIA Theme Builder contributors",
+  "homepage": "https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mandolin/HIA-Theme-Builder.git",
+    "directory": "HIA/tdon"
+  },
+  "bugs": {
+    "url": "https://github.com/mandolin/HIA-Theme-Builder/issues"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -15,19 +25,21 @@
     "./examples/*": "./tdon-examples/*"
   },
   "files": [
-    "dist",
-    "src",
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
     "tdon-examples",
     "README.md",
     "LICENSE"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
-    "test": "npm run build && node --test"
+    "test": "npm run build && node --test",
+    "prepublishOnly": "npm run clean && npm run build && node --test"
   },
   "dependencies": {
-    "@hia/theme-core": "file:../core"
+    "@hia/theme-core": "^0.5.0"
   },
   "devDependencies": {
     "rimraf": "^5.0.0",
@@ -36,11 +48,16 @@
   "engines": {
     "node": ">=18"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "tdon",
-    "design-token",
+    "theme",
     "theme-adapter",
+    "design-token",
     "declarative",
+    "validator",
     "hia"
   ]
 }

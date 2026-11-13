@@ -53,8 +53,12 @@ export{parseTdonDocument}from'./validate.js';
 export type{TdonParseResult}from'./validate.js';
 
 // 预览渲染（9 类节点 + 固定特效类）。
-// <lang zh-CN>样式表是常量：宿主注入一次即可，渲染输出不含任何外部 CSS 字符串。</lang>
-// <lang en>The stylesheet is a constant: hosts inject it once, and rendered output carries no external CSS strings.</lang>
+// <lang zh-CN>样式表是常量：宿主注入一次即可，渲染输出不含任何外部 CSS 字符串。
+//   **前置契约**：`renderTdonPreview` 的 doc 参数应来自 `parseTdonDocument`（节点已归一化出 attrs）。
+//   传裸 JSON 只会渲染出空节点内容——不做静默修复，也不会崩栈。</lang>
+// <lang en>The stylesheet is a constant: hosts inject it once, and rendered output carries no external CSS strings.
+//   **Precondition**: `renderTdonPreview` expects a doc from `parseTdonDocument` (nodes normalized with attrs).
+//   Raw JSON renders empty node content — no silent repair, no crash.</lang>
 export{renderTdonPreview,escapeTdonHtml,TDON_PREVIEW_CSS}from'./render.js';
 
 // 导出适配（TDON → 与内置适配器同构的 ExportTarget）。
