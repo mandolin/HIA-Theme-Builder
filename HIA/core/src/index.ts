@@ -48,6 +48,11 @@ export{GRADIENT_DEFS,GRADIENT_DEFAULTS,cloneGradientSettings}from'./data/gradien
 export{BAODIAN_PALETTE,FORM_PACKS,BAODIAN_FORM_NAMES}from'./data/palette-packs.js';
 export type{BaodianCombo}from'./data/palette-packs.js';
 export{tonePresets,buildTonePreset,TONE_MOODS,TONE_FORM_PRIORITY,TONE_DEFAULT_PRIORITY,TONE_AUX_SLOTS}from'./data/tone-presets.js';
+// 情感 → 主色候选映射（`W-tb-P34`，生成器产出）：用于按情感推荐主色。
+// <lang zh-CN>映射来自宝典组合首色的 OKLab 最近邻 + 加权投票，可复算。</lang>
+// <lang en>Derived from baodian leading colours via OKLab nearest neighbour plus weighted voting; recomputable.</lang>
+export{MOOD_PRIMARY_MAP,moodPrimaryFor}from'./data/mood-primary-map.js';
+export type{MoodPrimaryMapping}from'./data/mood-primary-map.js';
 export{TRADITIONAL_COLORS}from'./data/traditional-colors.js';
 export{FLAG_COLORS}from'./data/flags.js';
 export type{FlagEntry,Continent}from'./data/flags.js';

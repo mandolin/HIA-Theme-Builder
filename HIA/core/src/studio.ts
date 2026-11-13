@@ -6,6 +6,7 @@
  */
 import type{GradientSettings,Preset,PrimaryCandidate,Theme,ThemeDraft,ThemeLibraryDocument}from'./types.js';
 import{normalizeHex}from'./color/convert.js';
+import{nameColor}from'./color/color-name.js';
 import{generateSecondarySet,type SecondaryCandidate}from'./color/harmony.js';
 import{cloneGradientSettings,GRADIENT_DEFAULTS}from'./data/gradients.js';
 import{DEFAULT_SPACING,DEFAULT_TYPOGRAPHY}from'./token/typography.js';
@@ -72,7 +73,7 @@ export function buildThemeFromDraft(draft:ThemeDraft):Theme{
 // <lang zh-CN>保存/导出时使用，基色再次规范化确保持久化一致。</lang>
 // <lang en>Used for save/export; base colors are re-normalized for consistent persistence.</lang>
 export function presetFromDraft(draft:ThemeDraft,id=`custom-${Date.now()}`):Preset{
-  return{id,name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category||'custom',industry:draft.industry||'',primary:normalizeHex(draft.primary),secondary:normalizeHex(draft.secondary),primaryName:draft.primaryName||'主色',secondaryName:draft.secondaryName||'副色',note:draft.note||'由主副色操作台生成导入。',gradients:cloneGradientSettings(draft.gradients),...(draft.seriesMode&&draft.seriesMode!=='dual'?{seriesMode:draft.seriesMode}:{}),...(draft.seriesRelation&&draft.seriesRelation!=='manual'?{seriesRelation:draft.seriesRelation}:{}),...(draft.thirdColor?{thirdColor:{...draft.thirdColor,scale:{...draft.thirdColor.scale}}}:{}),...(draft.auxiliary?.length?{auxiliary:draft.auxiliary.map(a=>({...a,scale:{...a.scale}}))}:{})};
+  return{id,name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category||'custom',industry:draft.industry||'',primary:normalizeHex(draft.primary),secondary:normalizeHex(draft.secondary),primaryName:draft.primaryName||nameColor(draft.primary).zh,secondaryName:draft.secondaryName||nameColor(draft.secondary).zh,note:draft.note||'由主副色操作台生成导入。',gradients:cloneGradientSettings(draft.gradients),...(draft.seriesMode&&draft.seriesMode!=='dual'?{seriesMode:draft.seriesMode}:{}),...(draft.seriesRelation&&draft.seriesRelation!=='manual'?{seriesRelation:draft.seriesRelation}:{}),...(draft.thirdColor?{thirdColor:{...draft.thirdColor,scale:{...draft.thirdColor.scale}}}:{}),...(draft.auxiliary?.length?{auxiliary:draft.auxiliary.map(a=>({...a,scale:{...a.scale}}))}:{})};
 }
 
 // 在候选库中按主副色同时匹配出对应候选（用于回显“当前主色”来源）。

@@ -1,5 +1,6 @@
 import type{RoleColor,Theme,ThemeInput,TypographyTokens,SpacingTokens,SeriesMode,SeriesRelationId}from'./types.js';
 import{DEFAULT_TYPOGRAPHY,DEFAULT_SPACING}from'./token/typography.js';
+import{nameColor}from'./color/color-name.js';
 
 // 字体令牌深拷贝（ADR-006）：阻断外部对象与内部状态的隐含耦合。
 // <lang zh-CN>fontFamily/scale/overrides 逐层复制；overrides 为 undefined 时不显式写入键，
@@ -18,11 +19,16 @@ import{cloneGradientSettings}from'./data/gradients.js';
 import{deriveSecondaryByRelation,deriveThirdByRelation,getSeriesRelationDef}from'./color/harmony.js';
 
 // 由单个基色构建一个完整角色色：规范化色值、生成色阶并选择最佳前景色。
-// <lang zh-CN>纯函数，无副作用；name 缺省回退“主色”，on 由对比度自动决定白/深。</lang>
-// <lang en>Pure, side-effect-free; falls back to "主色" when name is empty, and `on` is auto white/dark by contrast.</lang>
+// <lang zh-CN>纯函数，无副作用；name 缺省时用 `nameColor` 的**真实色名**兜底（如"强蓝"），
+//   而不是"主色"这类占位词——占位词会让 UI 显示"主色 #0047AB"，用户仍不知道这是什么色。</lang>
+// <lang en>Pure, side-effect-free. An empty name falls back to the **real** color name from `nameColor`
+//   (e.g. "Strong Blue") rather than a placeholder like "主色" — a placeholder leaves the UI showing
+//   "主色 #0047AB" without telling the user what color it actually is.</lang>
 function buildRoleColor(value:string,name:string):RoleColor{
   const hex=normalizeHex(value);
-  return{name:name||'主色',value:hex,scale:tonalScale(hex),on:bestOnColor(hex).hex};
+  // 色名兜底：`nameColor` 是纯函数（ISCC-NBS 修饰语 + 色相），对任意 HEX 都有结果。
+  // <lang en>The fallback is pure (ISCC-NBS modifier + hue) and defined for any HEX.</lang>
+  return{name:name||nameColor(hex).zh,value:hex,scale:tonalScale(hex),on:bestOnColor(hex).hex};
 }
 // 角色色深拷贝：阻断外部对象与内部状态的隐含耦合（scale 对象逐键复制）。
 // <lang zh-CN>用于第三角色与辅助槽位入参与 Theme 装配的隔离。</lang>
@@ -49,16 +55,18 @@ export function buildTheme(input:ThemeInput):Theme{
   // <lang zh-CN>主副色独立生成，保证各自色阶与前景色自洽；单色模式下副色取主色系变体（primary 深档，
   //   定案：系统角色全链路照常，用户传入的 secondary 色相被变体替换）。</lang>
   // <lang en>Single mode replaces the user secondary hue with the primary-series variant (primary 700 step) per the ADR-007 v2 decision.</lang>
-  const primary=buildRoleColor(input.primary,input.primaryName||'主色');
+  // 不在此处用占位词兜底：空名称直接传给 buildRoleColor，由它用真实色名填充。
+  // <lang en>No placeholder here: an empty name reaches buildRoleColor, which fills in the real colour name.</lang>
+  const primary=buildRoleColor(input.primary,input.primaryName||'');
   let secondary:RoleColor;
   if(seriesMode==='single'){
     // 单色变体：取主色 700 档重建角色色（含色阶与前景色）。
     // <lang zh-CN>primary.scale['700'] 为推导基准；name 标注变体来源。</lang>
     // <lang en>Built from the primary 700 step with a variant name.</lang>
     const variantHex=primary.scale['700']!;
-    secondary={name:input.primaryName||'主色'+' · 系列变体',value:variantHex,scale:tonalScale(variantHex),on:bestOnColor(variantHex).hex};
+    secondary={name:(primary.name)+' · 系列变体',value:variantHex,scale:tonalScale(variantHex),on:bestOnColor(variantHex).hex};
   }else{
-    secondary=buildRoleColor(input.secondary,input.secondaryName||'副色');
+    secondary=buildRoleColor(input.secondary,input.secondaryName||'');
   }
   // 第三角色装配（ADR-007 v2）：仅 triad 存在；显式入参深拷贝保留，缺省按关系规则从主色推导（manual/pure 无推导）。
   // <lang zh-CN>推导语义：primary/secondary 为用户根基，第三色补全组合（可覆写）。</lang>

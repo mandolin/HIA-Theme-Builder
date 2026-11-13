@@ -15,7 +15,7 @@ import{
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
   tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,NATURE_COLORS,SOCIAL_COLORS,
-  deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,
+  deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,nameColor,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
@@ -390,7 +390,28 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>与主色对称。</lang>
     // <lang en>Symmetric with primary.</lang>
     if(!validHex(secondary)){platform.alert('副色色值无效，请输入 6 位 HEX。');return false;}
+    // 名称跟随颜色（`W-tb-P34`）：颜色变了就更新名称，除非用户**这次**手动改过名称。
+    //   判定"手动改过"只能看**颜色是否变化**——输入框里的旧名（可能是预设名如"钴蓝"，
+    //   也可能是自动色名如"深蓝"）在颜色变化后都失效，继续保留会让"橙色的色块配'钴蓝'字样"。
+    // <lang en>Names follow colours (`W-tb-P34`): refresh when the colour changed, unless the user edited the
+    //   name **this time**. The only reliable signal is "did the colour change" — the old box value (a preset
+    //   name like 钴蓝 or an auto name like 深蓝) is stale either way and would pair an orange swatch with 钴蓝.</lang>
+    const nameField=getLocale()==='en'?'en':'zh';
+    const colorChanged=draft.primary!==primary||draft.secondary!==secondary;
+    const primaryNameRaw=inputValue('primaryNameInput').trim();
+    const secondaryNameRaw=inputValue('secondaryNameInput').trim();
     draft.primary=primary;draft.secondary=secondary;
+    if(colorChanged){
+      // 颜色变了：名称以新色名为准（用户如果想要自定义名，改色后再改名即可）。
+      // <lang en>Colour changed: the new colour's name wins; a user who wants a custom name renames after.</lang>
+      draft.primaryName=nameColor(primary)[nameField];
+      draft.secondaryName=nameColor(secondary)[nameField];
+    }else{
+      // 颜色未变：保留用户输入的名称（空则回退色名）。
+      // <lang en>Colour unchanged: keep the typed name (empty falls back to the colour name).</lang>
+      draft.primaryName=primaryNameRaw||nameColor(primary)[nameField];
+      draft.secondaryName=secondaryNameRaw||nameColor(secondary)[nameField];
+    }
     // 第三色（三色模式）：读输入并组装完整 RoleColor（色阶/前景自动）。
     // <lang zh-CN>非三色模式不读（thirdColor 保持 undefined）。</lang>
     // <lang en>Read only in triad; otherwise thirdColor stays undefined.</lang>
@@ -400,11 +421,8 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         draft.thirdColor={name:inputValue('thirdNameInput').trim()||'第三色',value:thirdRaw,scale:tonalScale(thirdRaw),on:bestOnColor(thirdRaw).hex};
       }
     }
-    // 名称留空时回退到已有名或默认“主色/副色”。
-    // <lang zh-CN>trim 去除首尾空格，避免空白名。</lang>
-    // <lang en>trim removes leading/trailing spaces to avoid blank names.</lang>
-    draft.primaryName=inputValue('primaryNameInput').trim()||draft.primaryName||'主色';
-    draft.secondaryName=inputValue('secondaryNameInput').trim()||draft.secondaryName||'副色';
+    // 名称已在上面按"是否仍为旧色名"处理完毕（`W-tb-P34`），此处不再重复赋值。
+    // <lang en>Names were resolved above (W-tb-P34); no re-assignment here.</lang>
     draft.category=inputValue('themeCategoryInput')||draft.category||'custom';
     // updateName=true：用户输入的主题名优先，空则按主副色名自动生成。
     // <lang zh-CN>“应用”按钮走此分支，保证手动命名生效。</lang>
