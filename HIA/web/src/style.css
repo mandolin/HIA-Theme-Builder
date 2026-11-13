@@ -374,12 +374,17 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .baodian-menu{width:150px;flex:none;overflow:auto;border-right:1px solid var(--line);padding:8px;background:#FBFCFD}
 /* 字号增大两号（维护者反馈 W-tb-P17 扩充轮）：弹层内菜单/标题/色卡全 +2px。 */
 /* Font bump (+2px) across both picker modals per maintainer feedback. */
-.baodian-emo{display:block;width:100%;text-align:left;border:0;background:none;border-radius:6px;padding:8px 10px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;margin-bottom:2px}
+/* 情感条目行：容器 + 兄弟按钮（避免 button 内嵌 button，axe nested-interactive）。
+   Emotion row: container + sibling buttons (no nested buttons). */
+.baodian-emo-row{display:flex;align-items:center;gap:2px;border-radius:6px;margin-bottom:2px}
+.baodian-emo-row.active{background:var(--primary);color:var(--on-primary)}
+.baodian-emo{flex:1;min-width:0;text-align:left;border:0;background:none;border-radius:6px;padding:8px 10px;font-size:14px;font-weight:700;color:inherit;cursor:pointer;overflow-wrap:anywhere}
 .baodian-emo:hover{background:var(--p50)}
-.baodian-emo.active{background:var(--primary);color:var(--on-primary)}
+/* 选中态在行容器上；按钮继承行颜色，避免双背景。 Selected state lives on the row; the button inherits. */
 /* 宝典菜单一键套用（W-tb-P12 完善批④）：情感行内 ⚡ 快捷钮，hover 显现避免视觉噪音。 */
 /* <lang en>Per-mood quick-apply button inside the Baodian menu (batch ④); hover-revealed.</lang> */
-.bd-quick{float:right;margin-left:4px;padding:0 3px;font-size:11px;line-height:1.4;opacity:.55;cursor:pointer;border-radius:4px}
+.bd-quick{flex:none;padding:0 4px;font-size:11px;line-height:1.5;opacity:.55;cursor:pointer;border-radius:4px;border:0;background:none;color:inherit}
+.bd-quick:hover,.bd-quick:focus-visible{opacity:1}
 .baodian-emo:hover .bd-quick,.bd-quick:focus-visible{opacity:1}
 .bd-quick:hover{transform:scale(1.18)}
 .baodian-right{flex:1;overflow:auto;padding:12px;min-width:0}
@@ -448,7 +453,14 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .brand-thumb.loaded .brand-logo{opacity:1}
 .bdc-note{padding:0 10px 8px;font-size:11px;color:#5B6B7C;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .bd-anchor input{width:14px;height:14px;accent-color:var(--primary);cursor:pointer}
-.bd-bar{display:flex;align-items:flex-start;justify-content:flex-start;height:28px;width:74px;padding:2px 4px;font-size:12px;font-weight:700;color:rgba(0,0,0,.6);text-shadow:0 0 2px rgba(255,255,255,.4)}
+/* 色条 = 纯色块 + 下方数字标签（`W-tb-P33`）。
+   原先把编号压在色块上：深底/红底（如 #E33539 上白字 4.34:1）无论黑白都难达 4.5:1。
+   拆开后数字落在弹层底色上（恒定合规），色块只承担视觉，编号依然清晰可读。
+   Bar = plain swatch + number below. Overlaying the number on the swatch could not reach 4.5:1 on some
+   backgrounds; splitting keeps the label on the panel surface, which is always compliant. */
+.bd-bar{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:38px;width:74px;padding:0;font-size:11px;font-weight:700;line-height:1.4;color:var(--text)}
+.bd-swatch{display:block;height:24px;flex:none}
+.bd-num{display:block;text-align:center;font-weight:700;background:var(--panel)}
 /* 色卡信息浮层（W-tb-P17 扩充轮②）：hover 显示色值(#hex/rgb/hsl)/说明/注意事项，逐项复制小图标。 */
 /* Color-card info tip: hover floats value forms/description/cautions with per-row copy icons. */
 /* 浅底深字（维护者定案）：主色浅档底 + 深色文字，与界面一致。 */

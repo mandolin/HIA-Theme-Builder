@@ -64,19 +64,22 @@ async function launchBrowser(){
   throw new Error('未找到可用的 Chrome/Edge。请安装 Chrome 或设置 PUPPETEER_EXECUTABLE_PATH。/ No Chrome or Edge found.');
 }
 
+// 需要纳入门禁的覆盖层（W-tb-P33）。
+//   selector 指向「打开该覆盖层」的触发器；展开后统一验证 #baodianModal 可见（六源共用同一弹层）。
+// <lang en>Overlays included in the gate (W-tb-P33). The selector points at the opener; visibility is verified
+//   on #baodianModal (all six color sources share one modal).</lang>
+const OVERLAYS=[
+  {name:'baodian',selector:'#baodianPickBtn'},
+  {name:'source-menu',selector:'#sourceDdCaret'},
+];
+
 // ---- 扫描单页 ----
 // <lang zh-CN>waitFor#body 等应用挂载完成；切 dark 用真实点击（appearanceSwitch 是应用状态而非系统偏好）。</lang>
 // <lang en>Wait for app mount; dark is toggled via a real click (the switch is app state, not OS preference).</lang>
-async function scanMode(page,mode){
-  if(mode==='dark'){
-    await page.evaluate(()=>{
-      const btn=document.querySelector('#appearanceSwitch .seg[data-appearance="dark"]');
-      if(!btn)throw new Error('找不到 dark 切换按钮');
-      btn.click();
-    });
-    await new Promise(r=>setTimeout(r,300));
-  }
-  // 执行 axe：注入源码并跑全规则（resultTypes 只收 violations，减小回传体积）。
+// 注入 axe 并跑一次全规则扫描，返回归一化摘要（id + 影响节点选择器）。
+//   resultTypes 只收 violations，减小回传体积。
+// <lang en>Injects axe and runs one full scan, returning normalised violations (id + target selectors).</lang>
+async function runAxe(page){
   // <lang zh-CN>内联 script（无 src）是**同步执行**且不触发 onload/error 事件——
   //   曾因等待永不触发的 onload 导致 evaluate 挂死直到协议超时；改为同步追加后直接检查 window.axe。</lang>
   // <lang en>Inline scripts (no src) execute synchronously and never fire onload/error — waiting for onload
@@ -88,12 +91,63 @@ async function scanMode(page,mode){
     if(!window.axe||typeof window.axe.run!=='function')throw new Error('axe 注入失败（window.axe 不可用）');
     return window.axe.run(document,{resultTypes:['violations']}).then(r=>r.violations);
   },AXE_SOURCE);
-  // 归一化为可序列化摘要：id + 影响节点选择器（截断），供基线比对与人工定位。
   return results.map(v=>({
     id:v.id,
     impact:v.impact,
     nodes:v.nodes.map(n=>n.target.join(' ')).sort(),
   }));
+}
+
+// 切换深色（应用内状态，非系统偏好）。
+// <lang zh-CN>与手测同一路径：真实点击应用自己的开关。</lang>
+// <lang en>Same path as manual testing: click the app's own switch.</lang>
+async function applyDark(page){
+  await page.evaluate(()=>{
+    const btn=document.querySelector('#appearanceSwitch .seg[data-appearance="dark"]');
+    if(!btn)throw new Error('找不到 dark 切换按钮');
+    btn.click();
+  });
+  await new Promise(r=>setTimeout(r,300));
+}
+
+// 扫描单页（默认视图）。
+// <lang zh-CN>等应用挂载完成；dark 用真实点击。</lang>
+// <lang en>Waits for app mount; dark uses a real click.</lang>
+async function scanMode(page,mode){
+  if(mode==='dark')await applyDark(page);
+  return runAxe(page);
+}
+
+// 弹层扫描（W-tb-P33）：展开覆盖层后再扫一遍。
+//   axe 只扫可见元素——hidden 的弹层此前完全不在扫描树内，等于门禁有洞。
+// <lang en>Overlay scan (W-tb-P33): opens the overlay then scans again. axe only sees visible elements, so a
+//   hidden modal was entirely outside the tree — a gap in the gate.</lang>
+async function scanOverlay(page,mode,openSelector){
+  if(mode==='dark')await applyDark(page);
+  // 展开并**验证可见性**——不假设点击生效（W-tb-P29 GIF 竞态的同一教训）。
+  // <lang en>Open and verify visibility rather than assuming the click landed (same lesson as the W-tb-P29 GIF race).</lang>
+  const opened=await page.evaluate(sel=>{
+    const trigger=document.querySelector(sel);
+    if(!trigger)return false;
+    trigger.click();
+    return true;
+  },openSelector);
+  if(!opened)return null;
+  await new Promise(r=>setTimeout(r,500));
+  // 可见性判定三重：hidden 属性 + 计算样式 + 非零矩形。
+  // <lang zh-CN>不能用 offsetParent——弹层是 position:fixed，该属性对它恒为 null（曾因此误判"未展开"）。</lang>
+  // <lang en>Do not use offsetParent: the modal is position:fixed, where it is always null (this caused a false
+  //   "not opened" earlier).</lang>
+  const visible=await page.evaluate(()=>{
+    const m=document.getElementById('baodianModal');
+    if(!m||m.hidden)return false;
+    const cs=getComputedStyle(m);
+    if(cs.display==='none'||cs.visibility==='hidden'||cs.opacity==='0')return false;
+    const r=m.getBoundingClientRect();
+    return r.width>0&&r.height>0;
+  });
+  if(!visible)return null;
+  return runAxe(page);
 }
 
 // ---- 主流程 ----
@@ -131,6 +185,29 @@ for(const mode of modes){
   // 耗时日志：操作台 DOM 很大，axe 全规则扫描耗时属正常信息（CI 排查超时时有用）。
   // <lang en>Timing log: the studio DOM is large, so full-rule scan duration is normal CI diagnostics.</lang>
   console.log(`[${mode}] axe 扫描耗时 ${((Date.now()-t1)/1000).toFixed(1)}s`);
+
+  // 弹层扫描（W-tb-P33）：每个覆盖层独立重载后展开。
+  //   结果先收集进 all[mode]（带 overlay 前缀），与默认视图结果合并后统一比对基线。
+  // <lang en>Overlay passes (W-tb-P33): each overlay reloads first. Results are collected into all[mode] with an
+  //   overlay prefix, then diffed against the baseline together with the default view.</lang>
+  if(!urlArg){
+    for(const ov of OVERLAYS){
+      await page.goto(target,{waitUntil:'networkidle2'});
+      await page.waitForSelector('#pcPageTitle',{timeout:15000});
+      const t2=Date.now();
+      const r=await scanOverlay(page,mode,ov.selector);
+      if(r===null){
+        console.log(`[${mode}:${ov.name}] 弹层未展开，跳过`);
+        continue;
+      }
+      // 指纹加 overlay 前缀：同一规则在弹层语境下是独立条目（可见性/焦点管理要求不同）。
+      // <lang en>Fingerprints carry the overlay name: the same rule is a distinct entry in overlay context.</lang>
+      for(const v of r){
+        all[mode].push({id:`[${ov.name}] ${v.id}`,impact:v.impact,nodes:v.nodes});
+      }
+      console.log(`[${mode}:${ov.name}] axe 弹层扫描耗时 ${((Date.now()-t2)/1000).toFixed(1)}s`);
+    }
+  }
 }
 await browser.close();
 server?.close();

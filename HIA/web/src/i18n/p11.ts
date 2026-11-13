@@ -87,6 +87,9 @@ registerStrings({
   'p12.third.remove': { zh: '删除第三色', en: 'Remove third color' },
   'p12.baodian.open': { zh: '宝典选色', en: 'Pick from Baodian' },
   'p12.baodian.title': { zh: '配色宝典 · 情感分类与组合', en: 'Color Baodian · mood categories & combos' },
+  // 组合按钮的可访问名前缀：必须包含可见的色号数字（axe label-content-name-mismatch）。
+  // <lang en>Accessible-name prefix for combo buttons; must contain the visible colour numbers.</lang>
+  'p12.baodian.combo': { zh: '配色组合', en: 'Color combo' },
   'p12.baodian.empty': { zh: '该情感暂无组合。', en: 'No combos for this mood yet.' },
   'p12.baodian.applied': { zh: '已加载宝典组合 {combo} 到主体色（可"还原用户色"回退）。', en: 'Loaded Baodian combo {combo} into the body color ("Restore my colors" to undo).' },
   'p12.rule.pick': { zh: '规则补色', en: 'Rule fill' },

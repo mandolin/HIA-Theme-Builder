@@ -1994,7 +1994,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     menu.innerHTML=baodianEmotions.map(e=>{
       // q：该情感的首个可套用组合（null 则不渲染快捷钮）。
       const q=quickCombo(e);
-      return `<button type="button" class="baodian-emo${e===baodianEmotion?' active':''}" data-emo="${escapeHtml(e)}">${escapeHtml(t(e))}${q?`<span class="bd-quick" role="button" tabindex="0" data-bd-quick="${escapeHtml(e)}" title="${escapeHtml(t('p12.baodian.quick'))}">⚡</span>`:''}</button>`;
+      // 情感条目结构：容器 + 两个兄弟按钮。
+      //   原写法是「button 内嵌 span[role=button]」——axe nested-interactive（按钮套按钮）。
+      //   与 `W-tb-P30` 候选卡同一类修复：拆成兄弟节点，键盘可达性由原生按钮承担。
+      // <lang en>Row container + two sibling buttons. The original nested a span[role=button] inside a button
+      //   (axe nested-interactive) — same fix shape as the W-tb-P30 candidate cards.</lang>
+      return `<div class="baodian-emo-row${e===baodianEmotion?' active':''}"><button type="button" class="baodian-emo" data-emo="${escapeHtml(e)}">${escapeHtml(t(e))}</button>${q?`<button type="button" class="bd-quick" data-bd-quick="${escapeHtml(e)}" title="${escapeHtml(t('p12.baodian.quick'))}" aria-label="${escapeHtml(t('p12.baodian.quick'))}：${escapeHtml(t(e))}">⚡</button>`:''}</div>`;
     }).join('');
     all<HTMLButtonElement>('[data-emo]',menu).forEach(btn=>btn.addEventListener('click',()=>{baodianEmotion=btn.dataset.emo||baodianEmotion;renderBaodianMenu();renderBaodianRight();}));
     // 快捷钮事件：阻断冒泡避免同时触发情感切换的重复渲染；键盘可达（Enter/Space）。
@@ -2026,7 +2031,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         const c=mine[ci]!;
         // W-tb-P15：卡外包 wrapper，追加"整套"小按钮——按 当前情感+形态+组合序号 构建语气预设整体应用。
         // <lang en>Card wrapper adds a "full set" badge building the tone preset for this mood/form/combo.</lang>
-        html+=`<div class="bd-card"><button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join('+'))}">`+c.n.map(num=>`<span class="bd-bar" style="background:${BAODIAN_PALETTE[num]||'#ccc'}" data-hex="${BAODIAN_PALETTE[num]||'#cccccc'}">${num}</span>`).join('')+`</button><button type="button" class="bd-full" data-full-form="${escapeHtml(formId)}" data-full-idx="${ci}" title="${escapeHtml(t('p15.tone.applyFull'))}" aria-label="${escapeHtml(t('p15.tone.applyFull'))}">${escapeHtml(t('p15.tone.applyFull'))}</button></div>`;
+        html+=`<div class="bd-card"><button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join(''))}">`+c.n.map(num=>{const hex=BAODIAN_PALETTE[num]||'#cccccc';return`<span class="bd-bar" data-hex="${hex}" data-num="${num}"><i class="bd-swatch" style="background:${hex}"></i><b class="bd-num">${num}</b></span>`;}).join('')+`</button><button type="button" class="bd-full" data-full-form="${escapeHtml(formId)}" data-full-idx="${ci}" title="${escapeHtml(t('p15.tone.applyFull'))}" aria-label="${escapeHtml(t('p15.tone.applyFull'))}">${escapeHtml(t('p15.tone.applyFull'))}</button></div>`;
       }
       html+='</div></div>';
     }
