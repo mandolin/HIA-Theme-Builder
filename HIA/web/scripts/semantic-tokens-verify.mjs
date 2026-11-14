@@ -139,11 +139,19 @@ await new Promise(r=>setTimeout(r,400));
 const m5=await page.evaluate(()=>({
   status:document.getElementById('semanticStatus')?.textContent??'',
   auxVar:(document.getElementById('cssTokenOutput')?.value??'').includes('--hia-aux0:'),
-  statusText:document.getElementById('semanticStatus')?.textContent?.match(/\d/)?.[0]
+  // UI 层：辅助槽位卡必须实际渲染（仅数据写入、UI 未刷新 = 维护者看到的"按钮没反应"）。
+  // <lang en>UI layer: the auxiliary slot cards must actually render — data without the UI repaint is exactly
+  //   the "button does nothing" the maintainer saw.</lang>
+  auxSlots:document.querySelectorAll('#auxSlots .pp-slot').length,
+  emptyHintHidden:document.getElementById('auxEmptyHint')?.style.display==='none',
+  firstAuxName:document.querySelector('#auxSlots .pp-slot-name')?.value??''
 }));
-console.log('[toaux]',JSON.stringify(m5));
+console.log('[toaux]',JSON.stringify({status:m5.status,auxVar:m5.auxVar,auxSlots:m5.auxSlots,emptyHintHidden:m5.emptyHintHidden,firstAuxName:m5.firstAuxName}));
 if(!/4/.test(m5.status)){console.error(`❌ 状态行应显示写入 4 组，实为 "${m5.status}"`);failed++;}
 if(!m5.auxVar){console.error('❌ 辅助槽未出现在导出 CSS');failed++;}
+if(m5.auxSlots!==4){console.error(`❌ 辅助槽位 UI 应渲染 4 张卡，实为 ${m5.auxSlots}`);failed++;}
+if(!m5.emptyHintHidden){console.error('❌ "尚无辅助色"提示未隐藏');failed++;}
+if(!/成功|Success|信息|Info/.test(m5.firstAuxName)){console.error(`❌ 槽位首卡应是语义色，实为 "${m5.firstAuxName}"`);failed++;}
 await shot('05-toaux.png');
 
 // 6) 圆角滑杆 + 阴影控件：实时作用于预览 chips（所见即导出）。

@@ -750,7 +750,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     if(!draft.semantic)return;
     const slots=STATUS_KEYS.slice(0,AUXILIARY_MAX).map(k=>({...draft.semantic![k],scale:{...draft.semantic![k].scale}}));
     draft.auxiliary=slots;
-    syncInputs();applyCurrentTheme(true);
+    // 与 addAuxiliary/generateAuxiliary 同一刷新链：aux 槽位 UI 在 renderHarmony 内，缺失即"按钮没反应"。
+    // <lang en>Same refresh chain as addAuxiliary/generateAuxiliary: the aux slot UI lives in renderHarmony —
+    //   missing it reads as "the button does nothing".</lang>
+    syncInputs();applyCurrentTheme(true);renderHarmony();renderGradients();
     setText('semanticStatus',t('p37.semantic.copied',{n:String(slots.length)}));
   }
   // 圆角/阴影编辑器：基准滑杆 + 强度/染色控件 + 实物预览 chips（消费运行时变量）。
