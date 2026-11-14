@@ -126,6 +126,8 @@ export{EXPORT_TARGETS,getExportTarget,listExportTargets}from'./export/registry.j
 export{wordpressChildTarget}from'./export/wordpress.js';
 export{tailwindConfigTarget}from'./export/tailwind.js';
 export{tailwindV4Target}from'./export/tailwind4.js';
+export{dtcgExportTarget,exportDtcgTokens,parseDtcgTokens}from'./export/dtcg.js';
+export type{DtcgIssue,DtcgIssueCode,DtcgParseResult}from'./export/dtcg.js';
 export{injectTemplateTarget}from'./export/inject-template.js';
 export{analyzeTheme}from'./analyze/analyze.js';
 export type{ExtractSignals,ScoredColor,ExtractResult,CssVarSignal,DomColorSignal,ScreenshotColorSignal}from'./analyze/types.js';

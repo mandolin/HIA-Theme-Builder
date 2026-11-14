@@ -16,7 +16,7 @@ import{
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
   tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,NATURE_COLORS,SOCIAL_COLORS,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,nameColor,MOOD_PRIMARY_COLORS,moodPrimaryColorFor,
-  contrast,contrastMatrix,stepForContrast,deriveSemanticTokens,isSemanticDerived,SEMANTIC_NAMES,radiusSequence,shadowCss,
+  contrast,contrastMatrix,stepForContrast,deriveSemanticTokens,isSemanticDerived,SEMANTIC_NAMES,radiusSequence,shadowCss,parseDtcgTokens,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
@@ -3173,6 +3173,43 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         renderPresetList();
         setText('presetCount',String(getAllPresets().length));
         platform.alert(t('p10.import.done',{count:String(customPresets.length-before),renamed:String(renamed),dropped:String(pack.dropped)}));
+      };
+      reader.onerror=()=>platform.alert(t('p10.import.fail'));
+      reader.readAsText(file);
+      (e.currentTarget as HTMLInputElement).value='';
+    });
+    // DTCG .tokens.json 导入（`W-tb-P38`/ADR-013）：白名单解析 → 存本地库 → 载入操作台。
+    //   错误弹窗给首条错误码与路径；警告（跳过的组）在弹窗附注，确保不静默。
+    // <lang en>DTCG .tokens.json import (`W-tb-P38`/ADR-013): whitelist parse → save to the local library →
+    //   load into the console. Failure alerts the first error code+path; skipped-group warnings are appended so
+    //   nothing is silently dropped.</lang>
+    byId('importDtcgBtn').addEventListener('click',()=>byId<HTMLInputElement>('importDtcgFile').click());
+    byId<HTMLInputElement>('importDtcgFile').addEventListener('change',e=>{
+      const file=(e.currentTarget as HTMLInputElement).files?.[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const result=parseDtcgTokens(String(reader.result));
+        if(!result.ok){
+          const first=result.errors[0];
+          const warnNote=result.warnings.length?`
+${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
+          platform.alert(`${t('p10.import.dtcg.fail',{code:first?.code??'?',path:first?.path??'$'})}${warnNote}`);
+          return;
+        }
+        const draft=result.draft!;
+        const preset=presetFromDraft(draft,`dtcg-${Date.now()}`);
+        preset.name=draft.name;
+        customPresets=upsertPreset(customPresets,preset);
+        saveCustomPresets();
+        renderPresetList();
+        setText('presetCount',String(getAllPresets().length));
+        // 载入操作台：语义色/圆角阴影随草稿一并生效。
+        // <lang en>Load into the console: semantics and radius/shadow all come along with the draft.</lang>
+        applyPresetData(preset);
+        const warnNote=result.warnings.length?`
+${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
+        platform.alert(`${t('p10.import.dtcg.done',{name:preset.name})}${warnNote}`);
       };
       reader.onerror=()=>platform.alert(t('p10.import.fail'));
       reader.readAsText(file);

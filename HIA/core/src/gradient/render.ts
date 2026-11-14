@@ -40,7 +40,8 @@ export function swapGradientBias(bias:GradientBias):GradientBias{
 // 解析任意色阶引用为实际色值（ADR-004）：标准 10 档查 scale 表；自定义值 tonalScaleAt 插值。
 // <lang zh-CN>theme[family].value 为基色 HEX；非法数字回退 500 档（基色本色）。</lang>
 // <lang en>theme[family].value is the base HEX; invalid numbers fall back to step 500 (the base).</lang>
-function resolveScaleColor(theme:Theme,family:GradientFamily,shade:ShadeValue):string{
+/** @lang zh-CN 解析任意色阶引用为实际色值（`W-tb-P38` 导出为 DTCG 渐变 stops 所需，改公开）。 @lang en Resolves an arbitrary shade reference to its colour (exported for `W-tb-P38` DTCG gradient stops). */
+export function resolveScaleColor(theme:Theme,family:GradientFamily,shade:ShadeValue):string{
   // 色族解析：主/副走角色表；third 走第三角色；aux<N> 走对应辅助槽位（ADR-007 v2）。
   // <lang zh-CN>third/aux 槽位缺失（模式不匹配/槽位未加）时回退主色 500，保证渲染不断。</lang>
   // <lang en>Missing third/aux slots fall back to primary 500 so rendering never breaks.</lang>

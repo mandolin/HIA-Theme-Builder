@@ -41,10 +41,10 @@ function tailwindConfig(theme = THEME) {
   return fn(mod, mod.exports);
 }
 
-test('注册表: 四个内置目标可检索且 id 唯一（registry lookup）', () => {
+test('注册表: 五个内置目标可检索且 id 唯一（registry lookup）', () => {
   const targets = listExportTargets();
-  assert.equal(targets.length, 4);
-  assert.deepEqual(targets.map(t => t.id), ['wordpress-child', 'tailwind-config', 'tailwind-v4', 'css-inject']);
+  assert.equal(targets.length, 5);
+  assert.deepEqual(targets.map(t => t.id), ['wordpress-child', 'tailwind-config', 'tailwind-v4', 'css-inject', 'dtcg']);
   assert.ok(getExportTarget('tailwind-config'), '按 id 检索命中');
   assert.equal(getExportTarget('nope'), undefined, '未知 id 返回 undefined');
 });
