@@ -1,6 +1,6 @@
 {
   "name": "@hia/theme-electron",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "HIA-Theme-Builder desktop (Electron): theme console plus URL color extraction with SSRF-safe fetching. License Apache-2.0.",
   "license": "Apache-2.0",
   "repository": {
