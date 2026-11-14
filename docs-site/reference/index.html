@@ -65,7 +65,9 @@
     <li><span class="zh"><code>parseThemePack</code>：远程/导入主题包清洗（含 v2 契约字段白名单与截断）。</span><span class="en"><code>parseThemePack</code>: remote/import pack sanitizing (v2 field whitelisting and truncation).</span></li>
   </ul>
 
-  <h2><span class="zh">4 · Token 结构（CSS 变量）</span><span class="en">4 · Token Structure (CSS variables)</span></h2>
+  
+  <p><span class="zh"><b>无障碍工具（<code>W-tb-P36</code> 新增）</b>：<code>contrastMatrix(entries)</code> 全调色板两两对比（WCAG 对称 + APCA 带符号方向矩阵）；<code>stepForContrast(base, bg, target)</code> 保色相沿亮度二分至目标比值（不可达返回最接近值并置 <code>ok:false</code>）；<code>apcaLc(text, bg)</code> APCA Lc 参考读数（正=深字浅底）；<code>simulateCvd(hex, type)</code> Machado 2009 色觉模拟（protanopia/deuteranopia/tritanopia，严重度 1.0，线性空间）。APCA 仅作参考值，不用于合规判定。</span><span class="en"><b>A11y tools (new in <code>W-tb-P36</code>)</b>: <code>contrastMatrix(entries)</code> pairwise matrix (symmetric WCAG + directional signed APCA); <code>stepForContrast(base, bg, target)</code> bisects lightness at fixed hue to a target ratio (nearest value with <code>ok:false</code> when unreachable); <code>apcaLc(text, bg)</code> reference APCA Lc readout (positive = dark on light); <code>simulateCvd(hex, type)</code> Machado 2009 simulation (three types, severity 1.0, linear space). APCA is reference-only, never a compliance verdict.</span></p>
+<h2><span class="zh">4 · Token 结构（CSS 变量）</span><span class="en">4 · Token Structure (CSS variables)</span></h2>
   <p><span class="zh">导出的 CSS 变量遵循分层命名：</span><span class="en">Exported variables follow layered naming:</span></p>
   <pre><code>--hia-primary-50 … --hia-primary-900   /* primary, 10 shades */
 --hia-secondary-*, --hia-third-*        /* secondary / third families */

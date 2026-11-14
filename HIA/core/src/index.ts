@@ -31,10 +31,22 @@ export{SERIES_RELATION_DEFS,getSeriesRelationDef,deriveSecondaryByRelation,deriv
 export{nameColor,modifierFor,hueNameFor,MODIFIER_NAMES,HUE_NAMES}from'./color/color-name.js';
 export type{ColorModifier,HueName}from'./color/color-name.js';
 export type{SeriesRelationDef}from'./color/harmony.js';
-// 对比度与最佳前景色选择（WCAG 相对亮度）。
-// <lang zh-CN>用于自动决定角色色上的文字用白还是深色。</lang>
-// <lang en>Decides white vs dark foreground on a role color via WCAG relative luminance.</lang>
-export{luminance,contrast,bestOnColor}from'./color/contrast.js';
+// 对比度与最佳前景色选择（WCAG 相对亮度）；`W-tb-P36` 增补矩阵与目标生成。
+// <lang zh-CN>用于自动决定角色色上的文字用白还是深色；contrastMatrix 供全调色板逐对校验，
+//   stepForContrast 以目标比值反推色值（Leonardo 式），与锚定推导互补。</lang>
+// <lang en>Decides white vs dark foreground on a role color via WCAG relative luminance; `W-tb-P36` adds the
+//   matrix and target-driven synthesis. contrastMatrix serves palette-wide pairwise checks; stepForContrast
+//   synthesizes a colour for a target ratio (Leonardo-style), complementing anchored derivation.</lang>
+export{luminance,contrast,bestOnColor,contrastMatrix,stepForContrast}from'./color/contrast.js';
+export type{MatrixEntry,ContrastMatrixResult,StepForContrastResult}from'./color/contrast.js';
+// APCA Lc 副指标（`W-tb-P36`）：仅作参考值展示，非合规判定——WCAG 3 尚未定案。
+// <lang en>APCA Lc secondary metric (`W-tb-P36`): reference readout only, never a compliance verdict — WCAG 3
+//   is still undecided.</lang>
+export{apcaLc,apcaY}from'./color/apca.js';
+// 色觉缺陷模拟（`W-tb-P36`）：Machado 2009 三主型，线性空间应用矩阵。
+// <lang en>CVD simulation (`W-tb-P36`): Machado 2009 three main types, matrices applied in linear space.</lang>
+export{simulateCvd,MACHADO_2009_SEV1,CVD_LABELS}from'./color/vision.js';
+export type{CvdType}from'./color/vision.js';
 
 // 数据：主色候选库、内置预设、渐变定义与默认配置。
 // <lang zh-CN>候选库与预设为静态数据；GRADIENT_* 为渐变角色契约与默认值。</lang>

@@ -16,10 +16,11 @@ import{
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
   tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,NATURE_COLORS,SOCIAL_COLORS,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,nameColor,MOOD_PRIMARY_COLORS,moodPrimaryColorFor,
+  contrast,contrastMatrix,stepForContrast,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
-  type WebsiteThemeAnalysisV2
+  type WebsiteThemeAnalysisV2,type MatrixEntry
 }from'@hia/theme-core';
 // TDON 运行时来自独立包 @hia/tdon（TDON-15.1）：core 不再导出这些符号。
 // <lang zh-CN>独立包让第三方应用可只引用 TDON 而不引入整个 core。</lang>
@@ -507,6 +508,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     if(!readInputs(updateName))return;
     applyRuntimeTheme();syncInputs();updateTokenOutputs();updatePreviewMeta();
     renderPrimaryCandidates();renderSecondaryCandidates();
+    // 对比度矩阵随主题实时刷新（`W-tb-P36`）——成本 ~9×9 对比度计算，可忽略。
+    // <lang en>The contrast matrix refreshes with the theme (`W-tb-P36`) — ~9×9 cheap computations.</lang>
+    refreshContrastPanel();
   }
 
   // 渲染主色候选面板：按 group 分组，生成可点击色卡；当前主色高亮。
@@ -671,6 +675,111 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       syncInputs();applyCurrentTheme(false);renderSecondaryCandidates();renderPrimaryCandidates();renderHarmony();renderGradients();renderMoodPrimary();
     }));
   }
+
+  // ===== 对比度矩阵与目标生成（`W-tb-P36`）=====
+  // 全调色板两两对比度（WCAG 2.x / APCA 参考值）+ 按目标反推可读文字色。
+  //   价值：把散落的逐对断言升级为"一眼可见的全局视图"——哪两个角色在哪个阈值下不可读。
+  // <lang en>Palette-wide pairwise contrast (WCAG 2.x / APCA reference) plus target-driven text-colour
+  //   synthesis. Value: turns scattered per-pair assertions into one visible global view.</lang>
+  type ContrastMetric='wcag'|'apca';
+  let contrastMetric:ContrastMetric='wcag';
+  let contrastTarget=4.5;
+  // 矩阵条目：全部角色 500 色 + 常用浅底/深墨 + 两个 on 色（文字色本身也要被校验）。
+  // <lang en>Matrix entries: every role's base colour plus common light/ink anchors and the two on-colours
+  //   (text colours must be validated too).</lang>
+  function contrastMatrixEntries():MatrixEntry[]{
+    const th=theme();
+    const entries:MatrixEntry[]=[
+      {key:t('p36.role.primary'),hex:th.primary.value},
+      {key:t('p36.role.secondary'),hex:th.secondary.value}
+    ];
+    // 第三色仅在三色系列存在；辅助槽按实际数量展开。
+    // <lang en>Third colour only exists in triad series; aux slots expand per actual count.</lang>
+    if(th.seriesMode==='triad'&&th.thirdColor)entries.push({key:t('p36.role.third'),hex:th.thirdColor.value});
+    (th.auxiliary??[]).forEach((a,i)=>entries.push({key:`${t('p36.role.aux')} ${i+1}`,hex:a.value}));
+    entries.push({key:t('p36.role.white'),hex:'#FFFFFF'},{key:t('p36.role.ink'),hex:'#0F172A'});
+    entries.push({key:t('p36.role.onPrimary'),hex:th.primary.on},{key:t('p36.role.onSecondary'),hex:th.secondary.on});
+    return entries;
+  }
+  // 分档样式用 style.css 的 .cm-pass/.cm-aaa/.cm-warn/.cm-fail（浅底深字，保证 axe 门禁不破）。
+  // <lang en>Bands use .cm-pass/.cm-aaa/.cm-warn/.cm-fail from style.css (light bg + dark text keeps the axe
+  //   gate clean).</lang>
+  function cmWcagClass(ratio:number,target:number){
+    if(ratio>=7)return'aaa';
+    if(ratio>=target)return'pass';
+    if(ratio>=3)return'warn';
+    return'fail';
+  }
+  // APCA 分档：|Lc| ≥75 正文流利 / ≥45 大字粗体下限 / <45 不达标（60/30 等细档在 tooltip 说明）。
+  // <lang en>APCA bands: |Lc| ≥75 fluent body, ≥45 large/bold minimum, <45 failing; finer bands in tooltips.</lang>
+  function cmApcaClass(lc:number){
+    const a=Math.abs(lc);
+    if(a>=75)return'aaa';
+    if(a>=45)return'pass';
+    if(a>=30)return'warn';
+    return'fail';
+  }
+  function renderContrastMatrix(){
+    const wrap=byId<HTMLElement>('contrastMatrixWrap');
+    const entries=contrastMatrixEntries();
+    const m=contrastMatrix(entries);
+    const en=getLocale()==='en';
+    // 表头：色块 + 键名；行=文字色（APCA 极性方向），列=背景色。
+    // <lang en>Header: swatch + key; rows = text colour (APCA polarity direction), columns = background.</lang>
+    const head=entries.map(e=>`<th scope="col"><span class="cm-key"><i style="background:${e.hex}"></i>${escapeHtml(e.key)}</span></th>`).join('');
+    const rows=entries.map((row,i)=>{
+      const cells=entries.map((col,j)=>{
+        if(i===j)return'<td class="cm-diag">—</td>';
+        if(contrastMetric==='wcag'){
+          const ratio=m.wcag[i]![j]!;
+          return`<td class="${cmWcagClass(ratio,contrastTarget)}" title="${escapeHtml(row.key)} / ${escapeHtml(col.key)} = ${ratio.toFixed(2)}:1">${ratio.toFixed(2)}</td>`;
+        }
+        const lc=m.apca[i]![j]!;
+        const sign=lc>0?'▾':lc<0?'▴':'';
+        return`<td class="${cmApcaClass(lc)}" title="${escapeHtml(row.key)} → ${escapeHtml(col.key)} Lc=${lc.toFixed(1)}">${lc.toFixed(0)}${sign}</td>`;
+      }).join('');
+      return`<tr><th scope="row"><span class="cm-key"><i style="background:${row.hex}"></i>${escapeHtml(row.key)}</span></th>${cells}</tr>`;
+    }).join('');
+    // 汇总：当前阈值下的不达标对数（对称对只计一次）。
+    // <lang en>Summary: failing pair count under the current threshold (symmetric pairs counted once).</lang>
+    let failPairs=0;
+    for(let i=0;i<entries.length;i++)for(let j=i+1;j<entries.length;j++){
+      const v=contrastMetric==='wcag'?m.wcag[i]![j]!:Math.abs(m.apca[i]![j]!);
+      const ok=contrastMetric==='wcag'?v>=contrastTarget:v>=45;
+      if(!ok)failPairs++;
+    }
+    const failText=en?`${failPairs} pair${failPairs===1?'':'s'} below target`:`${failPairs} 对未达标`;
+    wrap.innerHTML=`<table class="cm-table" aria-live="polite"><thead><tr><th scope="col">${en?(contrastMetric==='wcag'?'Text \ Background':'Text → Background'):(contrastMetric==='wcag'?'文字 \ 背景':'文字 → 背景')}</th>${head}</tr></thead><tbody>${rows}</tbody></table><div class="small" style="margin-top:6px">${failText} · ${escapeHtml(t('p36.target.aria'))} ${contrastTarget.toFixed(1)}</div>`;
+    setText('contrastMatrixBadge',contrastMetric==='wcag'?'WCAG':'APCA');
+  }
+  // 目标反推文字色：对每个角色色给出"保白字色相、调亮度至目标比值"的生成结果与实测值。
+  //   生成值仅展示（含实测达标标记）；是否写回主题属 `W-tb-P37` 语义 token 周期的范畴。
+  // <lang en>Target synthesis preview: for each role colour, shows a white-hue text colour moved along L to hit
+  //   the target, with the measured ratio. Display only — persisting overrides belongs to the `W-tb-P37`
+  //   semantic-token cycle.</lang>
+  function renderContrastSynth(){
+    const out=byId<HTMLElement>('contrastSynthOut');
+    const entries=contrastMatrixEntries().filter(e=>e.hex.toUpperCase()!=='#FFFFFF'&&e.hex.toUpperCase()!=='#0F172A');
+    const en=getLocale()==='en';
+    const chips=entries.map(e=>{
+      // 策略：基色（白）已达标 → 原样保留（不为凑目标值而牺牲可读上限）；
+      //   未达标才沿亮度反推。core 的 stepForContrast 是"精确命中"原语，策略在 UI 层。
+      // <lang en>Policy: if the base (white) already meets the target, keep it — never dim readable text just
+      //   to hit the number. Only on failure do we synthesize along L. The core primitive hits exactly; policy
+      //   lives at the UI layer.</lang>
+      const existing=contrast(e.hex,'#FFFFFF');
+      if(existing>=contrastTarget){
+        const okText=en?`white already ${existing.toFixed(2)}:1`:`白字已达标 ${existing.toFixed(2)}:1`;
+        return`<span class="cm-chip pass"><i style="background:#FFFFFF"></i>${escapeHtml(e.key)} → #FFFFFF · ${existing.toFixed(2)}:1 · ${okText}</span>`;
+      }
+      const r=stepForContrast('#FFFFFF',e.hex,contrastTarget);
+      const okText=r.ok?(en?'meets target':'达标'):(en?'nearest achievable':'最接近值');
+      const cls=r.ok?'cm-chip pass':'cm-chip warn';
+      return`<span class="${cls}"><i style="background:${r.hex}"></i>${escapeHtml(e.key)} → ${r.hex} · ${r.ratio.toFixed(2)}:1 · ${okText}</span>`;
+    }).join('');
+    out.innerHTML=`<div class="label">${escapeHtml(t('p36.synth.title'))} (${contrastTarget.toFixed(1)}:1)</div><div class="cm-chips">${chips}</div>`;
+  }
+  function refreshContrastPanel(){renderContrastMatrix();renderContrastSynth();}
 
   // 切换主色候选库的四个来源 tab（`W-tb-P34`，维护者二次校正）：
   //   HIA 默认与蓝色基准 / 获奖网站主色 / 通用流行主题色 / 情感主色。
@@ -2652,12 +2761,17 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   //   实现=CANVAS 无关的 CSS filter 叠加到预览容器（PC shell + 小程序机身 + 经典 mock），
   //   仅影响预览呈现；导出令牌与主题数据不受影响（设计确定性）。
   // <lang en>Preview-only CSS filters applied to preview containers; exports stay untouched.</lang>
-  type PreviewFilter='none'|'alpha'|'desat'|'bright'|'dim'|'gray25'|'gray50'|'gray100';
+  type PreviewFilter='none'|'alpha'|'desat'|'bright'|'dim'|'gray25'|'gray50'|'gray100'|'cvdProt'|'cvdDeutan'|'cvdTritan';
   // 滤镜 → CSS filter 映射（alpha 用透明度+轻微降饱和模拟"淡化"）。
-  // <lang en>Filter → CSS filter mapping (alpha fades via opacity plus slight desaturation).</lang>
+  //   CVD 三项（`W-tb-P36`）引用 index.html 内联 SVG 滤镜（Machado 2009 severity 1.0，
+  //   linearRGB 空间），与 core `simulateCvd` 的线性空间实现一致——纯 CSS 无法表达色觉变换。
+  // <lang en>Filter → CSS filter mapping (alpha fades via opacity plus slight desaturation). The three CVD
+  //   entries (`W-tb-P36`) reference inline SVG filters in index.html (Machado 2009 severity 1.0, linearRGB),
+  //   matching core's linear-space simulateCvd — plain CSS filters cannot express CVD transforms.</lang>
   const FILTER_CSS:Record<PreviewFilter,string>={
     none:'',alpha:'opacity(.85)',desat:'saturate(.55)',bright:'brightness(1.12)',
-    dim:'brightness(.88)',gray25:'grayscale(.25)',gray50:'grayscale(.5)',gray100:'grayscale(1)'
+    dim:'brightness(.88)',gray25:'grayscale(.25)',gray50:'grayscale(.5)',gray100:'grayscale(1)',
+    cvdProt:'url(#hia-cvd-prot)',cvdDeutan:'url(#hia-cvd-deutan)',cvdTritan:'url(#hia-cvd-tritan)'
   };
   // previewFilter：当前滤镜（localStorage 持久化）。
   let previewFilter:PreviewFilter='none';
@@ -2721,7 +2835,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       //   mock/TDON 占位/预览提示）一并重绘。</lang>
       // <lang en>Reuses the same render chain so every panel re-renders in the new locale; `W-tb-P9` panels
       //   (typography console / classic mocks / TDON placeholder / preview hint) re-render too.</lang>
-      syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();
+      syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();refreshContrastPanel();
       renderTypography();renderClassicPreview();renderTdonPanel();applyPreviewMode(previewMode);renderExportTree();
       renderRemoteSources();renderRemoteList();renderHarmony();
       // 主色候选库停在用户当前所在的 tab，并按新语言刷新徽标计数文案。
@@ -2772,6 +2886,22 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 选色区 tab 切换（`W-tb-P34` UI 整合）：主色候选 / 副色候选 / 按情感选主色。
     // <lang zh-CN>点击即切视图并按需重绘；枚举值由 data-picker-tab 白名单校验。</lang>
     // <lang en>Switches views and redraws on demand; the enum is validated against a whitelist.</lang>
+    // 对比度面板绑定（`W-tb-P36`）：指标切换 / 目标切换 / 反推按钮。
+    // <lang en>Contrast panel bindings (`W-tb-P36`): metric switch / target select / synthesis button.</lang>
+    all<HTMLButtonElement>('#contrastMetricSwitch .seg').forEach(btn=>btn.addEventListener('click',()=>{
+      const v=btn.dataset.metric;
+      if(v!=='wcag'&&v!=='apca')return;
+      contrastMetric=v;
+      all<HTMLButtonElement>('#contrastMetricSwitch .seg').forEach(b=>b.classList.toggle('active',b===btn));
+      renderContrastMatrix();
+    }));
+    byId<HTMLSelectElement>('contrastTargetSelect').addEventListener('change',e=>{
+      const v=parseFloat((e.currentTarget as HTMLSelectElement).value);
+      if(!Number.isFinite(v)||v<=0)return;
+      contrastTarget=v;
+      refreshContrastPanel();
+    });
+    byId('contrastSynthBtn').addEventListener('click',()=>renderContrastSynth());
     // 主色候选库 tab 切换（`W-tb-P34`）：四组来源，枚举值按白名单校验。
     // <lang en>Primary-library tab switching: four source groups, enum validated against a whitelist.</lang>
     all<HTMLButtonElement>('#primaryLibTabs .tab').forEach(btn=>btn.addEventListener('click',()=>{
@@ -3072,7 +3202,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 首轮渲染：运行时变量、表单、候选、渐变、预设、令牌、元信息。
     // <lang zh-CN>顺序保证变量注入先于依赖 var() 的预览渲染。</lang>
     // <lang en>Order ensures vars are injected before var()-dependent previews render.</lang>
-    applyRuntimeTheme();syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();
+    applyRuntimeTheme();syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();refreshContrastPanel();
     // `W-tb-P9` 首轮渲染：字体/间距操作台、经典 mock、TDON 占位、预览类型（默认）与导出文件树。
     // <lang zh-CN>applyPreviewMode 内部联动导出 Tab；经典 mock 依赖已注入变量，置于其后。</lang>
     // <lang en>applyPreviewMode links the export tabs; classic mocks need injected vars, hence placed after.</lang>
