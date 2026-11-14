@@ -115,15 +115,27 @@ const one=await page.evaluate(()=>({
 console.log('[one-col]',JSON.stringify(one));
 if(one.doc>0){console.error(`❌ 单栏模式页面横向溢出 ${one.doc}px`);failed++;}
 
-// 全部语义面板/新增面板都不在侧栏内（结构性断言：宽面板不得进侧栏）。
-// <lang en>Structural check: wide analytical panels must never live in the sidebar.</lang>
+// 结构不变量（维护者 2026-11-14 定案的信息架构）：语义色=选色活动 → 侧栏；
+//   Token 导出=输出 → 主栏；对比度矩阵/字体操作台=宽分析面板 → 主栏。
+// <lang en>Structural invariants (maintainer's IA, 2026-11-14): semantic colours are colour-picking → sidebar;
+//   token export is output → main; the contrast matrix and typography console are wide analytical panels → main.</lang>
 const structural=await page.evaluate(()=>({
-  matrixInSidebar:!!document.querySelector('.sidebar #contrastMatrixBox'),
   semanticInSidebar:!!document.querySelector('.sidebar #semanticPanel'),
+  tokenInMain:!!document.querySelector('.main section [data-i18n="token.title"]'),
+  matrixInMain:!!document.querySelector('.main #contrastMatrixBox'),
+  typographyInMain:!!document.querySelector('.main #typographyPanel'),
+  matrixInSidebar:!!document.querySelector('.sidebar #contrastMatrixBox'),
+  tokenInSidebar:!!document.querySelector('.sidebar [data-i18n="token.title"]'),
   typographyInSidebar:!!document.querySelector('.sidebar #typographyPanel')
 }));
 console.log('[structure]',JSON.stringify(structural));
-if(structural.matrixInSidebar||structural.semanticInSidebar||structural.typographyInSidebar){console.error('❌ 宽面板混入侧栏');failed++;}
+if(!structural.semanticInSidebar){console.error('❌ 语义色面板应在侧栏（选色群组）');failed++;}
+if(!structural.tokenInMain){console.error('❌ Token 导出应在主栏（输出群组）');failed++;}
+if(!structural.matrixInMain||!structural.typographyInMain){console.error('❌ 宽分析面板应在主栏');failed++;}
+if(structural.matrixInSidebar||structural.tokenInSidebar||structural.typographyInSidebar){console.error('❌ 宽面板混入侧栏');failed++;}
+// 语义色面板进侧栏后必须无横向裁切（卡片栅格已在侧栏收缩为两列）。
+// <lang en>With the semantic panel in the sidebar it must not clip horizontally (its grid collapses to two
+//   columns in the narrow track).</lang>
 
 await browser.close();
 server.close();
