@@ -46,7 +46,9 @@ import './hia-tokens.css';
 \`\`\`vue
 <style scoped>
 .hero {
-  background: var(--hia-gradient-carousel); /* 渐变令牌 / gradient token */
+  /* 降级链（W-tb-P37）：color 先行垫底，image 失败时仍有纯色 / Degradation chain: colour first, image second */
+  background-color: var(--hia-primary-500);
+  background-image: var(--hia-gradient-carousel);
   color: var(--hia-primary-700);
   padding: var(--hia-space-3);
 }
@@ -76,7 +78,8 @@ export function Card() {
 \`\`\`html
 <link rel="stylesheet" href="./hia-tokens.css">
 <style>
-  .banner { background: var(--hia-gradient-banner); color: var(--hia-secondary-900); }
+  /* 降级链：先 color 后 image / Degradation chain: colour first, image second */
+  .banner { background-color: var(--hia-secondary-400); background-image: var(--hia-gradient-banner); color: var(--hia-secondary-900); }
 </style>
 \`\`\`
 
@@ -85,6 +88,7 @@ export function Card() {
 - 变量名规则 / Naming: \`--hia-primary-<shade>\`（shade 为 50–900 标准档或渐变引用的自定义档）；
 - 明暗适配：在 \`html.dark\` 等作用域内覆写同批变量即可，无需改组件 / override the same vars under a scope like \`html.dark\`;
 - 主题再生成时请整体替换本文件，避免手工修改丢失 / regenerate the whole file from HIA Theme Builder rather than hand-editing.
+- **降级链**（W-tb-P37）：渐变/图片背景一律"先 \`background-color\` 纯色垫底、后 \`background-image\`"，渐变变量自身也携带起始色垫底层；任何一层失效都不露底色 / **Degradation chain**: gradient/image backgrounds pair a solid \`background-color\` with \`background-image\`; gradient vars also carry a start-colour underlay, so no layer failure exposes the bare container.
 `;
   // 固定两文件顺序：tokens.css 在前（主产物）。
   // <lang zh-CN>路径为 ZIP 内相对根路径。</lang>

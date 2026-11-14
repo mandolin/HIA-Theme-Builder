@@ -88,6 +88,7 @@ registerStrings({
   'p9.target.wp': { zh: 'WordPress 子主题（ZIP）', en: 'WordPress child theme (ZIP)' },
   'p9.target.tw': { zh: 'Tailwind 配置（ZIP）', en: 'Tailwind config (ZIP)' },
   'p9.target.inject': { zh: '通用注入模板（ZIP）', en: 'Generic inject template (ZIP)' },
+  'p9.target.tw4': { zh: 'Tailwind v4 @theme（ZIP）', en: 'Tailwind v4 @theme (ZIP)' },
   'p9.export.tree.label': { zh: '文件清单（点击预览内容）', en: 'File tree (click to preview content)' },
   'p9.export.zip': { zh: '下载 ZIP', en: 'Download ZIP' },
   'p9.export.zip.done': { zh: '已生成 {name}（{count} 个文件）', en: 'Generated {name} ({count} files)' },

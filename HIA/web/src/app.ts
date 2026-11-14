@@ -16,11 +16,11 @@ import{
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
   tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,NATURE_COLORS,SOCIAL_COLORS,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,nameColor,MOOD_PRIMARY_COLORS,moodPrimaryColorFor,
-  contrast,contrastMatrix,stepForContrast,
+  contrast,contrastMatrix,stepForContrast,deriveSemanticTokens,isSemanticDerived,SEMANTIC_NAMES,radiusSequence,shadowCss,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
-  type WebsiteThemeAnalysisV2,type MatrixEntry
+  type WebsiteThemeAnalysisV2,type MatrixEntry,type SemanticStatusKey
 }from'@hia/theme-core';
 // TDON 运行时来自独立包 @hia/tdon（TDON-15.1）：core 不再导出这些符号。
 // <lang zh-CN>独立包让第三方应用可只引用 TDON 而不引入整个 core。</lang>
@@ -508,6 +508,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     if(!readInputs(updateName))return;
     applyRuntimeTheme();syncInputs();updateTokenOutputs();updatePreviewMeta();
     renderPrimaryCandidates();renderSecondaryCandidates();
+    // 主色变化时刷新派生态语义组（仅 derived=true 的组）并同步面板。
+    // <lang en>On primary change refresh derived semantic groups and the panel.</lang>
+    refreshDerivedSemantic();renderSemantic();renderRadiusShadow();
     // 对比度矩阵随主题实时刷新（`W-tb-P36`）——成本 ~9×9 对比度计算，可忽略。
     // <lang en>The contrast matrix refreshes with the theme (`W-tb-P36`) — ~9×9 cheap computations.</lang>
     refreshContrastPanel();
@@ -674,6 +677,99 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       secondaryCandidates=generateSecondarySet(m.hex,{hex:m.secondaryHex,name:secName,scheme:'tone'});
       syncInputs();applyCurrentTheme(false);renderSecondaryCandidates();renderPrimaryCandidates();renderHarmony();renderGradients();renderMoodPrimary();
     }));
+  }
+
+  // ===== 语义状态色与圆角/阴影令牌（`W-tb-P37`，ADR-012 / ADR-006 契约位落地）=====
+  // 语义色四组：派生态跟随主色（semanticDerived=true），用户覆盖后停随（ADR-012 决策 3）。
+  // <lang en>Semantic statuses: derived groups follow the primary (flag true); overrides stop following.</lang>
+  const STATUS_KEYS:SemanticStatusKey[]=['success','info','warning','danger'];
+  // 确保草稿携带默认令牌组（旧草稿/预设载入后立即有圆角阴影可用）。
+  // <lang en>Ensure the draft carries default token groups so legacy drafts get radius/shadow immediately.</lang>
+  function ensureTokenGroups(){
+    if(!draft.radius)draft.radius={base:8};
+    if(!draft.shadow)draft.shadow={strength:'soft'};
+  }
+  // 主色变化时刷新派生态语义组（仅 derived=true 的组）；用户覆盖组不动。
+  // <lang en>On primary change, refresh derived groups only; user-overridden groups stay.</lang>
+  function refreshDerivedSemantic(){
+    if(!draft.semantic)return;
+    const derived=STATUS_KEYS.filter(k=>isSemanticDerived(draft.semanticDerived,k));
+    if(!derived.length)return;
+    const fresh=deriveSemanticTokens(draft.primary);
+    for(const k of derived)draft.semantic[k]=fresh[k];
+  }
+  // 渲染语义色面板：四张卡（名称/基色/明暗两套用途示例/覆盖拾色器/派生开关）。
+  // <lang en>Renders the semantic panel: four cards with name, base colour, light/dark samples, override picker
+  //   and the derived toggle.</lang>
+  function renderSemantic(){
+    ensureTokenGroups();
+    const wrap=byId<HTMLElement>('semanticBody');
+    const en=getLocale()==='en';
+    const has=!!draft.semantic;
+    wrap.innerHTML=STATUS_KEYS.map(k=>{
+      const role=has?draft.semantic![k]:null;
+      const names=SEMANTIC_NAMES[k];
+      if(!role){
+        // 未派生：占位卡 + 提示（不给假色，避免用户误以为已是主题的一部分）。
+        // <lang en>Not derived yet: a placeholder card with a hint — no fake colours.</lang>
+        return`<div class="sem-card"><div class="sem-name">${escapeHtml(en?names.en:names.zh)}<span class="badge">${escapeHtml(t('p37.semantic.notset'))}</span></div><div class="small" style="margin-top:8px">${escapeHtml(t('p37.semantic.notset.desc'))}</div></div>`;
+      }
+      const derived=isSemanticDerived(draft.semanticDerived,k);
+      // 明暗两套用途示例：浅=100 底 + 900 字；深=700 底 + on 字（真实消费导出语义）。
+      // <lang en>Light/dark samples: light = 100 bg + 900 text; dark = 700 bg + on text — consuming the real scales.</lang>
+      return`<div class="sem-card">
+        <div class="sem-name"><i style="background:${role.value}"></i>${escapeHtml(en?names.en:names.zh)}<span class="sem-hex">${role.value}</span></div>
+        <div class="sem-sample">
+          <div class="light" style="background:${role.scale['100']};color:${role.scale['900']}">${escapeHtml(t('p37.semantic.light'))}</div>
+          <div class="dark" style="background:${role.scale['700']};color:${role.on}">${escapeHtml(t('p37.semantic.dark'))}</div>
+        </div>
+        <div class="sem-row">
+          <input type="color" value="${role.value}" data-semantic-pick="${k}" aria-label="${escapeHtml((en?names.en:names.zh)+' color')}">
+          <label class="sem-derived"><input type="checkbox" data-semantic-derived="${k}" ${derived?'checked':''}>${escapeHtml(t('p37.semantic.follow'))}</label>
+        </div>
+      </div>`;
+    }).join('');
+    // 状态行：说明当前是派生/覆盖/未派生混合态。
+    // <lang en>Status line: summarises the derived/overridden/absent mix.</lang>
+    const derivedCount=has?STATUS_KEYS.filter(k=>isSemanticDerived(draft.semanticDerived,k)).length:0;
+    setText('semanticStatus',has?t('p37.semantic.status',{d:String(derivedCount),n:'4'}):t('p37.semantic.status.none'));
+  }
+  // 派生按钮：四组全部按主色重算并置派生态（覆盖确认语义——这是显式动作，不算静默改旧主题）。
+  // <lang en>Derive button: recompute all four from the primary and mark derived — an explicit action, not a
+  //   silent change.</lang>
+  function deriveAllSemantic(){
+    draft.semantic=deriveSemanticTokens(draft.primary);
+    draft.semanticDerived=Object.fromEntries(STATUS_KEYS.map(k=>[k,true]));
+    applyCurrentTheme(true);
+    renderSemantic();
+  }
+  // 写入辅助槽位：四组状态色依次填入辅助槽（上限 AUXILIARY_MAX），供只认槽位的旧目标端消费。
+  // <lang en>Copy the four statuses into auxiliary slots (capped at AUXILIARY_MAX) for legacy targets that only
+  //   read slots.</lang>
+  function semanticToAux(){
+    if(!draft.semantic)return;
+    const slots=STATUS_KEYS.slice(0,AUXILIARY_MAX).map(k=>({...draft.semantic![k],scale:{...draft.semantic![k].scale}}));
+    draft.auxiliary=slots;
+    syncInputs();applyCurrentTheme(true);
+    setText('semanticStatus',t('p37.semantic.copied',{n:String(slots.length)}));
+  }
+  // 圆角/阴影编辑器：基准滑杆 + 强度/染色控件 + 实物预览 chips（消费运行时变量）。
+  // <lang en>Radius/shadow editor: base slider + strength/tint controls + tangible chips consuming runtime vars.</lang>
+  function renderRadiusShadow(){
+    ensureTokenGroups();
+    const radius=radiusSequence(draft.radius);
+    byId<HTMLInputElement>('radiusBaseInput').value=String(draft.radius!.base);
+    setText('radiusValue',String(draft.radius!.base));
+    byId<HTMLSelectElement>('shadowStrengthSelect').value=draft.shadow!.strength;
+    byId<HTMLInputElement>('shadowTintToggle').checked=!!draft.shadow!.tintFromPrimary;
+    const shadows=shadowCss(draft.shadow,draft.primary);
+    // chips 直接消费生成的真实值（所见即导出）。
+    // <lang en>Chips consume the generated values verbatim — what you see is what exports.</lang>
+    for(const chip of all<HTMLElement>('.rs-chip')){
+      const level=chip.dataset.rs as 'sm'|'md'|'lg'|'xl';
+      chip.style.borderRadius=`${radius[level]}px`;
+      chip.style.boxShadow=shadows[level==='xl'?'lg':level as 'sm'|'md'|'lg'];
+    }
   }
 
   // ===== 对比度矩阵与目标生成（`W-tb-P36`）=====
@@ -2835,7 +2931,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       //   mock/TDON 占位/预览提示）一并重绘。</lang>
       // <lang en>Reuses the same render chain so every panel re-renders in the new locale; `W-tb-P9` panels
       //   (typography console / classic mocks / TDON placeholder / preview hint) re-render too.</lang>
-      syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();refreshContrastPanel();
+      syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();renderExplore();refreshContrastPanel();renderSemantic();renderRadiusShadow();
       renderTypography();renderClassicPreview();renderTdonPanel();applyPreviewMode(previewMode);renderExportTree();
       renderRemoteSources();renderRemoteList();renderHarmony();
       // 主色候选库停在用户当前所在的 tab，并按新语言刷新徽标计数文案。
@@ -2886,6 +2982,58 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 选色区 tab 切换（`W-tb-P34` UI 整合）：主色候选 / 副色候选 / 按情感选主色。
     // <lang zh-CN>点击即切视图并按需重绘；枚举值由 data-picker-tab 白名单校验。</lang>
     // <lang en>Switches views and redraws on demand; the enum is validated against a whitelist.</lang>
+    // 语义色面板绑定（`W-tb-P37`/ADR-012）：派生 / 写槽 / 逐组覆盖拾色器 / 派生开关。
+    // <lang en>Semantic panel bindings (`W-tb-P37`/ADR-012): derive, copy-to-slots, per-group picker, flags.</lang>
+    byId('deriveSemanticBtn').addEventListener('click',()=>deriveAllSemantic());
+    byId('semanticToAuxBtn').addEventListener('click',()=>semanticToAux());
+    // 事件委托：semanticBody 内的拾色器与开关（重渲染后仍有效）。
+    // <lang en>Event delegation on semanticBody so re-renders keep pickers and toggles live.</lang>
+    byId('semanticBody').addEventListener('input',e=>{
+      const target=e.target as HTMLInputElement;
+      const pick=target.dataset.semanticPick;
+      if(pick){
+        if(!draft.semantic)return;
+        const role=draft.semantic[pick as SemanticStatusKey];
+        const hex=normalizeHex(target.value);
+        draft.semantic[pick as SemanticStatusKey]={...role,value:hex,name:nameColor(hex).zh,scale:tonalScale(hex),on:bestOnColor(hex).hex};
+        // 覆盖即停随主色（ADR-012 决策 3）。
+        // <lang en>An override stops following the primary (ADR-012 decision 3).</lang>
+        draft.semanticDerived={...(draft.semanticDerived??{}),[pick]:false};
+        applyCurrentTheme(true);
+        renderSemantic();
+        return;
+      }
+      const flag=target.dataset.semanticDerived;
+      if(flag){
+        draft.semanticDerived={...(draft.semanticDerived??{}),[flag]:target.checked};
+        // 勾回派生态：立即按当前主色重算该组（让"跟随"立即生效，所见即所得）。
+        // <lang en>Re-checking derived recomputes that group from the current primary immediately.</lang>
+        if(target.checked){
+          if(!draft.semantic)draft.semantic=deriveSemanticTokens(draft.primary);
+          const fresh=deriveSemanticTokens(draft.primary);
+          draft.semantic[flag as SemanticStatusKey]=fresh[flag as SemanticStatusKey];
+          applyCurrentTheme(true);
+        }
+        renderSemantic();
+      }
+    });
+    // 圆角/阴影绑定（`W-tb-P37`）：滑杆/强度/染色 → 草稿令牌 → 全局刷新。
+    // <lang en>Radius/shadow bindings (`W-tb-P37`): slider/strength/tint → draft tokens → global refresh.</lang>
+    byId('radiusBaseInput').addEventListener('input',e=>{
+      ensureTokenGroups();
+      draft.radius!.base=parseInt((e.target as HTMLInputElement).value,10)||0;
+      applyCurrentTheme(true);
+    });
+    byId('shadowStrengthSelect').addEventListener('change',e=>{
+      ensureTokenGroups();
+      draft.shadow!.strength=(e.target as HTMLSelectElement).value as 'none'|'soft'|'medium'|'strong';
+      applyCurrentTheme(true);
+    });
+    byId('shadowTintToggle').addEventListener('change',e=>{
+      ensureTokenGroups();
+      draft.shadow!.tintFromPrimary=(e.target as HTMLInputElement).checked;
+      applyCurrentTheme(true);
+    });
     // 对比度面板绑定（`W-tb-P36`）：指标切换 / 目标切换 / 反推按钮。
     // <lang en>Contrast panel bindings (`W-tb-P36`): metric switch / target select / synthesis button.</lang>
     all<HTMLButtonElement>('#contrastMetricSwitch .seg').forEach(btn=>btn.addEventListener('click',()=>{
@@ -3202,7 +3350,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 首轮渲染：运行时变量、表单、候选、渐变、预设、令牌、元信息。
     // <lang zh-CN>顺序保证变量注入先于依赖 var() 的预览渲染。</lang>
     // <lang en>Order ensures vars are injected before var()-dependent previews render.</lang>
-    applyRuntimeTheme();syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();refreshContrastPanel();
+    applyRuntimeTheme();syncInputs();renderPrimaryCandidates();renderSecondaryCandidates();renderGradients();renderPresetList();updateTokenOutputs();updatePreviewMeta();refreshContrastPanel();ensureTokenGroups();renderSemantic();renderRadiusShadow();
     // `W-tb-P9` 首轮渲染：字体/间距操作台、经典 mock、TDON 占位、预览类型（默认）与导出文件树。
     // <lang zh-CN>applyPreviewMode 内部联动导出 Tab；经典 mock 依赖已注入变量，置于其后。</lang>
     // <lang en>applyPreviewMode links the export tabs; classic mocks need injected vars, hence placed after.</lang>

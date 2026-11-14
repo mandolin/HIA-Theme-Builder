@@ -30,6 +30,12 @@ export function exportThemeJson(theme:Theme):string{
     auxiliary:theme.auxiliary.map(a=>({name:a.name,value:a.value,scale:a.scale,on:a.on})),
     typography:theme.typography,
     spacing:theme.spacing,
+    // 语义状态色 + 圆角/阴影（`W-tb-P37`，ADR-012）：可选组，携带时全量输出（消费方免重建）。
+    // <lang en>Semantic statuses + radius/shadow (`W-tb-P37`, ADR-012): optional groups emitted in full when
+    //   present, so consumers need no rebuild.</lang>
+    ...(theme.semantic?{semantic:theme.semantic}:{}),
+    ...(theme.radius?{radius:theme.radius}:{}),
+    ...(theme.shadow?{shadow:theme.shadow}:{}),
     gradients:theme.gradients
   },null,2);
 }

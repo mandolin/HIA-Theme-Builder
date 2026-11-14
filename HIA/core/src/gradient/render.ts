@@ -2,6 +2,7 @@ import type{CssVariableMap,ColorFamily,GradientBias,GradientConfig,GradientFamil
 import{bestOnColor}from'../color/contrast.js';
 import{tonalScaleAt}from'../color/scale.js';
 import{typographySpacingVars}from'../token/typography.js';
+import{radiusSequence,shadowCss}from'../token/radius.js';
 import{clamp}from'../color/convert.js';
 import{GRADIENT_DEFS}from'../data/gradients.js';
 
@@ -74,15 +75,29 @@ function tokenFor(config:GradientConfig,shade:ShadeValue,mode:GradientRenderMode
 }
 
 // 生成单条渐变的 CSS：禁用时退化为纯色（起始色），否则输出 linear-gradient。
-// <lang zh-CN>默认 runtime 模式；mode/literal 决定是否内联色值。</lang>
-// <lang en>Defaults to runtime; mode/literal decide whether colors are inlined.</lang>
-export function gradientCss(config:GradientConfig,mode:GradientRenderMode='runtime',theme?:Theme):string{
+// <lang zh-CN>默认 runtime 模式；mode/literal 决定是否内联色值。
+//   **降级链（`W-tb-P37`）**：启用态在渐变层下追加起始色纯色垫底（多层背景，渐变在上）——
+//   渐变含半透明色标时不会露出容器底色；消费方需完全的解析级降级时应另行双声明
+//   （background-color 先行，background-image 后行，见 inject-template）。
+//   underlay=false 供不容许多层背景的消费方（WordPress 渐变预设解析器）关闭。
+// </lang>
+// <lang en>Defaults to runtime; mode/literal decide whether colors are inlined.
+//   **Degradation chain (`W-tb-P37`)**: when enabled, a solid start-colour underlay is appended beneath the
+//   gradient layer (multi-layer background, gradient on top) so translucent stops never expose the container.
+//   Consumers needing parse-level fallback should emit two declarations (background-color first, then
+//   background-image — see inject-template). underlay=false for consumers that cannot take multi-layer
+//   backgrounds (the WordPress gradient preset parser).</lang>
+export function gradientCss(config:GradientConfig,mode:GradientRenderMode='runtime',theme?:Theme,underlay=true):string{
   const start=tokenFor(config,config.start,mode,theme),
     end=tokenFor(config,config.end,mode,theme);
   // 禁用则直接返回起始色，等效纯背景。
   // <lang zh-CN>让调用方无需区分“未启用”与“启用”。</lang>
   // <lang en>Lets callers treat disabled uniformly as a solid background.</lang>
-  return config.enabled===false?start:`linear-gradient(${config.direction}, ${gradientStops(start,end,config.bias)})`;
+  if(config.enabled===false)return start;
+  const gradient=`linear-gradient(${config.direction}, ${gradientStops(start,end,config.bias)})`;
+  // 纯色垫底与起始色同源：降级时呈现"起始色平铺"的合理近似。
+  // <lang en>The underlay mirrors the start colour: degradation degrades to a sensible flat start colour.</lang>
+  return underlay?`${gradient}, ${start}`:gradient;
 }
 
 // 取渐变“主色”用于决定前景色：end 占比时取结束色阶，否则取起始色阶。
@@ -153,6 +168,26 @@ export function createRuntimeCssVariables(theme:Theme):CssVariableMap{
   // <lang zh-CN>追加入 :root 内联变量集合。</lang>
   // <lang en>Merged into the :root inline var set.</lang>
   Object.assign(vars,typographySpacingVars(theme));
+  // 语义状态色变量（`W-tb-P37`/ADR-012）：主题携带时写入 --success/-info/-warning/-danger 及 500/700 阶，
+  //   供预览（状态卡/按钮）消费；未携带的主题不写入（旧形态不变）。
+  // <lang en>Semantic status vars (`W-tb-P37`/ADR-012): emitted when carried for preview consumption; absent
+  //   groups keep the legacy shape.</lang>
+  if(theme.semantic){
+    for(const[k,role]of Object.entries(theme.semantic)as Array<[keyof typeof theme.semantic & string,typeof theme.semantic[keyof typeof theme.semantic]]>){
+      vars[`--${k}`]=role.value;
+      vars[`--on-${k}`]=role.on;
+      vars[`--${k}-500`]=role.scale['500']??role.value;
+      vars[`--${k}-100`]=role.scale['100']??role.value;
+    }
+  }
+  // 圆角/阴影变量（`W-tb-P37`）：--radius-* / --shadow-*，供预览与导出统一消费。
+  // <lang en>Radius/shadow vars (`W-tb-P37`): --radius-* / --shadow-* consumed by preview and exports.</lang>
+  const radius=radiusSequence(theme.radius);
+  for(const[k,v]of Object.entries(radius))vars[`--radius-${k}`]=`${v}px`;
+  // 阴影固定三档：sm/md/lg 键集稳定，避免 Object.entries 的隐式 any。
+  // <lang en>Shadow levels are the stable sm/md/lg set, avoiding implicit-any from Object.entries.</lang>
+  const shadows=shadowCss(theme.shadow,theme.primary.value);
+  for(const k of ['sm','md','lg'] as const)vars[`--shadow-${k}`]=shadows[k];
   // 自定义色阶变量：按渐变引用去重生成 --p650 / --s650 等附加变量（ADR-004）。
   // <lang zh-CN>与标准 10 档同名规则，tokenFor 的 var() 引用无需区分。</lang>
   // <lang en>Same naming as the standard steps, so tokenFor's var() references need no branching.</lang>

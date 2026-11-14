@@ -13,6 +13,8 @@ export function cloneTypography(t:TypographyTokens):TypographyTokens{const r:Typ
 // <lang en>Copies overrides keyed by level index; undefined is likewise not written explicitly.</lang>
 export function cloneSpacing(s:SpacingTokens):SpacingTokens{const r:SpacingTokens={...s};if(s.overrides)r.overrides={...s.overrides};return r;}
 import{bestOnColor}from'./color/contrast.js';
+import{cloneRadiusTokens,cloneShadowTokens}from'./token/radius.js';
+import{cloneSemanticTokens}from'./color/semantic.js';
 import{normalizeHex}from'./color/convert.js';
 import{tonalScale}from'./color/scale.js';
 import{cloneGradientSettings}from'./data/gradients.js';
@@ -104,6 +106,15 @@ export function buildTheme(input:ThemeInput):Theme{
     seriesMode,
     seriesRelation,
     ...(thirdColor?{thirdColor}:{}),
-    auxiliary
+    auxiliary,
+    // 圆角/阴影（`W-tb-P37`，ADR-006 契约位落地）：可选入参，缺省回退默认档——旧调用点不受影响。
+    // <lang en>Radius/shadow (`W-tb-P37`, ADR-006 slot landed): optional inputs defaulting back — legacy call
+    //   sites unaffected.</lang>
+    radius:cloneRadiusTokens(input.radius),
+    shadow:cloneShadowTokens(input.shadow),
+    // 语义状态色（ADR-012）：仅透传显式提供的组；**不静默派生**——旧主题观感不因升级改变（决策 6）。
+    // <lang en>Semantic tokens (ADR-012): only pass through explicit groups; **no silent derivation** — old
+    //   themes must not change appearance on upgrade (decision 6).</lang>
+    ...(input.semantic?{semantic:cloneSemanticTokens(input.semantic)}:{})
   };
 }

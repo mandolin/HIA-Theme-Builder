@@ -68,21 +68,21 @@ export function createThemeDraft(value:Partial<ThemeDraft>={}):ThemeDraft{
 // <lang zh-CN>载入操作台时使用，gradients 缺失则回落默认。</lang>
 // <lang en>Used when loading into the studio; falls back to defaults when gradients are absent.</lang>
 export function draftFromPreset(preset:Preset):ThemeDraft{
-  return createThemeDraft({id:preset.id,name:preset.name,category:preset.category,industry:preset.industry,primary:preset.primary,secondary:preset.secondary,primaryName:preset.primaryName,secondaryName:preset.secondaryName,note:preset.note,gradients:preset.gradients,seriesMode:preset.seriesMode,seriesRelation:preset.seriesRelation,thirdColor:preset.thirdColor,auxiliary:preset.auxiliary});
+  return createThemeDraft({id:preset.id,name:preset.name,category:preset.category,industry:preset.industry,primary:preset.primary,secondary:preset.secondary,primaryName:preset.primaryName,secondaryName:preset.secondaryName,note:preset.note,gradients:preset.gradients,seriesMode:preset.seriesMode,seriesRelation:preset.seriesRelation,thirdColor:preset.thirdColor,auxiliary:preset.auxiliary,radius:preset.radius,shadow:preset.shadow,semantic:preset.semantic,semanticDerived:preset.semanticDerived});
 }
 
 // 将草稿构建为完整主题，名称缺省时按主副色名自动生成。
 // <lang zh-CN>草稿到渲染/导出的桥梁，所有色阶在此计算；typography/spacing 随草稿透传（ADR-006）。</lang>
 // <lang en>Bridge from draft to render/export; all scales are computed here; typography/spacing pass through (ADR-006).</lang>
 export function buildThemeFromDraft(draft:ThemeDraft):Theme{
-  return buildTheme({name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category,industry:draft.industry,primary:draft.primary,secondary:draft.secondary,primaryName:draft.primaryName,secondaryName:draft.secondaryName,note:draft.note,gradients:draft.gradients,typography:draft.typography,spacing:draft.spacing,seriesMode:draft.seriesMode,seriesRelation:draft.seriesRelation,thirdColor:draft.thirdColor,auxiliary:draft.auxiliary,auxiliaryModifiers:draft.auxiliaryModifiers});
+  return buildTheme({name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category,industry:draft.industry,primary:draft.primary,secondary:draft.secondary,primaryName:draft.primaryName,secondaryName:draft.secondaryName,note:draft.note,gradients:draft.gradients,typography:draft.typography,spacing:draft.spacing,seriesMode:draft.seriesMode,seriesRelation:draft.seriesRelation,thirdColor:draft.thirdColor,auxiliary:draft.auxiliary,auxiliaryModifiers:draft.auxiliaryModifiers,radius:draft.radius,shadow:draft.shadow,semantic:draft.semantic});
 }
 
 // 由草稿导出为可保存预设，id 缺失时以时间戳生成自定义 id。
 // <lang zh-CN>保存/导出时使用，基色再次规范化确保持久化一致。</lang>
 // <lang en>Used for save/export; base colors are re-normalized for consistent persistence.</lang>
 export function presetFromDraft(draft:ThemeDraft,id=`custom-${Date.now()}`):Preset{
-  return{id,name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category||'custom',industry:draft.industry||'',primary:normalizeHex(draft.primary),secondary:normalizeHex(draft.secondary),primaryName:draft.primaryName||nameColor(draft.primary).zh,secondaryName:draft.secondaryName||nameColor(draft.secondary).zh,note:draft.note||'由主副色操作台生成导入。',gradients:cloneGradientSettings(draft.gradients),...(draft.seriesMode&&draft.seriesMode!=='dual'?{seriesMode:draft.seriesMode}:{}),...(draft.seriesRelation&&draft.seriesRelation!=='manual'?{seriesRelation:draft.seriesRelation}:{}),...(draft.thirdColor?{thirdColor:{...draft.thirdColor,scale:{...draft.thirdColor.scale}}}:{}),...(draft.auxiliary?.length?{auxiliary:draft.auxiliary.map(a=>({...a,scale:{...a.scale}}))}:{})};
+  return{id,name:draft.name||autoThemeName(draft.primaryName,draft.secondaryName),category:draft.category||'custom',industry:draft.industry||'',primary:normalizeHex(draft.primary),secondary:normalizeHex(draft.secondary),primaryName:draft.primaryName||nameColor(draft.primary).zh,secondaryName:draft.secondaryName||nameColor(draft.secondary).zh,note:draft.note||'由主副色操作台生成导入。',gradients:cloneGradientSettings(draft.gradients),...(draft.seriesMode&&draft.seriesMode!=='dual'?{seriesMode:draft.seriesMode}:{}),...(draft.seriesRelation&&draft.seriesRelation!=='manual'?{seriesRelation:draft.seriesRelation}:{}),...(draft.thirdColor?{thirdColor:{...draft.thirdColor,scale:{...draft.thirdColor.scale}}}:{}),...(draft.auxiliary?.length?{auxiliary:draft.auxiliary.map(a=>({...a,scale:{...a.scale}}))}:{}),...(draft.radius?{radius:draft.radius}:{}),...(draft.shadow?{shadow:draft.shadow}:{}),...(draft.semantic?{semantic:draft.semantic}:{}),...(draft.semanticDerived?{semanticDerived:draft.semanticDerived}:{})};
 }
 
 // 在候选库中按主副色同时匹配出对应候选（用于回显“当前主色”来源）。

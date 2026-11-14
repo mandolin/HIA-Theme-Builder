@@ -9,6 +9,7 @@ import type{ExportTarget,VirtualFile}from'./types.js';
 import type{Theme}from'../types.js';
 import{collectCustomShades}from'../gradient/render.js';
 import{slugifyThemeName,fullTokenCss,commentSafe}from'./shared.js';
+import{radiusSequence,shadowCss}from'../token/radius.js';
 
 // 生成单色族的 Tailwind colors 子对象：DEFAULT=基色，标准 10 档 + 自定义色阶附加键。
 // <lang zh-CN>档位键加引号（'50'…'900'/'650'），保证 JS 对象字面量合法且键序与 SHADE_KEYS 一致；
@@ -54,8 +55,19 @@ ${[
         `        primary: ${familyColors(theme.primary.scale,custom.primary,theme.primary.value)}`,
         `        secondary: ${familyColors(theme.secondary.scale,custom.secondary,theme.secondary.value)}`,
         ...(theme.thirdColor?[`        third: ${familyColors(theme.thirdColor.scale,{},theme.thirdColor.value)}`]:[]),
-        ...theme.auxiliary.map((aux,i)=>`        aux${i}: ${familyColors(aux.scale,{},aux.value)}`)
+        ...theme.auxiliary.map((aux,i)=>`        aux${i}: ${familyColors(aux.scale,{},aux.value)}`),
+        // 语义状态色（W-tb-P37/ADR-012）：success/info/warning/danger 四组全档。
+        // <lang en>Semantic status colours (W-tb-P37/ADR-012): full scales for the four statuses.</lang>
+        ...(theme.semantic?(Object.entries(theme.semantic)as[ keyof typeof theme.semantic & string, typeof theme.semantic[keyof typeof theme.semantic] ][]).map(([k,role])=>`        ${k}: ${familyColors(role.scale,{},role.value)}`):[])
       ].join(',\n')}
+      },
+      // 圆角/阴影（W-tb-P37）：五档半径 px + 三档阴影字符串（可随主色染色）。
+      // <lang en>Radius/shadow (W-tb-P37): five radius steps (px) + three shadow strings (primary-tintable).</lang>
+      borderRadius: {
+${(Object.entries(radiusSequence(theme.radius))as[string,number][]).map(([k,v])=>`        '${k}': '${v}px'`).join(',\n')}
+      },
+      boxShadow: {
+${(Object.entries(shadowCss(theme.shadow,theme.primary.value))as[string,string][]).map(([k,v])=>`        '${k}': ${JSON.stringify(v)}`).join(',\n')}
       },
       fontFamily: {
         body: ${JSON.stringify(theme.typography.fontFamily.body)},

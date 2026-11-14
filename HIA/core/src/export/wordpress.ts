@@ -106,7 +106,7 @@ function wordpressChildFiles(theme:Theme,options?:ExportAdapterOptions):VirtualF
     const config=theme.gradients[def.key];
     if(!config||config.enabled===false)return[];
     const roleSlug=def.key.replace(/([A-Z])/g,'-$1').toLowerCase();
-    return[{name:def.label,slug:`hia-gradient-${roleSlug}`,gradient:gradientCss(config,'literal',theme)}];
+    return[{name:def.label,slug:`hia-gradient-${roleSlug}`,gradient:gradientCss(config,'literal',theme,false)}];
   });
   // theme.json：WP 块主题全站编辑契约（$schema 便于编辑器补全，version 2 为兼容口径）。
   // <lang zh-CN>defaultPalette/defaultGradients 关闭核心默认，突出 HIA 面板；custom 透传排版/间距令牌。</lang>

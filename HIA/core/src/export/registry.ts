@@ -9,6 +9,7 @@ import type{ExportTarget}from'./types.js';
 import{wordpressChildTarget}from'./wordpress.js';
 import{tailwindConfigTarget}from'./tailwind.js';
 import{injectTemplateTarget}from'./inject-template.js';
+import{tailwindV4Target}from'./tailwind4.js';
 
 // 内置导出目标清单（顺序即 UI 展示顺序：WP → Tailwind → 通用注入）。
 // <lang zh-CN>与 `W-tb-P9` 计划 §3.2-3.4 的首批栈对应；深冻结保证清单与条目均不可变。</lang>
@@ -16,6 +17,7 @@ import{injectTemplateTarget}from'./inject-template.js';
 export const EXPORT_TARGETS:readonly ExportTarget[]=[
   wordpressChildTarget,
   tailwindConfigTarget,
+  tailwindV4Target,
   injectTemplateTarget
 ].map(t=>Object.freeze({...t}) as ExportTarget);
 

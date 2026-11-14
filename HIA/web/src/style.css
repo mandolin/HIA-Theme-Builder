@@ -511,3 +511,21 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .cm-chip.pass{background:#ECFDF5;color:#065F46;border-color:#A7F3D0}
 .cm-chip.warn{background:#FFFBEB;color:#92400E;border-color:#FDE68A}
 .cm-chip i{width:12px;height:12px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+
+/* 圆角/阴影编辑（`W-tb-P37`）：编辑器网格 + 实物预览 chips（消费 --radius-* and --shadow-*）。 */
+/* Radius/shadow editor (`W-tb-P37`): editor grid + tangible preview chips consuming the radius and shadow tokens. */
+.rs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.rs-value{margin-left:auto;color:var(--primary);font-weight:900}
+.rs-preview{grid-column:1 / -1;display:flex;gap:10px;align-items:center}
+.rs-chip{width:64px;height:44px;background:var(--p50);border:1px solid var(--p200);display:grid;place-items:center;font-size:10px;color:var(--p800);font-weight:800}
+.rs-chip::after{content:attr(data-rs)}
+/* 语义状态色卡（`W-tb-P37`/ADR-012）：明暗两套用途示例 + 覆盖拾色器。 */
+/* Semantic cards (`W-tb-P37`/ADR-012): light/dark usage samples + override picker. */
+.sem-card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px}
+.sem-card .sem-name{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
+.sem-card .sem-name i{width:14px;height:14px;border-radius:4px;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.sem-sample{display:flex;gap:8px;margin-top:8px}
+.sem-sample .light,.sem-sample .dark{flex:1;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:800}
+.sem-row{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:11px;color:#556876}
+.sem-row input[type=color]{width:34px;height:30px;border:0;border-radius:5px;background:none;padding:0;cursor:pointer}
+.sem-derived{margin-left:auto;display:inline-flex;align-items:center;gap:4px;cursor:pointer}

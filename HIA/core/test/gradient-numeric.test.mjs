@@ -119,8 +119,16 @@ test('gradientCss runtime: 自定义色阶经 var() 引用（runtime keeps var()
       carousel: { enabled: true, family: 'primary', start: '650', end: '300', direction: '135deg', bias: 'front80' }
     }
   });
+  // W-tb-P37 降级链：启用态追加起始色垫底层（多层背景，渐变在上）。
+  // <lang en>W-tb-P37 degradation chain: an enabled gradient gains a start-colour underlay layer.</lang>
   assert.equal(
     gradientCss(theme.gradients.carousel, 'runtime', theme),
+    'linear-gradient(135deg, var(--p650) 0%, var(--p650) 80%, var(--p300) 100%), var(--p650)'
+  );
+  // underlay=false 恢复旧形态（WP 渐变预设等不容许多层的消费方）。
+  // <lang en>underlay=false restores the legacy form for consumers rejecting multi-layer (WP presets).</lang>
+  assert.equal(
+    gradientCss(theme.gradients.carousel, 'runtime', theme, false),
     'linear-gradient(135deg, var(--p650) 0%, var(--p650) 80%, var(--p300) 100%)'
   );
 });
