@@ -529,3 +529,8 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .sem-row{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:11px;color:#556876}
 .sem-row input[type=color]{width:34px;height:30px;border:0;border-radius:5px;background:none;padding:0;cursor:pointer}
 .sem-derived{margin-left:auto;display:inline-flex;align-items:center;gap:4px;cursor:pointer}
+
+/* 图片提色（`W-tb-P39`/ADR-014）：工具行 + 预览行；候选卡复用 color-card。 */
+/* Image extraction (`W-tb-P39`/ADR-014): toolbar + preview row; candidate cards reuse color-card. */
+.image-extract-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#imagePreviewRow{display:flex;gap:10px;align-items:center;margin-top:10px}

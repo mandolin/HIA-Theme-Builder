@@ -66,6 +66,11 @@ export{tonePresets,buildTonePreset,TONE_MOODS,TONE_FORM_PRIORITY,TONE_DEFAULT_PR
 //   primary-inherited lightness/chroma; derived values are prefills users may override.</lang>
 export{deriveSemanticTokens,cloneSemanticTokens,isSemanticDerived,SEMANTIC_HUES,SEMANTIC_NAMES}from'./color/semantic.js';
 export type{SemanticStatusKey}from'./types.js';
+// 图片提色（`W-tb-P39`，ADR-014）：确定性中位切分提取主/副/渐变候选——纯计算无 IO。
+// <lang en>Image colour extraction (`W-tb-P39`, ADR-014): deterministic median-cut extraction of primary,
+//   secondary and gradient candidates — pure computation, no IO.</lang>
+export{extractImagePalette,downsamplePixels,suggestGradientDirection,IMAGE_EXTRACT_MAX_DIM,IMAGE_EXTRACT_CLUSTERS}from'./color/image-extract.js';
+export type{ImagePixels,ImageCandidate,ImageExtractResult,ImageExtractMode}from'./color/image-extract.js';
 // 圆角/阴影令牌（`W-tb-P37`，ADR-006 契约位落地）：档位派生纯函数。
 // <lang en>Radius/shadow tokens (`W-tb-P37`, ADR-006 slot landed): pure derivation functions.</lang>
 export{radiusSequence,shadowCss,cloneRadiusTokens,cloneShadowTokens,RADIUS_DEFAULTS,SHADOW_DEFAULTS}from'./token/radius.js';

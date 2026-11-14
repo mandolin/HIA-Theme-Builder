@@ -10,17 +10,17 @@ import{
   decodeShareHash,DEFAULT_SPACING,DEFAULT_TYPOGRAPHY,encodeShareHash,buildSharePayload,
   exportThemeCss,exportThemeJson,filterPresets,findMatchingPrimaryCandidate,
   fontSizeAt,FONT_SIZE_STEPS,generateSecondarySet,getExportTarget,
-  gradientCss,isBuiltinPresetId,mergeImportedPresets,mergePresets,normalizeHex,parseGradientSettings,parseThemeLibrary,parseThemePack,
+  gradientCss,isBuiltinPresetId,mergeImportedPresets,mergePresets,normalizeHex,hexToRgb,parseGradientSettings,parseThemeLibrary,parseThemePack,
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
   BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
   tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,NATURE_COLORS,SOCIAL_COLORS,
   deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,nameColor,MOOD_PRIMARY_COLORS,moodPrimaryColorFor,
-  contrast,contrastMatrix,stepForContrast,deriveSemanticTokens,isSemanticDerived,SEMANTIC_NAMES,radiusSequence,shadowCss,parseDtcgTokens,
+  contrast,contrastMatrix,stepForContrast,deriveSemanticTokens,isSemanticDerived,SEMANTIC_NAMES,radiusSequence,shadowCss,parseDtcgTokens,extractImagePalette,suggestGradientDirection,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
   type TypographyTokens,type SpacingTokens,
-  type WebsiteThemeAnalysisV2,type MatrixEntry,type SemanticStatusKey
+  type WebsiteThemeAnalysisV2,type MatrixEntry,type SemanticStatusKey,type ImageExtractMode
 }from'@hia/theme-core';
 // TDON 运行时来自独立包 @hia/tdon（TDON-15.1）：core 不再导出这些符号。
 // <lang zh-CN>独立包让第三方应用可只引用 TDON 而不引入整个 core。</lang>
@@ -226,12 +226,13 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   //   前三组是数据自带 group（12 / 20 / 12），第四组是情感映射。
   // <lang en>Active primary-library tab (`W-tb-P34`, maintainer's second correction): four source groups —
   //   the first three come from the data's own group field (12 / 20 / 12), the fourth is the mood map.</lang>
-  type PrimaryLibTab='hia'|'award'|'trending'|'mood';
+  type PrimaryLibTab='hia'|'award'|'trending'|'mood'|'image';
   const PICKER_GROUP_OF:Record<PrimaryLibTab,string|null>={
     hia:'HIA 默认与蓝色基准',
     award:'获奖网站主色',
     trending:'通用流行主题色',
-    mood:null
+    mood:null,
+    image:null
   };
   let primaryLibTab:PrimaryLibTab='hia';
 
@@ -775,6 +776,107 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     }
   }
 
+  // ===== 图片提色（`W-tb-P39`/ADR-014）=====
+  // 上传图片 → OffscreenCanvas 本地取像素 → core 中位切分提取 → 候选卡（与候选库同一套用语义）。
+  //   **隐私硬约束**：解码与计算全在本机，全程零网络请求（验收脚本断言）。
+  // <lang en>Image extraction (`W-tb-P39`/ADR-014): upload → OffscreenCanvas pixels locally → core median-cut →
+  //   candidate cards (same apply semantics as the library). **Privacy is a hard constraint**: everything runs
+  //   locally with zero network requests (asserted by the verify script).</lang>
+  let imageMode:ImageExtractMode='balanced';
+  function renderImageCandidates(result:ReturnType<typeof extractImagePalette>){
+    const wrap=byId<HTMLElement>('imageCandidatesWrap');
+    const en=getLocale()==='en';
+    if(!result.candidates.length){
+      wrap.innerHTML=`<div class="sem-card"><div class="small">${escapeHtml(t('p39.empty'))}</div></div>`;
+      return;
+    }
+    wrap.innerHTML=result.candidates.map(c=>{
+      const isActive=normalizeHex(c.hex)===draft.primary;
+      return`<div class="color-card ${isActive?'active':''}" data-image-primary="${escapeHtml(c.hex)}" title="${escapeHtml(t('p39.card.title',{name:en?c.nameEn:c.name,pop:String(c.population)}))}"><div class="color-top" style="background:${c.hex}"><span>${escapeHtml(en?c.nameEn:c.name)}</span></div><div class="color-name">${escapeHtml(en?c.nameEn:c.name)}</div><div class="color-meta">${escapeHtml(c.hex)}</div><div class="color-hex">${escapeHtml(t('p39.card.share',{p:String(Math.round(c.weight*100))}))}</div></div>`;
+    }).join('');
+    // 点击：主色 + 推荐副色一并套用（与候选库/情感卡同一写回字段）。
+    // <lang en>Clicking applies the primary together with the suggested secondary (same fields as the library
+    //   and mood cards).</lang>
+    all<HTMLElement>('[data-image-primary]',wrap).forEach(card=>card.addEventListener('click',()=>{
+      const hex=normalizeHex(card.dataset.imagePrimary||'');
+      if(!validHex(hex))return;
+      primaryMeta=null;
+      draft.primary=hex;
+      draft.secondary=result.secondary?normalizeHex(result.secondary):hex;
+      draft.primaryName=en?nameColor(hex).en:nameColor(hex).zh;
+      draft.secondaryName=en?nameColor(draft.secondary).en:nameColor(draft.secondary).zh;
+      draft.category='custom';
+      draft.name=autoThemeName(draft.primaryName,draft.secondaryName);
+      syncInputs();applyCurrentTheme(false);renderSecondaryCandidates();renderPrimaryCandidates();renderHarmony();renderGradients();renderImageCandidates(result);
+    }));
+  }
+  function renderImageGradient(result:ReturnType<typeof extractImagePalette>){
+    const row=byId<HTMLElement>('imageGradientRow');
+    if(!result.gradient){row.hidden=true;return;}
+    row.hidden=false;
+    const dir=suggestGradientDirection(result.gradient.start,result.gradient.end);
+    byId<HTMLElement>('imageGradientPreview').style.background=`linear-gradient(${dir}, ${result.gradient.start}, ${result.gradient.end})`;
+    setText('imageGradientMeta',`${result.gradient.start} → ${result.gradient.end} · ${dir}`);
+    // 应用为轮播渐变：写回草稿渐变配置（carousels 起止=最暗/最亮候选，色族 primary 用内联色阶）。
+    // <lang en>"Apply as carousel gradient" writes the draft gradient config (start/end = darkest/brightest
+    //   candidates).</lang>
+    const applyBtn=byId<HTMLButtonElement>('imageGradientApply');
+    applyBtn.onclick=()=>{
+      const start=resolveImageShade(result.gradient!.start),end=resolveImageShade(result.gradient!.end);
+      if(!start||!end)return;
+      // bias 固定 front50（各半）；方向取暗→亮对角。
+      // <lang en>Bias fixed at front50 (even halves); direction takes the dark→light diagonal.</lang>
+      draft.gradients.carousel={enabled:true,family:'primary',start,end,direction:suggestGradientDirection(result.gradient!.start,result.gradient!.end),bias:'front50'};
+      applyCurrentTheme(false);renderGradients();
+      setText('imageStatus',t('p39.gradient.applied'));
+    };
+  }
+  // 图片 HEX → 最近色阶档（10 档中最近邻），供渐变配置引用色阶而非内联。
+  // <lang en>Maps an image HEX to the nearest of the ten scale steps so the gradient config references scales
+  //   instead of inline colours.</lang>
+  function resolveImageShade(hex:string):ShadeKey|undefined{
+    const scale=tonalScale(draft.primary);
+    let best:ShadeKey|undefined,bestDist=Infinity;
+    for(const k of Object.keys(scale)as ShadeKey[]){
+      const sc=scale[k]??'#000000';
+      const a=hexToRgb(hex),b=hexToRgb(sc);
+      const dist=Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+      if(dist<bestDist){bestDist=dist;best=k;}
+    }
+    return best;
+  }
+  async function extractFromImageFile(file:File){
+    // 隐私硬约束：createImageBitmap + OffscreenCanvas 纯本地解码，无网络请求。
+    // <lang en>Privacy hard constraint: createImageBitmap + OffscreenCanvas decode everything locally — no
+    //   network requests.</lang>
+    let bitmap:ImageBitmap;
+    try{bitmap=await createImageBitmap(file);}
+    catch{setText('imageStatus',t('p39.badfile'));return;}
+    const canvas=new OffscreenCanvas(bitmap.width,bitmap.height);
+    const ctx=canvas.getContext('2d');
+    if(!ctx){setText('imageStatus',t('p39.badfile'));return;}
+    ctx.drawImage(bitmap,0,0);
+    const pixels=ctx.getImageData(0,0,bitmap.width,bitmap.height);
+    bitmap.close();
+    // 像素缓存挂到预览元素（模式切换重提取用；页面刷新即释放，无持久化）。
+    // <lang en>Pixel cache hangs on the preview element for mode re-extraction; freed on reload, never persisted.</lang>
+    const imgEl=byId<HTMLImageElement>('imagePreview');
+    (imgEl as unknown as {pixels?:ImageData}).pixels=pixels;
+    const result=extractImagePalette({data:pixels.data,width:pixels.width,height:pixels.height},imageMode);
+    // 预览缩略图（同一次解码，本地 objectURL，用后释放）。
+    // <lang en>Preview thumbnail from the same local decode (object URL, revoked after use).</lang>
+    const url=URL.createObjectURL(file);
+    const img=byId<HTMLImageElement>('imagePreview');
+    img.src=url;
+    img.dataset.pixels='1';
+    img.onload=()=>URL.revokeObjectURL(url);
+    byId<HTMLElement>('imagePreviewRow').hidden=false;
+    setText('imageMeta',`${pixels.width}×${pixels.height}px`);
+    renderImageCandidates(result);
+    renderImageGradient(result);
+    setText('imageStatus',result.candidates.length?t('p39.done',{n:String(result.candidates.length)}):t('p39.empty'));
+  }
+
   // ===== 对比度矩阵与目标生成（`W-tb-P36`）=====
   // 全调色板两两对比度（WCAG 2.x / APCA 参考值）+ 按目标反推可读文字色。
   //   价值：把散落的逐对断言升级为"一眼可见的全局视图"——哪两个角色在哪个阈值下不可读。
@@ -893,9 +995,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>两者互斥显示，避免同屏出现两套色卡。</lang>
     // <lang en>The two are mutually exclusive so two card sets never show at once.</lang>
     const isMood=tab==='mood';
+    const isImage=tab==='image';
     byId<HTMLElement>('primaryViewMood').hidden=!isMood;
-    byId<HTMLElement>('primaryCandidatesWrap').hidden=isMood;
-    if(isMood){
+    byId<HTMLElement>('primaryViewImage').hidden=!isImage;
+    byId<HTMLElement>('primaryCandidatesWrap').hidden=isMood||isImage;
+    if(isImage){
+      // 图片 tab 无候选数据（待上传），徽标显示占位；不造假卡。
+      // <lang en>The image tab has no candidates until upload; the badge stays a placeholder — no fake cards.</lang>
+      setText('primaryLibBadge',t('p39.badge'));
+    }else if(isMood){
       renderMoodPrimary();
       // 徽标显示情感条数（含中性说明卡），与卡片数一致。
       // <lang en>The badge counts mood entries (including the neutral note card), matching the rendered cards.</lang>
@@ -3037,6 +3145,25 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       draft.shadow!.tintFromPrimary=(e.target as HTMLInputElement).checked;
       applyCurrentTheme(true);
     });
+    // 图片提色绑定（`W-tb-P39`/ADR-014）：选择图片 / 模式切换。
+    // <lang en>Image extraction bindings (`W-tb-P39`/ADR-014): file pick / mode switch.</lang>
+    byId('imagePickBtn').addEventListener('click',()=>byId<HTMLInputElement>('imageFileInput').click());
+    byId<HTMLInputElement>('imageFileInput').addEventListener('change',e=>{
+      const file=(e.currentTarget as HTMLInputElement).files?.[0];
+      if(!file)return;
+      extractFromImageFile(file);
+      (e.currentTarget as HTMLInputElement).value='';
+    });
+    byId<HTMLSelectElement>('imageModeSelect').addEventListener('change',e=>{
+      imageMode=(e.target as HTMLSelectElement).value as ImageExtractMode;
+      // 已上传图片时切换模式 → 用缓存像素重提取（第二次调用同一像素集，确定性）。
+      // <lang en>Re-extract on mode change when an image is already loaded (deterministic on the same pixels).</lang>
+      const img=byId<HTMLImageElement>('imagePreview');
+      if(img?.dataset.pixels==='1'){
+        const cached=(img as unknown as {pixels?:ImageData}).pixels;
+        if(cached){const result=extractImagePalette({data:cached.data,width:cached.width,height:cached.height},imageMode);renderImageCandidates(result);renderImageGradient(result);}
+      }
+    });
     // 对比度面板绑定（`W-tb-P36`）：指标切换 / 目标切换 / 反推按钮。
     // <lang en>Contrast panel bindings (`W-tb-P36`): metric switch / target select / synthesis button.</lang>
     all<HTMLButtonElement>('#contrastMetricSwitch .seg').forEach(btn=>btn.addEventListener('click',()=>{
@@ -3057,7 +3184,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Primary-library tab switching: four source groups, enum validated against a whitelist.</lang>
     all<HTMLButtonElement>('#primaryLibTabs .tab').forEach(btn=>btn.addEventListener('click',()=>{
       const v=btn.dataset.primaryTab;
-      if(v==='hia'||v==='award'||v==='trending'||v==='mood')applyPrimaryLibTab(v);
+      if(v==='hia'||v==='award'||v==='trending'||v==='mood'||v==='image')applyPrimaryLibTab(v);
     }));
     // 保存预设：先应用再保存为新自定义预设。
     // <lang zh-CN>“保存预设”按钮。</lang>

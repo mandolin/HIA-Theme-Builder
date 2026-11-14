@@ -62,7 +62,27 @@
      副色候选区仍独立成块、保持原位置，不与主色候选混在一个容器里。
      Primary library, tabbed by source group; the secondary candidate area stays a separate box in place. -->
 <section class="box" id="primaryLibBox"><div class="section-title"><div><h2 data-i18n="primary.lib.title">主色候选库</h2><p data-i18n="primary.lib.desc">包含默认主题、20 个获奖网站颜色候选，以及一批适合业务项目与示例项目的流行主题色。每个主色都附带一个预设副色系。</p></div><span class="badge" id="primaryLibBadge">44 Colors</span></div>
-<div class="tabbar" id="primaryLibTabs" style="margin-bottom:10px"><button class="tab active" data-primary-tab="hia" data-i18n="HIA 默认与蓝色基准">HIA 默认与蓝色基准</button><button class="tab" data-primary-tab="award" data-i18n="获奖网站主色">获奖网站主色</button><button class="tab" data-primary-tab="trending" data-i18n="通用流行主题色">通用流行主题色</button><button class="tab" data-primary-tab="mood" data-i18n="picker.tab.mood">情感主色</button></div>
+<div class="tabbar" id="primaryLibTabs" style="margin-bottom:10px"><button class="tab active" data-primary-tab="hia" data-i18n="HIA 默认与蓝色基准">HIA 默认与蓝色基准</button><button class="tab" data-primary-tab="award" data-i18n="获奖网站主色">获奖网站主色</button><button class="tab" data-primary-tab="trending" data-i18n="通用流行主题色">通用流行主题色</button><button class="tab" data-primary-tab="mood" data-i18n="picker.tab.mood">情感主色</button><button class="tab" data-primary-tab="image" data-i18n="p39.tab">图片提色</button></div>
+<div id="primaryViewImage" hidden>
+<div class="image-extract-toolbar">
+<button id="imagePickBtn" class="btn outline" style="padding:8px 12px" data-i18n="p39.pick">选择图片…</button>
+<input type="file" id="imageFileInput" accept="image/*" hidden>
+<select id="imageModeSelect" class="select" style="width:150px" data-i18n-aria="p39.mode.aria">
+<option value="balanced" data-i18n="p39.mode.balanced">均衡（按占比）</option>
+<option value="vivid" data-i18n="p39.mode.vivid">鲜色优先</option>
+<option value="bright" data-i18n="p39.mode.bright">明亮优先</option>
+<option value="dark" data-i18n="p39.mode.dark">深色优先</option>
+</select>
+<span class="small" data-i18n="p39.privacy">🔒 图片仅在本机解析与计算，不上传。</span>
+</div>
+<div id="imagePreviewRow" hidden><img id="imagePreview" alt="" style="max-width:100%;max-height:120px;border-radius:8px;border:1px solid var(--line)"><span class="small" id="imageMeta"></span></div>
+<div id="imageCandidatesWrap" class="grid-3" style="margin-top:10px"></div>
+<p class="small" id="imageStatus" style="margin-top:8px"></p>
+<div id="imageGradientRow" hidden style="margin-top:10px">
+<div class="label" data-i18n="p39.gradient.title">渐变提取</div>
+<div class="row" style="align-items:center"><span id="imageGradientPreview" style="display:inline-block;width:180px;height:34px;border-radius:8px;border:1px solid var(--line)"></span><button id="imageGradientApply" class="btn outline" style="padding:8px 10px" data-i18n="p39.gradient.apply">应用为轮播渐变</button><span class="small" id="imageGradientMeta"></span></div>
+</div>
+</div>
 <div id="primaryViewMood" hidden><div class="small" style="margin-bottom:10px" data-i18n="picker.mood.hint">按情感的配色倾向推荐主色（映射由配色宝典的组合数据推导）。点击即把该主色与其推荐副色一并套用。</div><div id="moodPrimaryWrap" class="grid-3"></div></div>
 <div id="primaryCandidatesWrap"></div>
 </section>
