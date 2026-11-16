@@ -59,7 +59,7 @@ export type TdonPreviewLayout='stack'|'sidebar-left'|'sidebar-right'|'hero';
 // 预览节点类型（TDON-5.3）：固定 9 类，未知值一律拒绝。
 // <lang zh-CN>顺序即文档与 UI 的展示顺序。</lang>
 // <lang en>Order doubles as the documentation/UI listing order.</lang>
-export const TDON_NODE_TYPES=['hero','nav','card','stats','list','table','form','divider','raw-text']as const;
+export const TDON_NODE_TYPES=['hero','nav','card','stats','list','table','form','divider','raw-text','code-editor']as const;
 export type TdonNodeType=typeof TDON_NODE_TYPES[number];
 
 // 目标元信息（§3）。

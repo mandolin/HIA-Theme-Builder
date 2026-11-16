@@ -15,7 +15,7 @@ import type{ExportTarget,VirtualFile}from'@hia/theme-core';
 import type{TdonDocument}from'./types.js';
 import{checkTdonPath}from'./paths.js';
 import{resolveTdonToken,tdonBuiltinTokensCss}from'./resolve.js';
-import{exportThemeJson}from'@hia/theme-core';
+import{exportThemeJson,textmateTheme,vscodeTheme,vimTheme,emacsTheme}from'@hia/theme-core';
 import{slugifyThemeName}from'@hia/theme-core';
 // TDOT 求值（ADR-011 §5.1）：`template.body` 的展开在导出侧按需执行。
 // <lang zh-CN>放在导出侧而非校验侧——求值需要 buildInfo，而校验器不接触宿主环境。</lang>
@@ -27,11 +27,22 @@ import type{TdotBuildInfo,TdotError,TdotWarning}from'./tdot/types.js';
 // 内置模板引用 → 文本生成器（白名单，TDON-6.5）。
 // <lang zh-CN>新增内置模板必须在此登记，并同步规范 §6.5 白名单与单测。</lang>
 // <lang en>New builtin templates must be registered here and mirrored in spec §6.5 plus tests.</lang>
-const BUILTIN_TEMPLATES:Record<string,((theme:Theme)=>string)>={
+const BUILTIN_TEMPLATES:Record<string,((theme:Theme,file?:{path:string})=>string)>={
   'builtin:hia-tokens-css':theme=>tdonBuiltinTokensCss(theme),
   'builtin:hia-tokens-json':theme=>exportThemeJson(theme)
 };
 
+// 编辑器主题（`W-tb-P42`/ADR-015）：四个 builtin 引用 → core 生成器。
+//   appearance 按声明 path 推断（含 dark → dark，否则 light）——同一 templateRef 声明两个 path
+//   即同时导出明暗两套（路径已经 checkTdonPath 校验，推断只看字面）。
+// <lang en>Editor themes (`W-tb-P42`/ADR-015): four builtin refs → core generators. Appearance is inferred
+//   from the declared path (containing "dark" → dark, else light), so declaring two paths exports both
+//   appearances; paths are already validated by checkTdonPath, the inference is literal.</lang>
+function editorAppearanceForPath(path:string):'light'|'dark'{return /dark/i.test(path)?'dark':'light';}
+BUILTIN_TEMPLATES['builtin:textmate-theme']=(theme,file)=>textmateTheme(theme,editorAppearanceForPath(file?.path??''));
+BUILTIN_TEMPLATES['builtin:vscode-theme']=(theme,file)=>vscodeTheme(theme,editorAppearanceForPath(file?.path??''));
+BUILTIN_TEMPLATES['builtin:vim-theme']=(theme,file)=>vimTheme(theme,editorAppearanceForPath(file?.path??''));
+BUILTIN_TEMPLATES['builtin:emacs-theme']=(theme,file)=>emacsTheme(theme,editorAppearanceForPath(file?.path??''));
 // 展开单次插值：`{{token:<ref>}}` 与 `{{meta:name|id}}`。
 // <lang zh-CN>用 split/join 而非 replace(RegExp) 之外的回调重扫——替换结果**不再**参与匹配，
 //   这是 TDON-6.7 的核心保证。</lang>
@@ -80,7 +91,7 @@ function tdonFiles(doc:TdonDocument,theme:Theme):VirtualFile[]{
     // <lang zh-CN>两者互斥由校验器保证，此处不重复判定。</lang>
     // <lang en>Mutual exclusivity is guaranteed by the validator; not re-checked here.</lang>
     const content=file.templateRef!==undefined
-      ?(BUILTIN_TEMPLATES[file.templateRef]?.(theme)??'')
+      ?(BUILTIN_TEMPLATES[file.templateRef]?.(theme,file)??'')
       :interpolate(file.template??'',theme,doc);
     return{path:file.path,content};
   });

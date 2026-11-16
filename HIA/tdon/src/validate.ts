@@ -529,8 +529,11 @@ function validateExportFile(ctx:Ctx,raw:unknown,path:string):TdonExportFile|unde
   // <lang en>No arbitrary builtin names, so future templates cannot silently widen the surface.</lang>
   let templateRef:string|undefined;
   if(ref!==undefined){
-    if(!/^builtin:(hia-tokens-css|hia-tokens-json)$/.test(ref)){
-      pushError(ctx,'E_TEMPLATE_REF',`${path}.templateRef`,`templateRef「${ref}」不在白名单（builtin:hia-tokens-css / builtin:hia-tokens-json）。`,`templateRef "${ref}" is not whitelisted (builtin:hia-tokens-css / builtin:hia-tokens-json).`);
+    // 白名单（TDON-6.5，ADR-015 扩充）：令牌 CSS/JSON + 四种编辑器主题（TextMate/VSCode/Vim/Emacs）。
+    // <lang en>Whitelist (TDON-6.5, extended by ADR-015): token CSS/JSON plus four editor themes
+    //   (TextMate/VSCode/Vim/Emacs).</lang>
+    if(!/^builtin:(hia-tokens-css|hia-tokens-json|textmate-theme|vscode-theme|vim-theme|emacs-theme)$/.test(ref)){
+      pushError(ctx,'E_TEMPLATE_REF',`${path}.templateRef`,`templateRef「${ref}」不在白名单（hia-tokens-css / hia-tokens-json / textmate-theme / vscode-theme / vim-theme / emacs-theme）。`,`templateRef "${ref}" is not whitelisted (hia-tokens-css / hia-tokens-json / textmate-theme / vscode-theme / vim-theme / emacs-theme).`);
       return undefined;
     }
     templateRef=ref;
@@ -1029,6 +1032,22 @@ const NODE_SPECS:Record<TdonNodeType,NodeSpec>={
           }
           return ref;
         }
+        default:return undefined;
+      }
+    }
+  },
+  // code-editor：代码编辑器预览（`W-tb-P42`/ADR-015）——行号+轻量语法着色示意。
+  // <lang zh-CN>code 缺省用内置样例；title 缺省"示例代码"；accentToken 控制标题栏。
+  //   code ≤2000 字符（与 raw-text 同级）；着色为近似示意，导出才走精确映射（ADR-015 风险节）。</lang>
+  // <lang en>code-editor node (`W-tb-P42`/ADR-015): line numbers + lightweight syntax colouring. code falls
+  //   back to a built-in sample; colouring is an approximation — exports are exact (ADR-015 risk note).</lang>
+  'code-editor':{
+    keys:['title','code','accentToken'],
+    validate:(ctx,v,p,key)=>{
+      switch(key){
+        case 'title':return optString(60)(ctx,v,p);
+        case 'code':return optString(2000)(ctx,v,p);
+        case 'accentToken':return optToken()(ctx,v,p);
         default:return undefined;
       }
     }

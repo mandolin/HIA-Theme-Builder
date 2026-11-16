@@ -1,0 +1,25 @@
+{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "editor-themes-demo",
+    "name": "编辑器主题包",
+    "nameEn": "Editor Theme Pack"
+  },
+  "preview": {
+    "title": "编辑器主题演示",
+    "layout": "stack",
+    "nodes": [
+      { "type": "code-editor", "title": "main.ts", "code": "// 主题来自 HIA 配色系统\nconst scale = buildTheme(\"#0047AB\");\nexport function pick(shade: number) {\n  return scale[shade]; // contrast-checked\n}" }
+    ]
+  },
+  "exportManifest": {
+    "files": [
+      { "path": "themes/HIA-light.tmTheme", "templateRef": "builtin:textmate-theme" },
+      { "path": "themes/HIA-dark.tmTheme", "templateRef": "builtin:textmate-theme" },
+      { "path": "vscode/hia-light.color-theme.json", "templateRef": "builtin:vscode-theme" },
+      { "path": "vscode/hia-dark.color-theme.json", "templateRef": "builtin:vscode-theme" },
+      { "path": "vim/colors/hia-light.vim", "templateRef": "builtin:vim-theme" },
+      { "path": "emacs/hia-theme.el", "templateRef": "builtin:emacs-theme" }
+    ]
+  }
+}

@@ -188,6 +188,23 @@ function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):str
     // raw-text：纯文本段。\n → <br>，其余全部转义（TDON-5.11）。
     // <lang zh-CN>size 为 fs:<step> 令牌，解析后作为 font-size。</lang>
     // <lang en>size is an fs:<step> token, resolved into font-size.</lang>
+    // code-editor：代码编辑器预览（`W-tb-P42`/ADR-015）——行号+轻量语法着色示意。
+    // <lang zh-CN>着色是近似（四类 token），导出才是精确映射；文本全部转义（TDON-5.4）。
+    //   accentToken 控制标题栏，缺省取 primary.500。</lang>
+    // <lang en>Colouring is an approximation (four token classes); exports are exact. All text is escaped
+    //   (TDON-5.4). accentToken styles the title bar, defaulting to primary.500.</lang>
+    case 'code-editor':{
+      const ac=css(theme,a.accentToken)??css(theme,'primary.500')??'';
+      const title=a.title?String(a.title):'example / 示例代码';
+      const code=String(a.code??SAMPLE_CODE);
+      const codeLines=code.split('\n');
+      const rows=codeLines.map((line,i)=>{
+        const esc=escapeTdonHtml(line);
+        return`<div class="tdon-code-row"><span class="tdon-code-ln">${i+1}</span><span class="tdon-code-text">${colorize(esc,theme)}</span></div>`;
+      }).join('');
+      return`<div class="tdon-node tdon-code-editor${fx.cls}"${idAttr}${fx.styleAttr}><div class="tdon-code-title"${ac?` style="background:${ac}"`:''}><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-title-text">${escapeTdonHtml(title)}</span></div><div class="tdon-code-body">${rows}</div><div class="tdon-code-status">${escapeTdonHtml(title)} · ${codeLines.length}L</div></div>`;
+    }
+
     default:{
       const tc=css(theme,a.textToken);const sz=css(theme,a.size);
       const decls:[string,string][]=[];
@@ -209,6 +226,47 @@ function renderChildren(theme:Theme,kids:TdonNode[]|undefined,doc:TdonDocument,d
 // 换行转 <br>：先整体转义，再把已转义文本中的 \n 替换为 <br>。
 // <lang zh-CN>顺序不可颠倒——先替换后转义会把 <br> 也转义掉。</lang>
 // <lang en>Order matters — replacing before escaping would escape the <br> too.</lang>
+// code-editor 内置样例（节点缺省 code；覆盖常见着色类别）。
+// <lang en>Built-in sample for the code-editor node, covering the common colouring classes.</lang>
+const SAMPLE_CODE=['// comment / 注释','const answer = 42;','function greet(name: string) {','  return "hello, " + name;','}','if (answer > 40) { greet("ok"); }'].join('\n');
+
+// 轻量着色：单行内按 注释>字符串>数字>关键字 顺序切分（行级渲染，无跨行状态）。
+// <lang en>Lightweight colouring: per line, priority comment > string > number > keyword (line-level
+//   rendering, no cross-line state).</lang>
+const CODE_KEYWORDS=/^(const|let|var|function|return|if|else|for|while|import|export|class|type|interface)$/;
+function colorize(escapedLine:string,theme:Theme):string{
+  const col=(ref:string)=>css(theme,ref)??'inherit';
+  const comment=col('secondary.600'),str=col('semantic.success.600')||col('secondary.600'),num=col('semantic.warning.600')||col('secondary.700'),kw=col('primary.500');
+  // 注释：行内 // 之后全部注释色。
+  // <lang en>A trailing comment colours the rest of the line.</lang>
+  const ci=escapedLine.indexOf('//');
+  if(ci>=0){
+    return`<span style="color:${comment}">${escapedLine.slice(0,ci)}${escapedLine.slice(ci)}</span>`;
+  }
+  // 字符串：按引号对切（escapeTdonHtml 已处理危险字符）。
+  // <lang en>String literals split by quote pairs on the already-escaped text.</lang>
+  let out='',rest=escapedLine;
+  const re=/("[^"]*"|'[^']*')/;
+  while(rest.length){
+    const m=re.exec(rest);
+    if(!m){out+=plainWithKeywords(rest,kw,num);break;}
+    out+=plainWithKeywords(rest.slice(0,m.index),kw,num);
+    out+=`<span style="color:${str}">${m[0]}</span>`;
+    rest=rest.slice((m.index??0)+m[0].length);
+  }
+  return out;
+  // 片段内再着数字/关键字。
+  // <lang en>Numbers and keywords are coloured within the non-string fragments.</lang>
+  function plainWithKeywords(chunk:string,kwColor:string,numColor:string):string{
+    const parts=chunk.split(/([A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?)/);
+    return parts.map(part=>{
+      if(/^\d+(?:\.\d+)?$/.test(part))return`<span style="color:${numColor}">${part}</span>`;
+      if(CODE_KEYWORDS.test(part))return`<span style="color:${kwColor}">${part}</span>`;
+      return part;
+    }).join('');
+  }
+}
+
 function nl2br(text:string):string{
   return escapeTdonHtml(text).replace(/\n/g,'<br>');
 }

@@ -132,6 +132,8 @@ export{wordpressChildTarget}from'./export/wordpress.js';
 export{tailwindConfigTarget}from'./export/tailwind.js';
 export{tailwindV4Target}from'./export/tailwind4.js';
 export{dtcgExportTarget,exportDtcgTokens,parseDtcgTokens}from'./export/dtcg.js';
+export{textmateTheme,vscodeTheme,vimTheme,emacsTheme,EDITOR_THEME_GENERATORS,findEditorThemeGenerator}from'./export/editor-themes.js';
+export type{EditorAppearance}from'./export/editor-themes.js';
 export type{DtcgIssue,DtcgIssueCode,DtcgParseResult}from'./export/dtcg.js';
 export{injectTemplateTarget}from'./export/inject-template.js';
 export{analyzeTheme}from'./analyze/analyze.js';
