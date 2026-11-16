@@ -1,6 +1,6 @@
 {
   "name": "@hia/tdon",
-  "version": "0.3.0-rc.1",
+  "version": "0.3.0-rc.2",
   "description": "HIA TDON runtime: declarative theme-adapter documents (tdon-0.2) — zero-dependency validator, preview renderer and export adapter. Pure functions, no IO.",
   "license": "MIT",
   "author": "HIA Theme Builder contributors",
@@ -39,7 +39,7 @@
     "prepublishOnly": "npm run clean && npm run build && node --test"
   },
   "dependencies": {
-    "@hia/theme-core": "file:../core"
+    "@hia/theme-core": "^1.0.0-rc.1"
   },
   "devDependencies": {
     "rimraf": "^5.0.0",
