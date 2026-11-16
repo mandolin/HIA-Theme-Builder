@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- @lang zh-CN TDON 节点参考（`tdon-0.2`，双语）：9 类预览节点的完整属性表与渲染语义。
-     @lang en TDON node reference (`tdon-0.2`, bilingual): full attribute tables and rendering semantics for the nine node types. -->
+     @lang en TDON node reference (`tdon-0.2`, bilingual): full attribute tables and rendering semantics for the ten node types. -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -122,7 +122,7 @@
       <span class="zh">所有文本渲染前 HTML 转义；节点上不允许出现任意 CSS 字符串；图片一律懒加载且不发送 referrer。</span>
       <span class="en">All text is HTML-escaped before rendering; no arbitrary CSS strings are allowed on nodes; images are always lazy-loaded with no referrer.</span>
     </div>
-  </section>
+  <div class="node-head"><code>code-editor</code><span class="zh">代码编辑器预览</span><span class="en">Code editor</span></div>     <table class="attr-table">       <tr><th><span class="zh">属性</span><span class="en">Attr</span></th><th><span class="zh">类型</span><span class="en">Type</span></th><th><span class="zh">必填</span><span class="en">Req</span></th><th><span class="zh">说明</span><span class="en">Notes</span></th></tr>       <tr><td>title</td><td>string</td><td></td><td><span class="zh">≤60；标题栏文字，缺省"示例代码"</span><span class="en">≤60; bar text, default "example"</span></td></tr>       <tr><td>code</td><td>string</td><td></td><td><span class="zh">≤2000；代码文本，缺省内置样例；行号+四类着色示意（注释/字符串/数字/关键字）</span><span class="en">≤2000; defaults to a built-in sample; line numbers + four-class colouring hint</span></td></tr>       <tr><td>accentToken</td><td>token</td><td></td><td><span class="zh">标题栏颜色，缺省 primary.500</span><span class="en">Bar colour, default primary.500</span></td></tr>     </table>      <p class="note"><span class="zh">ADR-015：着色为示意，编辑器主题（TextMate/VSCode/Vim/Emacs）的精确映射走导出（§6.5 白名单）。</span><span class="en">ADR-015: colouring is a hint; exact editor themes (TextMate/VSCode/Vim/Emacs) export via the §6.5 whitelist.</span></p>     </section>
 </main>
 <footer class="site-foot">
   <a href="../spec/">← <span class="zh">返回规范全文</span><span class="en">Back to the spec</span></a>
