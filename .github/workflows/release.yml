@@ -107,7 +107,7 @@ jobs:
           # <lang en>The MSI filename uses the Tauri-side version (tauri.conf.json): WiX only accepts
           #   numeric-only prerelease identifiers, so the npm-side alphanumeric prerelease
           #   (e.g. 1.0.0-rc.1) may differ from the Tauri side (e.g. 1.0.0-1).</lang>
-          $tauriVer = (Get-Content "HIA	auri\src-tauri	auri.conf.json" | ConvertFrom-Json).version
+          $tauriVer = (Get-Content "HIA\tauri\src-tauri\tauri.conf.json" | ConvertFrom-Json).version
           Write-Host "tauri version: $tauriVer"
           $expected = @(
             "artifacts\HIA-Theme-Builder-Electron-$ver-portable.exe",
