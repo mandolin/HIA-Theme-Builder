@@ -190,23 +190,86 @@ for(const[name,re]of expect){
 }
 if(paths.length<6){console.error(`❌ 导出文件数应 ≥6（四格式明暗），实为 ${paths.length}`);failed++;}
 
-// 4) 明暗两套内容不同：点选 light 与 dark 文件比较预览文本。
-// <lang en>Light/dark differ: select each file and compare the preview text.</lang>
-const contents=await page.evaluate(()=>{
+// 4) 文件预览必须是**高亮代码块**（维护者反馈：纯色 textarea 不友好），且明暗两套内容不同。
+// <lang en>The file preview must be a **highlighted code block** (maintainer feedback: the plain textarea read
+//   poorly), and the light/dark contents must differ.</lang>
+const previewState=await page.evaluate(()=>{
   const els=[...document.querySelectorAll('[data-tdon-file]')];
   const readAfterClick=(re)=>{
     const el=els.find(x=>re.test(x.getAttribute('data-tdon-file')??''));
-    if(!el)return '';
+    if(!el)return null;
     el.click();
-    return document.getElementById('exportTdonFilePreview')?.value??'';
+    const host=document.getElementById('exportTdonFilePreview');
+    if(!host)return null;
+    const view=host.querySelector('.code-view');
+    return{
+      isCodeView:!!view,
+      lang:view?.getAttribute('data-lang')??'',
+      rows:host.querySelectorAll('.cv-row').length,
+      tokens:host.querySelectorAll('[class^="tok-"]').length,
+      tokenClasses:[...new Set([...host.querySelectorAll('[class^="tok-"]')].map(e=>e.className))],
+      // 底色必须是浅色（不是此前的 #0E1726 深色）
+      // <lang en>The backdrop must be light (not the previous #0E1726 dark).</lang>
+      bg:view?getComputedStyle(view).backgroundColor:'',
+      text:(host.textContent??'').length
+    };
   };
-  const light=readAfterClick(/light/i);
-  const dark=readAfterClick(/dark/i);
-  return{lightLen:light.length,darkLen:dark.length,identical:light===dark&&light.length>0};
+  return{light:readAfterClick(/light\.tmTheme/i),dark:readAfterClick(/dark\.tmTheme/i)};
 });
-console.log('[light/dark]',JSON.stringify(contents));
-if(contents.lightLen===0||contents.darkLen===0){console.error('❌ 文件内容预览为空');failed++;}
-if(contents.identical){console.error('❌ 明暗两套内容完全相同');failed++;}
+console.log('[preview-highlight]',JSON.stringify(previewState));
+const pv=previewState.light;
+if(!pv||!pv.isCodeView){console.error('❌ 预览不是高亮代码块');failed++;}
+else{
+  if(pv.rows<5){console.error(`❌ 行号不足（${pv.rows}）`);failed++;}
+  if(pv.tokens<6){console.error(`❌ 高亮 token 太少（${pv.tokens}）——疑似纯文本`);failed++;}
+  if(pv.lang!=='markup'){console.error(`❌ .tmTheme 应走 markup 高亮，实为 ${pv.lang}`);failed++;}
+  if(pv.bg==='rgb(14, 23, 38)'){console.error('❌ 预览仍是旧深色底');failed++;}
+  if(pv.tokenClasses.length<2){console.error(`❌ token 配色单一（${pv.tokenClasses.join(',')}）`);failed++;}
+}
+if(!previewState.dark||previewState.light?.text===previewState.dark?.text){console.error('❌ 明暗两套内容相同');failed++;}
+await shot('02-export-tree.png');
+
+// 4b) 经典导出区（WordPress/Tailwind/DTCG）预览同样必须是高亮块（CSS 与 JSON 各测一次）。
+// <lang en>The classic export area must highlight too — check CSS and JSON.</lang>
+await page.evaluate(()=>{
+  document.querySelector('#exportTypeTabs .tab[data-export-mode="classic"]')?.click();
+});
+await new Promise(r=>setTimeout(r,500));
+const classicChecks=await page.evaluate(()=>{
+  const rows=[...document.querySelectorAll('[data-export-file]')];
+  const probe=(re)=>{
+    const r=rows.find(x=>re.test(x.getAttribute('data-export-file')??''));
+    if(!r)return null;
+    r.click();
+    const host=document.getElementById('exportFilePreview');
+    const view=host?.querySelector('.code-view');
+    if(!view)return null;
+    return{lang:view.getAttribute('data-lang'),tokens:host.querySelectorAll('[class^="tok-"]').length,rows:host.querySelectorAll('.cv-row').length,file:r.getAttribute('data-export-file')};
+  };
+  // 目标是 tailwind-config 时才有 CSS/JS 文件；先切目标。
+  const sel=document.getElementById('exportTargetSelect');
+  if(sel){sel.value='tailwind-config';sel.dispatchEvent(new Event('change',{bubbles:true}));}
+  return{switched:!!sel};
+});
+await new Promise(r=>setTimeout(r,500));
+const classic=await page.evaluate(()=>{
+  const rows=[...document.querySelectorAll('[data-export-file]')];
+  const probe=(re)=>{
+    const r=rows.find(x=>re.test(x.getAttribute('data-export-file')??''));
+    if(!r)return null;
+    r.click();
+    const host=document.getElementById('exportFilePreview');
+    const view=host?.querySelector('.code-view');
+    if(!view)return null;
+    return{lang:view.getAttribute('data-lang'),tokens:host.querySelectorAll('[class^="tok-"]').length,rows:host.querySelectorAll('.cv-row').length,file:r.getAttribute('data-export-file')};
+  };
+  return{css:probe(/\.css$/i),config:probe(/\.js$/i)};
+});
+console.log('[classic-highlight]',JSON.stringify({switched:classicChecks.switched,css:classic.css,config:classic.config}));
+if(!classic.css){console.error('❌ 经典导出未找到 CSS 文件预览');failed++;}
+else if(classic.css.tokens<5){console.error(`❌ CSS 预览高亮不足（${classic.css.tokens}）`);failed++;}
+if(!classic.config){console.error('❌ 经典导出未找到 JS/JSON 文件预览');failed++;}
+else if(classic.config.tokens<3){console.error(`❌ JS 预览高亮不足（${classic.config.tokens}）`);failed++;}
 await shot('02-export-tree.png');
 
 // 5) 无 JS 错误。

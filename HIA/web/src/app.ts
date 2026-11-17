@@ -22,6 +22,7 @@ import{
   type TypographyTokens,type SpacingTokens,
   type WebsiteThemeAnalysisV2,type MatrixEntry,type SemanticStatusKey,type ImageExtractMode
 }from'@hia/theme-core';
+import{renderCodePreview}from'./code-highlight.js';
 // TDON 运行时来自独立包 @hia/tdon（TDON-15.1）：core 不再导出这些符号。
 // <lang zh-CN>独立包让第三方应用可只引用 TDON 而不引入整个 core。</lang>
 // <lang en>The standalone package lets third-party apps use TDON alone, without all of core.</lang>
@@ -1449,9 +1450,17 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const sizeLabel=size<1024?`${size} B`:`${(size/1024).toFixed(1)} KB`;
       return`<button type="button" class="export-file-row ${f.path===selectedExportFile?'active':''}" data-export-file="${escapeHtml(f.path)}"><i class="export-file-icon" aria-hidden="true"></i><span>${escapeHtml(f.path)}</span><span class="export-file-size">${sizeLabel}</span></button>`;
     }).join('');
-    const preview=byId<HTMLTextAreaElement>('exportFilePreview');
+    // 高亮只读预览（维护者反馈：纯色 textarea 不友好）。按文件路径选语言族。
+    // <lang en>Highlighted read-only preview (maintainer feedback); the language family follows the path.</lang>
+    const preview=byId<HTMLElement>('exportFilePreview');
     const current=files.find(f=>f.path===selectedExportFile);
-    if(current){preview.hidden=false;preview.value=current.content;}else{preview.hidden=true;preview.value='';}
+    if(current){
+      preview.hidden=false;
+      preview.innerHTML=renderCodePreview(current.content,current.path);
+    }else{
+      preview.hidden=true;
+      preview.innerHTML='';
+    }
     setText('exportZipName',target.archiveName(theme()));
     all<HTMLButtonElement>('[data-export-file]',tree).forEach(btn=>btn.addEventListener('click',()=>{
       selectedExportFile=btn.dataset.exportFile||null;
@@ -1492,7 +1501,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   function renderTdonExport(){
     const empty=byId<HTMLElement>('tdonExportEmpty');
     const tree=byId<HTMLElement>('exportTdonFileTree');
-    const preview=byId<HTMLTextAreaElement>('exportTdonFilePreview');
+    const preview=byId<HTMLElement>('exportTdonFilePreview');
     const zipBtn=byId<HTMLButtonElement>('exportTdonZipBtn');
     // 未连接：显示说明并禁用下载按钮（不提供无效操作）。
     // <lang zh-CN>隐藏树与预览，避免残留上一目标内容。</lang>
@@ -1504,7 +1513,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       // <lang en>Cleared, not just hidden: hidden nodes still expose stale paths to screen readers and DOM
       //   inspection, and the old ZIP name would wrongly suggest a downloadable target.</lang>
       tree.innerHTML='';
-      preview.value='';
+      preview.innerHTML='';
       selectedTdonFile=null;
       setText('tdonExportTargetLabel','');
       setText('exportTdonZipName','');
@@ -1530,7 +1539,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     }catch(e){
       content=`/* ${t('p9.tdon.exportFail',{reason:e instanceof Error?e.message:String(e)})} */`;
     }
-    preview.hidden=false;preview.value=content;
+    preview.hidden=false;
+    // 高亮只读预览（与经典导出同一渲染器，保证两个导出区观感一致）。
+    // <lang en>Highlighted read-only preview (same renderer as the classic export, so both areas match).</lang>
+    preview.innerHTML=renderCodePreview(content,selectedTdonFile??'');
     setText('tdonExportTargetLabel',`${tdonDoc.target.name} · ${tdonDoc.target.id}`);
     setText('exportTdonZipName',target.archiveName(theme()));
     all<HTMLButtonElement>('[data-tdon-file]',tree).forEach(btn=>btn.addEventListener('click',()=>{

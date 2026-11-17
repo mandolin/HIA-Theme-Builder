@@ -221,7 +221,32 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .export-file-row.active{background:var(--p100);font-weight:800}
 .export-file-row .export-file-size{margin-left:auto;color:#7D8E97;font-size:11px;flex:none}
 .export-file-icon{width:14px;height:14px;border-radius:3px;background:var(--p200);flex:none;display:inline-block}
-#exportFilePreview{width:100%;min-height:150px;max-height:260px;font:11px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;background:#0E1726;color:#D6E8F5;border:0;border-radius:8px;padding:10px;resize:vertical}
+/* 导出文件预览：带行号与语法高亮的只读代码块（维护者反馈：此前是纯色 textarea）。
+   浅色底取自当前主题的浅阶（--p50/--p100），标记色全部走主题变量——不硬编码任何主题色。
+   <lang en>Export preview: a read-only code block with line numbers and syntax highlighting (the previous
+   plain textarea read poorly). The light backdrop comes from the theme's light steps, and every token colour
+   is a theme variable — no theme colour is hardcoded.</lang> */
+.code-view-wrap{width:100%}
+.code-view{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#FFFFFF;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.code-view-head{display:flex;justify-content:space-between;gap:12px;padding:8px 12px;background:var(--p50);border-bottom:1px solid var(--p200);font-size:11px;font-weight:800;color:var(--p800)}
+.code-view-head .cv-path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.code-view-head .cv-meta{flex:none;color:var(--muted);font-weight:700}
+.code-view-body{max-height:300px;overflow:auto;background:#fff;padding:10px 0}
+.cv-row{display:flex;align-items:baseline;font-size:11.5px;line-height:1.75}
+.cv-ln{flex:none;width:3.4em;padding-right:14px;text-align:right;margin-right:14px;color:#A9B6C1;border-right:1px solid var(--p200);user-select:none;font-variant-numeric:tabular-nums}
+.cv-code{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word;color:#22303C;padding-right:12px}
+/* token 配色：全部来自当前主题（主/副色阶）与少量中性色，保证与主题一致且浅底可读。 */
+/* Token colours: all from the active theme (primary/secondary steps) plus neutrals — theme-consistent and
+   legible on the light backdrop. */
+.code-view .tok-comment{color:var(--s600);font-style:italic}
+.code-view .tok-prop{color:var(--p700);font-weight:700}
+.code-view .tok-varref{color:var(--s700)}
+.code-view .tok-atrule{color:var(--p600);font-weight:800}
+.code-view .tok-color{color:var(--s800);font-weight:700}
+.code-view .tok-number{color:var(--s700)}
+.code-view .tok-string{color:var(--p800)}
+.code-view .tok-key{color:var(--p700);font-weight:700}
+.code-view .tok-literal{color:var(--s800);font-weight:700}
 .tdon-placeholder{border:1px dashed var(--p300);border-radius:10px;background:var(--p50);padding:14px;font-size:12px;line-height:1.7;color:var(--text)}
 .tdon-placeholder b{display:block;margin-bottom:4px}
 .tdon-placeholder p{margin:0;color:var(--muted)}
@@ -244,7 +269,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .tdon-issue-truncated{color:var(--muted);margin:4px 0 0}
 .tdon-export-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-radius:8px;background:var(--p50);border:1px solid var(--line)}
 .tdon-export-bar .btn{margin-left:auto}
-#exportTdonFilePreview{width:100%;min-height:150px;max-height:260px;font:11px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;background:#0E1726;color:#D6E8F5;border:0;border-radius:8px;padding:10px;resize:vertical}
+
 
 /* W-tb-P9 经典支持场景预览（ADR-005 对应可视化）：WordPress 前台/后台与 Tailwind 落地页 mock。
    全部颜色/字体/间距引用当前主题变量，主题变更即时反映。
