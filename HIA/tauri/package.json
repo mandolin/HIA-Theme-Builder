@@ -1,6 +1,6 @@
 {
   "name": "@hia/theme-tauri",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0",
   "description": "HIA-Theme-Builder desktop (Tauri): lightweight theme console plus URL color extraction. MIT. Rust backend + WebView; analyzer shared with core.",
   "license": "MIT",
   "type": "module",
