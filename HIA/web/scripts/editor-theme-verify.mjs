@@ -96,6 +96,33 @@ if(preview.lineNumbers<3){console.error(`❌ 行号不足（${preview.lineNumber
 if(!preview.hasStatusBar){console.error('❌ 状态条未渲染');failed++;}
 if(/E_|错误|error/i.test(preview.issues)){console.error(`❌ 预览报错：${preview.issues}`);failed++;}
 const shot=async(name)=>{const el=await page.$('#tdonPreviewPanel');if(el){await el.screenshot({path:join(OUT,name)});console.log('[shot]',name);}};
+// 几何断言（维护者反馈核心）：行号栏与代码正文之间必须有实际间距 + 分隔线——
+//   此前 code-editor 完全没有 CSS，行号紧贴正文。用 getBoundingClientRect 实测。
+// <lang en>Geometry assertion (the maintainer's core complaint): the gutter and the code text need real
+//   spacing plus a divider — code-editor previously had no CSS at all and the numbers stuck to the text.</lang>
+const geom=await page.evaluate(()=>{
+  const ln=document.querySelector('#tdonPreviewBody .tdon-code-ln');
+  const tx=document.querySelector('#tdonPreviewBody .tdon-code-text');
+  const ed=document.querySelector('#tdonPreviewBody .tdon-code-editor');
+  if(!ln||!tx||!ed)return null;
+  const a=ln.getBoundingClientRect(),b=tx.getBoundingClientRect();
+  const cs=getComputedStyle(ln);
+  return{
+    gap:Math.round((b.left-a.right)*10)/10,
+    borderRight:cs.borderRightWidth,
+    borderRadius:getComputedStyle(ed).borderRadius,
+    fontFamily:getComputedStyle(ed).fontFamily.slice(0,40),
+    lineHeight:getComputedStyle(ln.parentElement).lineHeight
+  };
+});
+console.log('[geometry]',JSON.stringify(geom));
+if(!geom){console.error('❌ 找不到行号/正文元素');failed++;}
+else{
+  if(geom.gap<8){console.error(`❌ 行号与正文间距仅 ${geom.gap}px（应 ≥8px）`);failed++;}
+  if(parseFloat(geom.borderRight)<1){console.error('❌ 行号栏缺少右分隔线');failed++;}
+  if(geom.borderRadius==='0px'){console.error('❌ 编辑器缺少圆角（应像真实编辑器窗口）');failed++;}
+  if(!/mono/i.test(geom.fontFamily)){console.error(`❌ 未使用等宽字体（${geom.fontFamily}）`);failed++;}
+}
 await shot('01-code-editor-preview.png');
 
 // 3) 导出文件树：四格式八文件。

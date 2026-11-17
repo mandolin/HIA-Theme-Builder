@@ -202,7 +202,11 @@ function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):str
         const esc=escapeTdonHtml(line);
         return`<div class="tdon-code-row"><span class="tdon-code-ln">${i+1}</span><span class="tdon-code-text">${colorize(esc,theme)}</span></div>`;
       }).join('');
-      return`<div class="tdon-node tdon-code-editor${fx.cls}"${idAttr}${fx.styleAttr}><div class="tdon-code-title"${ac?` style="background:${ac}"`:''}><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-title-text">${escapeTdonHtml(title)}</span></div><div class="tdon-code-body">${rows}</div><div class="tdon-code-status">${escapeTdonHtml(title)} · ${codeLines.length}L</div></div>`;
+      // 状态栏左：文件名 + 语言；右：行数 + 编码（真实编辑器惯例）。
+      // <lang en>Status bar: filename + language on the left, line count + encoding on the right.</lang>
+      const extMatch=a.title?/\.([A-Za-z0-9]+)$/.exec(String(a.title)):null;
+      const lang=extMatch?extMatch[1]!:'text';
+      return`<div class="tdon-node tdon-code-editor${fx.cls}"${idAttr}${fx.styleAttr}><div class="tdon-code-title"${ac?` style="background:${ac}"`:''}><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-title-text">${escapeTdonHtml(title)}</span></div><div class="tdon-code-body">${rows}</div><div class="tdon-code-status"><span>${escapeTdonHtml(title)} · ${escapeTdonHtml(lang)}</span><span>${codeLines.length} lines · UTF-8</span></div></div>`;
     }
 
     default:{
@@ -228,7 +232,20 @@ function renderChildren(theme:Theme,kids:TdonNode[]|undefined,doc:TdonDocument,d
 // <lang en>Order matters — replacing before escaping would escape the <br> too.</lang>
 // code-editor 内置样例（节点缺省 code；覆盖常见着色类别）。
 // <lang en>Built-in sample for the code-editor node, covering the common colouring classes.</lang>
-const SAMPLE_CODE=['// comment / 注释','const answer = 42;','function greet(name: string) {','  return "hello, " + name;','}','if (answer > 40) { greet("ok"); }'].join('\n');
+const SAMPLE_CODE=[
+  '// HIA Theme Builder — editor preview / 编辑器预览',
+  'import { buildTheme } from "@hia/theme-core";',
+  '',
+  'const shade = buildTheme({',
+  '  primary: "#0047AB",',
+  '  secondary: "#00A8D3"',
+  '});',
+  '',
+  '// contrast-checked foreground per role',
+  'export function foreground(step: number) {',
+  '  return shade[step];',
+  '}'
+].join('\n');
 
 // 轻量着色：单行内按 注释>字符串>数字>关键字 顺序切分（行级渲染，无跨行状态）。
 // <lang en>Lightweight colouring: per line, priority comment > string > number > keyword (line-level
@@ -326,6 +343,22 @@ export const TDON_PREVIEW_CSS=`
 .tdon-submit{align-self:flex-start;padding:7px 16px;border-radius:8px;color:#fff;font-size:var(--hia-fs-small,14px)}
 .tdon-divider{border-top:1px solid rgba(0,0,0,.14);height:0;margin:4px 0}
 .tdon-raw-text{margin:0;font-size:var(--hia-fs-body,16px)}
+/* code-editor：按真实编辑器观感——标题栏、行号栏（右对齐+右分隔线）、代码区、状态栏。
+   行号与正文靠行号栏的右 padding + 1px 分隔线拉开，而不是紧贴。
+   <lang en>code-editor mirrors a real editor: title bar, gutter (right-aligned with a 1px divider), code
+   area and status bar. The gutter's right padding plus the divider separate line numbers from code.</lang> */
+.tdon-code-editor{border:1px solid rgba(0,0,0,.14);border-radius:10px;overflow:hidden;background:var(--hia-primary-900,#0F172A);box-shadow:0 8px 24px rgba(15,23,42,.18);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.tdon-code-title{display:flex;align-items:center;gap:7px;padding:9px 12px;background:rgba(0,0,0,.22);border-bottom:1px solid rgba(255,255,255,.08)}
+.tdon-code-dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.28);flex:none}
+.tdon-code-dot:nth-child(1){background:#FF5F57}
+.tdon-code-dot:nth-child(2){background:#FEBC2E}
+.tdon-code-dot:nth-child(3){background:#28C840}
+.tdon-code-title-text{margin-left:8px;font:600 12px/1 inherit;color:rgba(255,255,255,.72);font-family:inherit;letter-spacing:.02em}
+.tdon-code-body{padding:12px 0;background:var(--hia-primary-900,#0F172A)}
+.tdon-code-row{display:flex;align-items:baseline;font-size:13px;line-height:1.75}
+.tdon-code-ln{flex:none;width:3.2em;padding-right:16px;text-align:right;color:rgba(255,255,255,.32);border-right:1px solid rgba(255,255,255,.09);margin-right:16px;user-select:none;font-variant-numeric:tabular-nums}
+.tdon-code-text{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word;color:rgba(255,255,255,.9);padding-right:14px}
+.tdon-code-status{display:flex;justify-content:space-between;gap:10px;padding:6px 12px;background:rgba(0,0,0,.24);border-top:1px solid rgba(255,255,255,.08);font:600 11px/1.4 inherit;color:rgba(255,255,255,.6);font-family:inherit}
 .tdon-children{display:flex;flex-direction:column;gap:10px;margin-top:12px}
 .tdon-fx-gradient-shift{background-size:200% 100%;animation:tdon-gradient-shift 6s linear infinite}
 .tdon-fx-fade-in{animation:tdon-fade-in var(--tdon-fx-duration,400ms) ease-out both}
