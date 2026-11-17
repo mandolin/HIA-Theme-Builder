@@ -516,6 +516,16 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 对比度矩阵随主题实时刷新（`W-tb-P36`）——成本 ~9×9 对比度计算，可忽略。
     // <lang en>The contrast matrix refreshes with the theme (`W-tb-P36`) — ~9×9 cheap computations.</lang>
     refreshContrastPanel();
+    // 草稿自动持久化（维护者反馈：刷新后主题丢失）——轻量 localStorage 快照，刷新即恢复。
+    //   不含 semantic/radius/shadow（这些由显式保存承载），只保基色/名称/渐变——控制体积。
+    // <lang en>Auto-persist the draft to localStorage (maintainer feedback: theme lost on refresh) — a light
+    //   snapshot of base colours, names and gradients; semantic/radius/shadow are carried by explicit saves.</lang>
+    try{
+      const snap=JSON.stringify({p:draft.primary,pn:draft.primaryName,s:draft.secondary,sn:draft.secondaryName,
+        n:draft.name,c:draft.category,g:draft.gradients,r:draft.radius,sh:draft.shadow,sem:draft.semantic,sd:draft.semanticDerived,
+        aux:draft.auxiliary?.map(a=>({v:a.value,n:a.name})),sm:draft.seriesMode,sr:draft.seriesRelation,tc:draft.thirdColor?.value??''});
+      platform.storage.setItem('hia-draft',snap);
+    }catch{/* 隐私模式/配额满忽略 */}
   }
 
   // 渲染主色候选面板：按 group 分组，生成可点击色卡；当前主色高亮。
@@ -3533,6 +3543,30 @@ ${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
     // <lang zh-CN>必须在首轮 applyRuntimeTheme 之前，保证 --hia-font-*/fs/space 变量按存储值注入。</lang>
     // <lang en>Must run before the first applyRuntimeTheme so --hia-font-*/fs/space vars inject from stored values.</lang>
     loadTypography();attachTokensToDraft();
+    // 草稿自动恢复（维护者反馈：刷新后主题丢失）：从 localStorage 读回上次的基色/名称/语义/圆角等。
+    //   无存储或解析失败 → 保持默认，不报错（首次访问的正常路径）。
+    // <lang en>Auto-restore the draft from localStorage (maintainer feedback: theme lost on refresh). Missing
+    //   storage or parse failure keeps defaults — the normal first-visit path.</lang>
+    try{
+      const snap=JSON.parse(platform.storage.getItem('hia-draft')??'null') as Record<string,unknown>|null;
+      if(snap&&typeof snap==='object'){
+        if(snap.p&&validHex(String(snap.p)))draft.primary=normalizeHex(String(snap.p));
+        if(snap.pn)draft.primaryName=String(snap.pn);
+        if(snap.s&&validHex(String(snap.s)))draft.secondary=normalizeHex(String(snap.s));
+        if(snap.sn)draft.secondaryName=String(snap.sn);
+        if(snap.n)draft.name=String(snap.n);
+        if(snap.c)draft.category=String(snap.c);
+        if(snap.g)draft.gradients=parseGradientSettings(JSON.stringify(snap.g));
+        if(snap.r)draft.radius=snap.r as typeof draft.radius;
+        if(snap.sh)draft.shadow=snap.sh as typeof draft.shadow;
+        if(snap.sem)draft.semantic=snap.sem as typeof draft.semantic;
+        if(snap.sd)draft.semanticDerived=snap.sd as typeof draft.semanticDerived;
+        if(snap.sm)draft.seriesMode=snap.sm as typeof draft.seriesMode;
+        if(snap.sr)draft.seriesRelation=snap.sr as typeof draft.seriesRelation;
+        if(Array.isArray(snap.aux))draft.auxiliary=(snap.aux as Array<{v:string;n:string}>).map(a=>makeRoleColor(a.v,a.n));
+        if(snap.tc&&validHex(String(snap.tc)))draft.thirdColor=makeRoleColor(String(snap.tc),'第三色');
+      }
+    }catch{/* 恢复失败保持默认 */}
     secondaryCandidates=secondarySetForDraft(draft,primaryMeta);
     // 首轮渲染：运行时变量、表单、候选、渐变、预设、令牌、元信息。
     // <lang zh-CN>顺序保证变量注入先于依赖 var() 的预览渲染。</lang>
