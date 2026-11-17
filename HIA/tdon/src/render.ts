@@ -198,15 +198,22 @@ function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):str
       const title=a.title?String(a.title):'example / 示例代码';
       const code=String(a.code??SAMPLE_CODE);
       const codeLines=code.split('\n');
-      const rows=codeLines.map((line,i)=>{
-        const esc=escapeTdonHtml(line);
-        return`<div class="tdon-code-row"><span class="tdon-code-ln">${i+1}</span><span class="tdon-code-text">${colorize(esc,theme)}</span></div>`;
-      }).join('');
       // 状态栏左：文件名 + 语言；右：行数 + 编码（真实编辑器惯例）。
       // <lang en>Status bar: filename + language on the left, line count + encoding on the right.</lang>
       const extMatch=a.title?/\.([A-Za-z0-9]+)$/.exec(String(a.title)):null;
       const lang=extMatch?extMatch[1]!:'text';
-      return`<div class="tdon-node tdon-code-editor${fx.cls}"${idAttr}${fx.styleAttr}><div class="tdon-code-title"${ac?` style="background:${ac}"`:''}><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-title-text">${escapeTdonHtml(title)}</span></div><div class="tdon-code-body">${rows}</div><div class="tdon-code-status"><span>${escapeTdonHtml(title)} · ${escapeTdonHtml(lang)}</span><span>${codeLines.length} lines · UTF-8</span></div></div>`;
+      // 明暗两套并排渲染（维护者定案 2026-11-17）：同一份代码，各自取能看清的着色档位。
+      // <lang en>Render both appearances side by side (maintainer decision, 2026-11-17): same code, each with
+      //   steps legible on its own background.</lang>
+      const renderOne=(appearance:'light'|'dark'):string=>{
+        const rows=codeLines.map((line,i)=>{
+          const esc=escapeTdonHtml(line);
+          return`<div class="tdon-code-row"><span class="tdon-code-ln">${i+1}</span><span class="tdon-code-text">${colorize(esc,theme,appearance)}</span></div>`;
+        }).join('');
+        const label=appearance==='dark'?'dark':'light';
+        return`<div class="tdon-code-editor is-${label}"><div class="tdon-code-title"${ac&&appearance==='dark'?` style="background:${ac}"`:''}><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-title-text">${escapeTdonHtml(title)}</span></div><div class="tdon-code-body">${rows}</div><div class="tdon-code-status"><span>${escapeTdonHtml(title)} · ${escapeTdonHtml(lang)} · ${label}</span><span>${codeLines.length} lines · UTF-8</span></div></div>`;
+      };
+      return`<div class="tdon-node tdon-code-pair${fx.cls}"${idAttr}${fx.styleAttr}>${renderOne('light')}${renderOne('dark')}</div>`;
     }
 
     default:{
@@ -251,9 +258,18 @@ const SAMPLE_CODE=[
 // <lang en>Lightweight colouring: per line, priority comment > string > number > keyword (line-level
 //   rendering, no cross-line state).</lang>
 const CODE_KEYWORDS=/^(const|let|var|function|return|if|else|for|while|import|export|class|type|interface)$/;
-function colorize(escapedLine:string,theme:Theme):string{
+function colorize(escapedLine:string,theme:Theme,appearance:'light'|'dark'='dark'):string{
+  // 明暗两套各自取"能在该底色上看清"的档位：浅底用中深阶（500–700），深底用浅阶（200–400）。
+  //   此前只取 500–700，压在主色 900 深底上几乎不可见（维护者反馈"没有颜色高亮"）。
+  // <lang en>Each appearance uses steps legible on its own background: mid/dark (500–700) on light, light
+  //   (200–400) on dark. Previously only 500–700 were used, nearly invisible on a primary-900 backdrop
+  //   (the maintainer's "no colour highlighting" report).</lang>
   const col=(ref:string)=>css(theme,ref)??'inherit';
-  const comment=col('secondary.600'),str=col('semantic.success.600')||col('secondary.600'),num=col('semantic.warning.600')||col('secondary.700'),kw=col('primary.500');
+  const dark=appearance==='dark';
+  const comment=col(dark?'secondary.300':'secondary.600');
+  const str=col(dark?'semantic.success.300':'semantic.success.600')||col(dark?'secondary.200':'secondary.600');
+  const num=col(dark?'semantic.warning.200':'semantic.warning.600')||col(dark?'secondary.200':'secondary.700');
+  const kw=col(dark?'primary.200':'primary.500');
   // 注释：行内 // 之后全部注释色。
   // <lang en>A trailing comment colours the rest of the line.</lang>
   const ci=escapedLine.indexOf('//');
@@ -347,18 +363,37 @@ export const TDON_PREVIEW_CSS=`
    行号与正文靠行号栏的右 padding + 1px 分隔线拉开，而不是紧贴。
    <lang en>code-editor mirrors a real editor: title bar, gutter (right-aligned with a 1px divider), code
    area and status bar. The gutter's right padding plus the divider separate line numbers from code.</lang> */
-.tdon-code-editor{border:1px solid rgba(0,0,0,.14);border-radius:10px;overflow:hidden;background:var(--hia-primary-900,#0F172A);box-shadow:0 8px 24px rgba(15,23,42,.18);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-.tdon-code-title{display:flex;align-items:center;gap:7px;padding:9px 12px;background:rgba(0,0,0,.22);border-bottom:1px solid rgba(255,255,255,.08)}
-.tdon-code-dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.28);flex:none}
+/* code-editor：真实编辑器观感 + **明暗两套并排**（维护者定案 2026-11-17）。
+   两套同时呈现，便于直接对照主题在浅色/深色编辑器里的实际效果。
+   <lang en>code-editor mirrors a real editor and shows **light and dark side by side** (maintainer decision,
+   2026-11-17) so the theme's behaviour in both appearances can be compared directly.</lang> */
+.tdon-code-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+@media (max-width:720px){.tdon-code-pair{grid-template-columns:1fr}}
+.tdon-code-editor{border:1px solid rgba(0,0,0,.14);border-radius:10px;overflow:hidden;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-width:0}
+.tdon-code-editor.is-dark{background:#0F172A;box-shadow:0 8px 24px rgba(15,23,42,.18)}
+.tdon-code-editor.is-light{background:#FFFFFF;box-shadow:0 4px 14px rgba(15,23,42,.10);border-color:rgba(0,0,0,.10)}
+.tdon-code-title{display:flex;align-items:center;gap:7px;padding:9px 12px}
+.is-dark .tdon-code-title{background:rgba(0,0,0,.24);border-bottom:1px solid rgba(255,255,255,.08)}
+.is-light .tdon-code-title{background:#F4F6F9;border-bottom:1px solid rgba(0,0,0,.07)}
+.tdon-code-dot{width:11px;height:11px;border-radius:50%;flex:none}
 .tdon-code-dot:nth-child(1){background:#FF5F57}
 .tdon-code-dot:nth-child(2){background:#FEBC2E}
 .tdon-code-dot:nth-child(3){background:#28C840}
-.tdon-code-title-text{margin-left:8px;font:600 12px/1 inherit;color:rgba(255,255,255,.72);font-family:inherit;letter-spacing:.02em}
-.tdon-code-body{padding:12px 0;background:var(--hia-primary-900,#0F172A)}
+.tdon-code-title-text{margin-left:8px;font:600 12px/1 inherit;font-family:inherit;letter-spacing:.02em}
+.is-dark .tdon-code-title-text{color:rgba(255,255,255,.72)}
+.is-light .tdon-code-title-text{color:#4A5A68}
+.tdon-code-body{padding:12px 0}
+.is-light .tdon-code-body{background:#FFFFFF}
 .tdon-code-row{display:flex;align-items:baseline;font-size:13px;line-height:1.75}
-.tdon-code-ln{flex:none;width:3.2em;padding-right:16px;text-align:right;color:rgba(255,255,255,.32);border-right:1px solid rgba(255,255,255,.09);margin-right:16px;user-select:none;font-variant-numeric:tabular-nums}
-.tdon-code-text{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word;color:rgba(255,255,255,.9);padding-right:14px}
-.tdon-code-status{display:flex;justify-content:space-between;gap:10px;padding:6px 12px;background:rgba(0,0,0,.24);border-top:1px solid rgba(255,255,255,.08);font:600 11px/1.4 inherit;color:rgba(255,255,255,.6);font-family:inherit}
+.tdon-code-ln{flex:none;width:3.2em;padding-right:16px;text-align:right;margin-right:16px;user-select:none;font-variant-numeric:tabular-nums}
+.is-dark .tdon-code-ln{color:rgba(255,255,255,.32);border-right:1px solid rgba(255,255,255,.09)}
+.is-light .tdon-code-ln{color:#A9B6C1;border-right:1px solid rgba(0,0,0,.08)}
+.tdon-code-text{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word;padding-right:14px}
+.is-dark .tdon-code-text{color:rgba(255,255,255,.9)}
+.is-light .tdon-code-text{color:#22303C}
+.tdon-code-status{display:flex;justify-content:space-between;gap:10px;padding:6px 12px;font:600 11px/1.4 inherit;font-family:inherit}
+.is-dark .tdon-code-status{background:rgba(0,0,0,.26);border-top:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.6)}
+.is-light .tdon-code-status{background:#F4F6F9;border-top:1px solid rgba(0,0,0,.07);color:#6B7A87}
 .tdon-children{display:flex;flex-direction:column;gap:10px;margin-top:12px}
 .tdon-fx-gradient-shift{background-size:200% 100%;animation:tdon-gradient-shift 6s linear infinite}
 .tdon-fx-fade-in{animation:tdon-fade-in var(--tdon-fx-duration,400ms) ease-out both}

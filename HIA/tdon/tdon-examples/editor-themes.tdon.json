@@ -9,17 +9,39 @@
     "title": "编辑器主题演示",
     "layout": "stack",
     "nodes": [
-      { "type": "code-editor", "title": "main.ts", "code": "// 主题来自 HIA 配色系统\nconst scale = buildTheme(\"#0047AB\");\nexport function pick(shade: number) {\n  return scale[shade]; // contrast-checked\n}" }
+      {
+        "type": "code-editor",
+        "title": "main.ts",
+        "code": "// HIA Theme Builder — editor preview / 编辑器预览\nimport { buildTheme } from \"@hia/theme-core\";\n\nconst shade = buildTheme({\n  primary: \"#0047AB\",\n  secondary: \"#00A8D3\"\n});\n\n// contrast-checked foreground per role\nexport function foreground(step: number) {\n  return shade[step];\n}"
+      }
     ]
   },
   "exportManifest": {
     "files": [
-      { "path": "themes/HIA-light.tmTheme", "templateRef": "builtin:textmate-theme" },
-      { "path": "themes/HIA-dark.tmTheme", "templateRef": "builtin:textmate-theme" },
-      { "path": "vscode/hia-light.color-theme.json", "templateRef": "builtin:vscode-theme" },
-      { "path": "vscode/hia-dark.color-theme.json", "templateRef": "builtin:vscode-theme" },
-      { "path": "vim/colors/hia-light.vim", "templateRef": "builtin:vim-theme" },
-      { "path": "emacs/hia-theme.el", "templateRef": "builtin:emacs-theme" }
+      {
+        "path": "themes/HIA-light.tmTheme",
+        "templateRef": "builtin:textmate-theme"
+      },
+      {
+        "path": "themes/HIA-dark.tmTheme",
+        "templateRef": "builtin:textmate-theme"
+      },
+      {
+        "path": "vscode/hia-light.color-theme.json",
+        "templateRef": "builtin:vscode-theme"
+      },
+      {
+        "path": "vscode/hia-dark.color-theme.json",
+        "templateRef": "builtin:vscode-theme"
+      },
+      {
+        "path": "vim/colors/hia-light.vim",
+        "templateRef": "builtin:vim-theme"
+      },
+      {
+        "path": "emacs/hia-theme.el",
+        "templateRef": "builtin:emacs-theme"
+      }
     ]
   }
 }

@@ -91,8 +91,8 @@ const preview=await page.evaluate(()=>({
   source:document.getElementById('tdonStatusLabel')?.textContent?.trim()??''
 }));
 console.log('[preview]',JSON.stringify(preview));
-if(preview.codeEditors<1){console.error('❌ 预览未渲染 code-editor 节点');failed++;}
-if(preview.lineNumbers<3){console.error(`❌ 行号不足（${preview.lineNumbers}）`);failed++;}
+if(preview.codeEditors<2){console.error(`❌ 应渲染 light+dark 两套编辑器，实为 ${preview.codeEditors}`);failed++;}
+if(preview.lineNumbers<6){console.error(`❌ 行号不足（${preview.lineNumbers}，两套应各 12 行）`);failed++;}
 if(!preview.hasStatusBar){console.error('❌ 状态条未渲染');failed++;}
 if(/E_|错误|error/i.test(preview.issues)){console.error(`❌ 预览报错：${preview.issues}`);failed++;}
 const shot=async(name)=>{const el=await page.$('#tdonPreviewPanel');if(el){await el.screenshot({path:join(OUT,name)});console.log('[shot]',name);}};
@@ -122,6 +122,50 @@ else{
   if(parseFloat(geom.borderRight)<1){console.error('❌ 行号栏缺少右分隔线');failed++;}
   if(geom.borderRadius==='0px'){console.error('❌ 编辑器缺少圆角（应像真实编辑器窗口）');failed++;}
   if(!/mono/i.test(geom.fontFamily)){console.error(`❌ 未使用等宽字体（${geom.fontFamily}）`);failed++;}
+}
+
+// 明暗并排 + 着色可见性（维护者反馈 2026-11-17 的两点）：
+//   ① 必须同时有 light 与 dark 两套编辑器；② 两套配色必须不同；
+//   ③ 深色版着色必须在其深底上有足够对比（用 WCAG 比例粗判 ≥2.5，仅作可见性下限）。
+// <lang en>Side-by-side appearances + colouring visibility (the maintainer's two 2026-11-17 points):
+//   (1) both light and dark editors present; (2) their colours differ; (3) dark-mode colours keep enough
+//   contrast against the dark backdrop (≥2.5 by WCAG ratio as a visibility floor).</lang>
+const duo=await page.evaluate(()=>{
+  const eds=[...document.querySelectorAll('#tdonPreviewBody .tdon-code-editor')];
+  const lum=(hex)=>{
+    const m=/^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if(!m)return null;
+    const v=m[1];
+    const ch=[0,2,4].map(i=>parseInt(v.slice(i,i+2),16)/255).map(c=>c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4));
+    return 0.2126*ch[0]+0.7152*ch[1]+0.0722*ch[2];
+  };
+  const ratio=(a,b)=>{const hi=Math.max(a,b),lo=Math.min(a,b);return(hi+0.05)/(lo+0.05);};
+  const info=eds.map(ed=>{
+    const isDark=ed.classList.contains('is-dark');
+    const bgHex=(()=>{
+      const bg=getComputedStyle(ed).backgroundColor;
+      const m=/rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(bg);
+      if(!m)return null;
+      return '#'+[1,2,3].map(i=>Number(m[i]).toString(16).padStart(2,'0')).join('');
+    })();
+    const cols=[...new Set([...ed.querySelectorAll('.tdon-code-text span[style*=color]')].map(sp=>{
+      const m=/rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(getComputedStyle(sp).color);
+      return m?'#'+[1,2,3].map(i=>Number(m[i]).toString(16).padStart(2,'0')).join(''):null;
+    }).filter(Boolean))];
+    const bgL=lum(bgHex??'');
+    const contrasts=bgL===null?[]:cols.map(c=>{const cl=lum(c);return cl===null?0:ratio(bgL,cl);});
+    return{isDark,bg:bgHex,colors:cols,minContrast:contrasts.length?Math.min(...contrasts):0};
+  });
+  return info;
+});
+console.log('[appearances]',JSON.stringify(duo));
+if(duo.length!==2){console.error(`❌ 应有 light+dark 两套编辑器，实为 ${duo.length}`);failed++;}
+else{
+  if(!duo.some(d=>d.isDark)||!duo.some(d=>!d.isDark)){console.error('❌ 缺少 light 或 dark 之一');failed++;}
+  const light=duo.find(d=>!d.isDark),dark=duo.find(d=>d.isDark);
+  if(JSON.stringify(light?.colors)===JSON.stringify(dark?.colors)){console.error('❌ 明暗两套配色相同（应按底色取不同档位）');failed++;}
+  if((dark?.minContrast??0)<2.5){console.error(`❌ 深色版最小对比 ${dark?.minContrast?.toFixed(2)} < 2.5（着色不可见）`);failed++;}
+  if((light?.minContrast??0)<2.5){console.error(`❌ 浅色版最小对比 ${light?.minContrast?.toFixed(2)} < 2.5`);failed++;}
 }
 await shot('01-code-editor-preview.png');
 
