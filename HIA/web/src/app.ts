@@ -1387,18 +1387,23 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   //   随后走与连接器完全相同的解析校验入口，避免两条路径的校验口径分叉。</lang>
   // <lang en>Example text comes from the @hia/tdon package's tdon-examples (inlined as a string via Vite `?raw`), then goes
   //   through exactly the same parse/validate entry as the connector so the two paths cannot diverge.</lang>
-  async function loadTdonExample(){
+  async function loadTdonExample(name:'vitepress-docs.tdon.json'|'editor-themes.tdon.json'='vitepress-docs.tdon.json'){
     try{
       // `?raw` 让 Vite 把示例 JSON 内联为字符串（无需网络与文件选择）。
-      // <lang zh-CN>路径指向 @hia/tdon 包内示例，保持"示例即文档"的单一来源。</lang>
-      // <lang en>The path targets the example inside the core package, keeping examples as the single source.</lang>
-      const mod=await import('../../tdon/tdon-examples/vitepress-docs.tdon.json?raw');
+      // <lang zh-CN>路径指向 @hia/tdon 包内示例，保持"示例即文档"的单一来源。
+      //   示例清单必须与包内 tdon-examples 一致——新增示例要在此登记，否则操作台无法加载。</lang>
+      // <lang en>The path targets the examples inside the @hia/tdon package, keeping examples as the single
+      //   source. This list must mirror the package's tdon-examples — a new example must be registered here or
+      //   the console cannot load it.</lang>
+      const mod=name==='editor-themes.tdon.json'
+        ?await import('../../tdon/tdon-examples/editor-themes.tdon.json?raw')
+        :await import('../../tdon/tdon-examples/vitepress-docs.tdon.json?raw');
       const text=String((mod as {default:string}).default??'');
-      applyTdonText(text,'vitepress-docs.tdon.json');
+      applyTdonText(text,name);
     }catch(e){
       tdonDoc=null;
       tdonResult={ok:false,errors:[{code:'E_JSON',path:'$',message:`示例加载失败：${e instanceof Error?e.message:String(e)}`,messageEn:`Example load failed: ${e instanceof Error?e.message:String(e)}`}],warnings:[],truncated:false};
-      tdonSourceLabel='vitepress-docs.tdon.json';
+      tdonSourceLabel=name;
       renderTdonPanel();renderTdonExport();
     }
   }
@@ -3405,6 +3410,9 @@ ${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
     // <lang zh-CN>示例来自 core 包内 tdon-examples（单一来源）。</lang>
     // <lang en>Examples come from core's tdon-examples (single source).</lang>
     byId<HTMLButtonElement>('tdonLoadExampleBtn').addEventListener('click',()=>{void loadTdonExample();});
+    // 编辑器主题示例（`W-tb-P42`/ADR-015）：四格式导出 + code-editor 预览节点。
+    // <lang en>Editor-theme example (`W-tb-P42`/ADR-015): four-format exports + the code-editor preview node.</lang>
+    byId<HTMLButtonElement>('tdonLoadEditorExampleBtn').addEventListener('click',()=>{void loadTdonExample('editor-themes.tdon.json');});
     // 断开：清空已连接文档与校验结果，面板回到未连接说明态。
     // <lang zh-CN>断开后按钮自身也随之隐藏（由 applyPreviewMode 统一刷新显隐）。</lang>
     // <lang en>The button hides itself afterwards (visibility is refreshed by applyPreviewMode).</lang>

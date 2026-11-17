@@ -39,6 +39,7 @@ registerStrings({
   'p9.tdon.connect': { zh: '连接 TDON', en: 'Connect TDON' },
   'p9.tdon.disconnect': { zh: '断开', en: 'Disconnect' },
   'p9.tdon.loadExample': { zh: '加载示例', en: 'Load example' },
+  'p9.tdon.loadEditorExample': { zh: '加载编辑器主题示例', en: 'Load editor-theme example' },
   'p9.tdon.status.pending': { zh: '未连接', en: 'Not connected' },
   'p9.tdon.status.loading': { zh: '正在加载…', en: 'Loading…' },
   'p9.tdon.status.ok': { zh: '已连接：{source}', en: 'Connected: {source}' },
