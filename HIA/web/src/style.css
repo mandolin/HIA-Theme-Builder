@@ -405,6 +405,15 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .baodian-emo-row.active{background:var(--primary);color:var(--on-primary)}
 .baodian-emo{flex:1;min-width:0;text-align:left;border:0;background:none;border-radius:6px;padding:8px 10px;font-size:14px;font-weight:700;color:inherit;cursor:pointer;overflow-wrap:anywhere}
 .baodian-emo:hover{background:var(--p50)}
+/* 企业选色视图切换（`W-tb-P46` 维护者截图指示）：菜单列顶部两段式控件（按行业/按国家）。
+   与 .baodian-emo 同字号，选中态用主色描边+主色文字（不占整行背景，与分组按钮区分层级）。
+   <lang en>Brand view switch (`W-tb-P46` maintainer's screenshot request): a two-segment control at the
+   top of the menu column (by industry / by country). Same font as .baodian-emo; the active segment uses a
+   primary outline + primary text so the switch reads as a level above the group buttons.</lang> */
+.brand-view-switch{display:flex;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.brand-view-btn{flex:1;text-align:center;border:1px solid var(--line);background:none;border-radius:6px;padding:6px 8px;font-size:14px;font-weight:700;color:inherit;cursor:pointer}
+.brand-view-btn:hover{background:var(--p50)}
+.brand-view-btn.active{border-color:var(--primary);color:var(--primary);background:var(--p50)}
 /* 选中态在行容器上；按钮继承行颜色，避免双背景。 Selected state lives on the row; the button inherits. */
 /* 宝典菜单一键套用（W-tb-P12 完善批④）：情感行内 ⚡ 快捷钮，hover 显现避免视觉噪音。 */
 /* <lang en>Per-mood quick-apply button inside the Baodian menu (batch ④); hover-revealed.</lang> */

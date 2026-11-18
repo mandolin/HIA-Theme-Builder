@@ -275,6 +275,13 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // 国旗源洲别 / 企业源行业（W-tb-P18）。
   let baodianFlagGroup='asia';
   let baodianBrandGroup='tech';
+  // 企业源视图模式与当前国家分组（`W-tb-P46` 维护者截图指示：行业↔国家可切换）。
+  //   偏好持久化到 platform.storage（键 `hia-brand-view`），刷新后保持；读取失败回退行业视图。
+  // <lang en>Brand-source view mode and current country group (`W-tb-P46` maintainer's screenshot request:
+  //   industry↔country switch). Preference persists to platform.storage (`hia-brand-view`); read failure
+  //   falls back to the industry view.</lang>
+  let brandViewMode:'industry'|'country'=(()=>{try{return platform.storage.getItem('hia-brand-view')==='country'?'country':'industry';}catch{return 'industry';}})();
+  let baodianBrandCountry='cn';
   // 自然源分类 / 社会场景分类（W-tb-P19）。
   let baodianNatureGroup='sky';
   let baodianSocialGroup='emergency';
@@ -2208,14 +2215,53 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     bindPaletteApply(right);
     bindFlagImages(right);
   }
-  // 企业源（W-tb-P18）：左=行业菜单，右=品牌色组卡（色块条+品牌名），点击=依次填主/副/第三。
-  // <lang en>Brand source: industry menu; brand palette cards; same apply semantics.</lang>
+  // 国家视图展示序（`W-tb-P46`）：按大区从东到西粗排（东亚→北美→欧洲→大洋洲），multi 随后；
+  //   只展示数据中实际存在的国家； '__unassigned' 由 renderBrandMenu 恒置末位。
+  //   不进 core 导出面（ADR-016 冻结），属 UI 层常量。
+  // <lang en>Country-view display order (`W-tb-P46`): roughly east→west by region (East Asia → North
+  //   America → Europe → Oceania), 'multi' last; only countries present in data render. Lives here, not in
+  //   core exports (ADR-016 freeze) — a UI-layer constant.</lang>
+  const BRAND_COUNTRY_ORDER=['cn','jp','kr','sg','us','ca','mx','br','gb','ie','fr','de','nl','ch','at','es','it','se','no','fi','dk','cz','ru','pl','il','ir','pk','in','au','nz','multi']as const;
+  // 企业源（W-tb-P18）：左=分组菜单（行业或国家，视图可切换——`W-tb-P46` 维护者截图指示），
+  //   右=品牌色组卡（色块条+品牌名），点击=依次填主/副/第三。
+  //   国家视图分组按 BRAND_COUNTRY_ORDER 展示序取交集，未标注 country 的条目归"未分类"；
+  //   两态各自记住上次选中分组，切换控件偏好写入 platform.storage（hia-brand-view）。
+  // <lang en>Brand source (`W-tb-P18`): left = group menu (industry or country, switchable — maintainer's
+  //   screenshot request in `W-tb-P46`), right = brand palette cards; clicking fills primary/secondary/third
+  //   in order. The country view intersects BRAND_COUNTRY_ORDER with what exists; entries without a country
+  //   fall into "uncategorized". Each mode remembers its last group; the switch preference persists to
+  //   platform.storage (hia-brand-view).</lang>
   function renderBrandMenu(){
     const menu=byId<HTMLElement>('baodianMenu');
-    const groups:('tech'|'auto'|'food'|'finance'|'retail'|'media'|'travel'|'apparel'|'other')[]=['tech','auto','food','finance','retail','media','travel','apparel','other'];
-    menu.innerHTML=groups.map(g=>`<button type="button" class="baodian-emo${baodianBrandGroup===g?' active':''}" data-brand-group="${g}">${escapeHtml(t('p18.industry.'+g))}</button>`).join('');
+    // 视图切换控件：置于菜单列顶部（截图红框位），两态共用同一分组按钮样式。
+    // <lang en>The view switch sits at the top of the menu column (the red-box spot in the screenshot);
+    //   both modes share the same group-button styling.</lang>
+    const viewBtn=(mode:'industry'|'country',key:string)=>`<button type="button" class="baodian-emo brand-view-btn${brandViewMode===mode?' active':''}" data-brand-view="${mode}" aria-pressed="${brandViewMode===mode}">${escapeHtml(t(key))}</button>`;
+    let html=`<div class="brand-view-switch" role="group" aria-label="${escapeHtml(t('p18.brand.view.group'))}">${viewBtn('industry','p18.brand.view.industry')}${viewBtn('country','p18.brand.view.country')}</div>`;
+    if(brandViewMode==='industry'){
+      const groups:('tech'|'auto'|'food'|'finance'|'retail'|'media'|'travel'|'apparel'|'other')[]=['tech','auto','food','finance','retail','media','travel','apparel','other'];
+      html+=groups.map(g=>`<button type="button" class="baodian-emo${baodianBrandGroup===g?' active':''}" data-brand-group="${g}">${escapeHtml(t('p18.industry.'+g))}</button>`).join('');
+    }else{
+      // 国家分组：展示序 ∩ 数据中实际存在的国家；'__unassigned' 恒在末位（country 可选、分批补录）。
+      // <lang en>Country groups: display order ∩ countries present in data; '__unassigned' always last
+      //   (country is optional and filled in batches).</lang>
+      const present=new Set<string>();
+      BRAND_COLORS.forEach(b=>{if(b.country)present.add(b.country);});
+      const ordered=[...BRAND_COUNTRY_ORDER.filter(c=>present.has(c)),'__unassigned'];
+      html+=ordered.map(g=>`<button type="button" class="baodian-emo${baodianBrandCountry===g?' active':''}" data-brand-group="${g}">${escapeHtml(g==='__unassigned'?t('p18.country.unassigned'):t('p18.country.'+g))}</button>`).join('');
+    }
+    menu.innerHTML=html;
+    all<HTMLButtonElement>('[data-brand-view]',menu).forEach(btn=>btn.addEventListener('click',()=>{
+      const mode=btn.dataset.brandView as 'industry'|'country'|undefined;
+      if(!mode||mode===brandViewMode)return;
+      brandViewMode=mode;
+      try{platform.storage.setItem('hia-brand-view',mode);}catch{/* 隐私模式/配额满忽略 */}
+      renderBrandMenu();
+    }));
     all<HTMLButtonElement>('[data-brand-group]',menu).forEach(btn=>btn.addEventListener('click',()=>{
-      baodianBrandGroup=btn.dataset.brandGroup||'tech';renderBrandMenu();
+      const g=btn.dataset.brandGroup||'tech';
+      if(brandViewMode==='industry')baodianBrandGroup=g;else baodianBrandCountry=g;
+      renderBrandMenu();
     }));
     renderBrandRight();
   }
@@ -2282,7 +2328,12 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   }
   function renderBrandRight(){
     const right=byId<HTMLElement>('baodianRight');
-    const items=BRAND_COLORS.filter(b=>b.industry===baodianBrandGroup);
+    // 按视图模式过滤：行业视图=industry 字段；国家视图=country 字段（无 country 归"未分类"）。
+    // <lang en>Filter per view mode: industry view = industry field; country view = country field
+    //   (entries without one land in "uncategorized").</lang>
+    const items=BRAND_COLORS.filter(b=>brandViewMode==='industry'
+      ?b.industry===baodianBrandGroup
+      :(baodianBrandCountry==='__unassigned'?!b.country:b.country===baodianBrandCountry));
     let html='<div class="bdc-grid">';
     for(const b of items){
       const note=BRAND_NOTES[b.name]||composedBrandNote(b.name,b.colors,b.industry);
