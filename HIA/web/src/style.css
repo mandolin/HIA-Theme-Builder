@@ -357,7 +357,17 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .pp-drag-hint{font-size:11px;color:var(--muted);margin-left:4px}
 .preset-aux-group{flex:1 1 auto;min-width:28px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
 .pickers-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0}
-.pickers-grid .picker-group{border:1px dashed transparent;border-radius:10px;padding:6px;min-width:0}
+/* 操作台四块统一浅灰边框（维护者反馈 W-tb-P47：色阶生成模式块与主/副/第三色块混淆——
+   四个集群全部加"同色浅灰边框"形成卡片分区；虚线仅保留为拖拽悬停 outline，不占边框位）。
+   边框色用 var(--line) 的 55% 白混（比 .box 的 --line 更浅一档，避免与外层卡片争夺层级）。
+   <lang en>Uniform light-grey borders across the four console clusters (maintainer feedback: the scale-mode
+   block read as one of the colour blocks). Dashed remains only as the drag-hover outline; the border colour
+   mixes var(--line) 55% toward white — one step lighter than .box so cards don't compete with the shell. */
+.pickers-grid .picker-group,.scale-mode-group{--card-line:color-mix(in srgb,var(--line) 55%,#fff)}
+.pickers-grid .picker-group{border:1px solid var(--card-line);border-radius:10px;padding:10px;min-width:0;background:#FBFCFD}
+/* 色阶生成模式卡：与拾色器组同框同色边框；行内布局沿用 control-group。
+   <lang en>The scale-mode card shares the same frame and border colour as the picker groups.</lang> */
+.scale-mode-group{border:1px solid var(--card-line);border-radius:10px;padding:10px;background:#FBFCFD;min-width:0}
 .pickers-grid .picker-group[hidden]{display:none}
 .pickers-grid .picker-group[draggable="true"]{cursor:grab}
 .pickers-grid .picker-group[draggable="true"]:active{cursor:grabbing}
