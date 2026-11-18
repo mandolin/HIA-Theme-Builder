@@ -26,11 +26,13 @@ import{deriveSecondaryByRelation,deriveThirdByRelation,getSeriesRelationDef}from
 // <lang en>Pure, side-effect-free. An empty name falls back to the **real** color name from `nameColor`
 //   (e.g. "Strong Blue") rather than a placeholder like "主色" — a placeholder leaves the UI showing
 //   "主色 #0047AB" without telling the user what color it actually is.</lang>
-function buildRoleColor(value:string,name:string):RoleColor{
+function buildRoleColor(value:string,name:string,mode:'classic'|'grid'|'curve'='classic',curveStrength=0.5):RoleColor{
   const hex=normalizeHex(value);
   // 色名兜底：`nameColor` 是纯函数（ISCC-NBS 修饰语 + 色相），对任意 HEX 都有结果。
   // <lang en>The fallback is pure (ISCC-NBS modifier + hue) and defined for any HEX.</lang>
-  return{name:name||nameColor(hex).zh,value:hex,scale:tonalScale(hex),on:bestOnColor(hex).hex};
+  // 色阶按生成模式构建（W-tb-P47）：缺省 classic 与历史输出逐位一致。
+  // <lang en>Scales build per generation mode; the classic default keeps historical output bit-identical.</lang>
+  return{name:name||nameColor(hex).zh,value:hex,scale:tonalScale(hex,mode,curveStrength),on:bestOnColor(hex).hex};
 }
 // 角色色深拷贝：阻断外部对象与内部状态的隐含耦合（scale 对象逐键复制）。
 // <lang zh-CN>用于第三角色与辅助槽位入参与 Theme 装配的隔离。</lang>
@@ -59,16 +61,21 @@ export function buildTheme(input:ThemeInput):Theme{
   // <lang en>Single mode replaces the user secondary hue with the primary-series variant (primary 700 step) per the ADR-007 v2 decision.</lang>
   // 不在此处用占位词兜底：空名称直接传给 buildRoleColor，由它用真实色名填充。
   // <lang en>No placeholder here: an empty name reaches buildRoleColor, which fills in the real colour name.</lang>
-  const primary=buildRoleColor(input.primary,input.primaryName||'');
+  // 色阶生成模式（W-tb-P47 / ADR-018）：入参缺省 classic；主副色（含单色变体）统一按模式生成。
+  // <lang en>Scale generation mode: defaults to classic; primary/secondary (incl. the single-mode variant)
+  //   all build under the same mode.</lang>
+  const scaleMode=input.scaleMode??'classic';
+  const curveStrength=input.curveStrength??0.5;
+  const primary=buildRoleColor(input.primary,input.primaryName||'',scaleMode,curveStrength);
   let secondary:RoleColor;
   if(seriesMode==='single'){
     // 单色变体：取主色 700 档重建角色色（含色阶与前景色）。
     // <lang zh-CN>primary.scale['700'] 为推导基准；name 标注变体来源。</lang>
     // <lang en>Built from the primary 700 step with a variant name.</lang>
     const variantHex=primary.scale['700']!;
-    secondary={name:(primary.name)+' · 系列变体',value:variantHex,scale:tonalScale(variantHex),on:bestOnColor(variantHex).hex};
+    secondary={name:(primary.name)+' · 系列变体',value:variantHex,scale:tonalScale(variantHex,scaleMode,curveStrength),on:bestOnColor(variantHex).hex};
   }else{
-    secondary=buildRoleColor(input.secondary,input.secondaryName||'');
+    secondary=buildRoleColor(input.secondary,input.secondaryName||'',scaleMode,curveStrength);
   }
   // 第三角色装配（ADR-007 v2）：仅 triad 存在；显式入参深拷贝保留，缺省按关系规则从主色推导（manual/pure 无推导）。
   // <lang zh-CN>推导语义：primary/secondary 为用户根基，第三色补全组合（可覆写）。</lang>

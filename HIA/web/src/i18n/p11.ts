@@ -178,6 +178,13 @@ registerStrings({
   // <lang en>Brand view switch and country groups (`W-tb-P46` maintainer's screenshot request). Country
   //   keys = ISO 3166-1 alpha-2 lowercase + 'multi' + '__unassigned' (UI-internal code); only codes used by
   //   BRAND_COUNTRY_ORDER are listed.</lang>
+  // 色阶生成模式（W-tb-P47 / ADR-018）：主色操作台 select 三态 + 曲线强度滑杆标签。
+  // <lang en>Scale generation mode (W-tb-P47 / ADR-018): console select tri-state + curve strength label.</lang>
+  'p47.mode.label': { zh: '色阶生成模式', en: 'Scale generation' },
+  'p47.mode.classic': { zh: '设计锚点（默认）', en: 'Designed anchors (default)' },
+  'p47.mode.grid': { zh: '等差栅格', en: 'Uniform grid' },
+  'p47.mode.curve': { zh: '曲线', en: 'Curve' },
+  'p47.curve.strength': { zh: '曲线强度', en: 'Curve strength' },
   'p18.brand.view.group': { zh: '企业选色分组方式', en: 'Brand grouping mode' },
   'p18.brand.view.industry': { zh: '按行业', en: 'By industry' },
   'p18.brand.view.country': { zh: '按国家/地区', en: 'By country/region' },

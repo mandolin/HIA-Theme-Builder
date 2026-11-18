@@ -379,6 +379,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Avoids dropdown desync from stale data.</lang>
     category.value=Array.from(category.options).some(x=>x.value===draft.category)?draft.category:'custom';
     setInputValue('primaryPicker',draft.primary);setInputValue('secondaryPicker',draft.secondary);
+    // 色阶生成模式控件回填（W-tb-P47）：select 三态 + 曲线强度滑杆（仅曲线模式启用）。
+    // <lang en>Reflects the scale-mode controls: tri-state select + curve strength slider (enabled in curve mode only).</lang>
+    setInputValue('scaleModeSelect',draft.scaleMode??'classic');
+    setInputValue('curveStrengthInput',String(Math.round((draft.curveStrength??0.5)*100)));
     setInputValue('primaryHexInput',draft.primary);setInputValue('secondaryHexInput',draft.secondary);
     setInputValue('primaryNameInput',draft.primaryName);setInputValue('secondaryNameInput',draft.secondaryName);
     // 第三色一等位（ADR-007 v2 定案 1）：仅三色模式显示；值来自草稿第三色（装配语义下草稿缺省由面板推导写入）。
@@ -530,7 +534,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     try{
       const snap=JSON.stringify({p:draft.primary,pn:draft.primaryName,s:draft.secondary,sn:draft.secondaryName,
         n:draft.name,c:draft.category,g:draft.gradients,r:draft.radius,sh:draft.shadow,sem:draft.semantic,sd:draft.semanticDerived,
-        aux:draft.auxiliary?.map(a=>({v:a.value,n:a.name})),sm:draft.seriesMode,sr:draft.seriesRelation,tc:draft.thirdColor?.value??''});
+        aux:draft.auxiliary?.map(a=>({v:a.value,n:a.name})),sm:draft.seriesMode,sr:draft.seriesRelation,tc:draft.thirdColor?.value??'',gm:draft.scaleMode??'',gc:draft.curveStrength??undefined});
       platform.storage.setItem('hia-draft',snap);
     }catch{/* 隐私模式/配额满忽略 */}
   }
@@ -3285,6 +3289,28 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>保证视觉选色与文本输入双向同步。</lang>
     // <lang en>Keeps visual picker and text input in two-way sync.</lang>
     byId<HTMLInputElement>('primaryPicker').addEventListener('input',e=>setInputValue('primaryHexInput',(e.currentTarget as HTMLInputElement).value.toUpperCase()));
+    // 色阶生成模式（W-tb-P47 / ADR-018）：切换/调强后重生成草稿内快照色阶（第三色/辅助/语义），
+    //   主副色色阶由 buildThemeFromDraft 按草稿模式现算；再走统一应用链刷新预览/导出。
+    // <lang en>Scale-mode controls: after switching/adjusting, regenerate the draft's snapshot scales
+    //   (third/auxiliary/semantic); primary/secondary scales recompute in buildThemeFromDraft; then the
+    //   unified apply chain refreshes preview and exports.</lang>
+    const regenerateSnapshotScales=()=>{
+      const mode=draft.scaleMode??'classic';
+      const strength=draft.curveStrength??0.5;
+      if(draft.thirdColor)draft.thirdColor={...draft.thirdColor,scale:tonalScale(draft.thirdColor.value,mode,strength)};
+      draft.auxiliary=(draft.auxiliary??[]).map(a=>({...a,scale:tonalScale(a.value,mode,strength)}));
+      if(draft.semantic)for(const k of STATUS_KEYS){const r=draft.semantic[k];if(r)draft.semantic[k]={...r,scale:tonalScale(r.value,mode,strength)};}
+    };
+    byId<HTMLSelectElement>('scaleModeSelect').addEventListener('change',()=>{
+      const v=(byId<HTMLSelectElement>('scaleModeSelect').value) as 'classic'|'grid'|'curve';
+      draft.scaleMode=v==='classic'?undefined:v;
+      regenerateSnapshotScales();
+      syncInputs();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();
+    });
+    byId<HTMLInputElement>('curveStrengthInput').addEventListener('input',()=>{
+      draft.curveStrength=Math.min(1,Math.max(0,(Number(byId<HTMLInputElement>('curveStrengthInput').value)||0)/100));
+      if((draft.scaleMode??'classic')==='curve'){regenerateSnapshotScales();applyCurrentTheme(false);renderHarmony();renderGradients();renderClassicPreview();}
+    });
     byId<HTMLInputElement>('secondaryPicker').addEventListener('input',e=>setInputValue('secondaryHexInput',(e.currentTarget as HTMLInputElement).value.toUpperCase()));
     // 第三色拾色器↔HEX 联动（`W-tb-P11` 一等位，模式同主/副）。
     // <lang zh-CN>输入后需点"应用当前主题"生效（与主副色一致）。</lang>
@@ -3614,6 +3640,10 @@ ${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
         if(snap.sd)draft.semanticDerived=snap.sd as typeof draft.semanticDerived;
         if(snap.sm)draft.seriesMode=snap.sm as typeof draft.seriesMode;
         if(snap.sr)draft.seriesRelation=snap.sr as typeof draft.seriesRelation;
+        // 色阶生成模式恢复（W-tb-P47）：合法三态白名单 + 强度数值校验，缺省 classic。
+        // <lang en>Restores the scale mode: tri-state whitelist + numeric strength; defaults to classic.</lang>
+        if(snap.gm==='grid'||snap.gm==='curve'||snap.gm==='classic')draft.scaleMode=snap.gm;
+        if(typeof snap.gc==='number'&&Number.isFinite(snap.gc))draft.curveStrength=Math.min(1,Math.max(0,snap.gc));
         if(Array.isArray(snap.aux))draft.auxiliary=(snap.aux as Array<{v:string;n:string}>).map(a=>makeRoleColor(a.v,a.n));
         if(snap.tc&&validHex(String(snap.tc)))draft.thirdColor=makeRoleColor(String(snap.tc),'第三色');
       }

@@ -83,7 +83,12 @@ export interface Theme{name:string;category:string;industry:string;primary:RoleC
 //   auxiliary 缺省 undefined=按模式自动推导（ADR-007），显式 [] = 保留空。</lang>
 // <lang en>Lightweight input to build a theme; harmonyMode defaults to 'auto'; auxiliary undefined means
 //   auto-derive per mode (ADR-007), explicit [] keeps it empty.</lang>
-export interface ThemeInput{name?:string;category?:string;industry?:string;primary:string;secondary:string;primaryName?:string;secondaryName?:string;gradients?:GradientSettings;typography?:TypographyTokens;spacing?:SpacingTokens;note?:string;seriesMode?:SeriesMode;seriesRelation?:SeriesRelationId;thirdColor?:RoleColor;auxiliary?:RoleColor[];auxiliaryModifiers?:AuxiliaryModifier[];radius?:RadiusTokens;shadow?:ShadowTokens;semantic?:SemanticTokens;}
+// 色阶生成模式（W-tb-P47 / ADR-018）：scaleMode 三态 + curve 强度，均为可选附加字段
+//   （1.1 起；旧数据/旧调用缺省 = 'classic'/0.5，输出与 1.0.0 逐位一致）。内联联合不新增导出。
+// <lang en>Scale generation mode (W-tb-P47 / ADR-018): scaleMode tri-state + curve strength as optional
+//   additive fields (since 1.1; absent = 'classic'/0.5, bit-identical to 1.0.0). Inline unions add no export.
+//   </lang>
+export interface ThemeInput{name?:string;category?:string;industry?:string;primary:string;secondary:string;primaryName?:string;secondaryName?:string;gradients?:GradientSettings;typography?:TypographyTokens;spacing?:SpacingTokens;note?:string;seriesMode?:SeriesMode;seriesRelation?:SeriesRelationId;thirdColor?:RoleColor;auxiliary?:RoleColor[];auxiliaryModifiers?:AuxiliaryModifier[];radius?:RadiusTokens;shadow?:ShadowTokens;semantic?:SemanticTokens;scaleMode?:'classic'|'grid'|'curve';curveStrength?:number;}
 // 主色候选：候选库中的一条主色及其推荐副色配对。
 // <lang zh-CN>用于主色选择面板的单条目，附带推荐副色与来源标签。</lang>
 // <lang en>Single entry for the primary picker, carrying a recommended secondary pairing and provenance tags.</lang>
@@ -94,7 +99,7 @@ export interface PrimaryCandidate{id:string;name:string;en:string;hex:string;tag
 // 预设主题：可应用/保存的具名主题方案。
 // <lang zh-CN>harmonyMode/auxiliary 为 ADR-007 扩展（optional，旧库文件/远程源缺字段容忍）。</lang>
 // <lang en>harmonyMode/auxiliary are the ADR-007 extension (optional; legacy files/sources tolerate absence).</lang>
-export interface Preset{id:string;name:string;category:string;industry:string;primary:string;secondary:string;primaryName:string;secondaryName:string;note:string;gradients?:GradientSettings;seriesMode?:SeriesMode;seriesRelation?:SeriesRelationId;thirdColor?:RoleColor;auxiliary?:RoleColor[];radius?:RadiusTokens;shadow?:ShadowTokens;semantic?:SemanticTokens;semanticDerived?:Record<string,boolean>;}
+export interface Preset{id:string;name:string;category:string;industry:string;primary:string;secondary:string;primaryName:string;secondaryName:string;note:string;gradients?:GradientSettings;seriesMode?:SeriesMode;seriesRelation?:SeriesRelationId;thirdColor?:RoleColor;auxiliary?:RoleColor[];radius?:RadiusTokens;shadow?:ShadowTokens;semantic?:SemanticTokens;semanticDerived?:Record<string,boolean>;scaleMode?:'classic'|'grid'|'curve';curveStrength?:number;}
 // 和谐配色定义：副色生成的色彩理论依据。
 // <lang zh-CN>描述由主色推导副色的配色方案（类比/互补/三角等）与目标 L/C。</lang>
 // <lang en>Describes the color-harmony scheme (analogous/complementary/triadic) and target L/C for deriving a secondary.</lang>
@@ -109,7 +114,7 @@ export interface HarmonyDef{id:string;name:string;en:string;scheme:string;offset
 //   令牌组（ADR-006），seriesMode/seriesRelation/thirdColor/auxiliary 为配色关系扩展（ADR-007 v2，缺省补默认）。</lang>
 // <lang en>Live editing state of the studio; serialization-friendly intermediate form. typography/spacing are
 //   optional token groups (ADR-006); seriesMode/seriesRelation/thirdColor/auxiliary extend the harmony dimension (ADR-007 v2).</lang>
-export interface ThemeDraft{id?:string;name:string;category:string;industry:string;primary:string;secondary:string;primaryName:string;secondaryName:string;note:string;gradients:GradientSettings;typography?:TypographyTokens;spacing?:SpacingTokens;seriesMode?:SeriesMode;seriesRelation?:SeriesRelationId;thirdColor?:RoleColor;auxiliary?:RoleColor[];auxiliaryModifiers?:AuxiliaryModifier[];radius?:RadiusTokens;shadow?:ShadowTokens;semantic?:SemanticTokens;
+export interface ThemeDraft{id?:string;name:string;category:string;industry:string;primary:string;secondary:string;primaryName:string;secondaryName:string;note:string;gradients:GradientSettings;typography?:TypographyTokens;spacing?:SpacingTokens;seriesMode?:SeriesMode;seriesRelation?:SeriesRelationId;thirdColor?:RoleColor;auxiliary?:RoleColor[];auxiliaryModifiers?:AuxiliaryModifier[];radius?:RadiusTokens;shadow?:ShadowTokens;semantic?:SemanticTokens;scaleMode?:'classic'|'grid'|'curve';curveStrength?:number;
   /** @lang zh-CN 语义色派生标记（ADR-012）：true=仍随主色派生；缺省 false=用户值不跟随。 @lang en Semantic derivation flags (ADR-012): true = still derived from primary; absent/false = user-managed. */
   semanticDerived?:Record<string,boolean>;}
 // 主色系模式（ADR-007 v2）：主色系的规模——单色 1 个角色色 / 双色 2 个（现行）/ 三色 3 个。
