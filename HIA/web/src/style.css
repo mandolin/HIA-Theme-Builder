@@ -405,6 +405,14 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .baodian-emo-row.active{background:var(--primary);color:var(--on-primary)}
 .baodian-emo{flex:1;min-width:0;text-align:left;border:0;background:none;border-radius:6px;padding:8px 10px;font-size:14px;font-weight:700;color:inherit;cursor:pointer;overflow-wrap:anywhere}
 .baodian-emo:hover{background:var(--p50)}
+/* 裸分组按钮的选中态（维护者反馈：仅宝典情感源高亮正常——其高亮在 .baodian-emo-row 容器上，
+   其余源的按钮直接挂 active 无样式）。加 .baodian-emo.active 后旗标/企业/自然/社会/企业国家视图
+   全部生效；情感源不受影响（其按钮不带 active，行容器承担）。
+   <lang en>Selected state for bare group buttons (maintainer feedback: only the Baodian emotional source
+   highlighted correctly — its state lives on .baodian-emo-row; other sources put `active` directly on the
+   button with no style). This rule covers flag/brand/nature/social and the brand country view; the
+   emotional source is unaffected (its buttons never carry `active`).</lang> */
+.baodian-emo.active{background:var(--primary);color:var(--on-primary)}
 /* 企业选色视图切换（`W-tb-P46` 维护者截图指示）：菜单列顶部两段式控件（按行业/按国家）。
    与 .baodian-emo 同字号，选中态用主色描边+主色文字（不占整行背景，与分组按钮区分层级）。
    <lang en>Brand view switch (`W-tb-P46` maintainer's screenshot request): a two-segment control at the

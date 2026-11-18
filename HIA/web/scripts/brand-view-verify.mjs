@@ -90,6 +90,17 @@ try{
     count:document.querySelectorAll('#baodianRight .bdc-card').length,
   }));
   s3.count>0?ok('美国分组卡片渲染',`${s3.count} 张，首卡 ${s3.cards[0]}`):bad('美国分组无卡片');
+  // ③-b 高亮：选中分组按钮必须带 active 且计算背景=主色（维护者反馈：菜单选中项不高亮）。
+  // <lang en>Highlight: the selected group button must carry `active` and its computed background must be
+  //   the primary colour (maintainer feedback: no highlight on the selected menu item).</lang>
+  const hl=await page.evaluate(()=>{
+    const btn=document.querySelector('#baodianMenu [data-brand-group].active');
+    if(!btn)return{cls:false,bg:''};
+    return{cls:true,bg:getComputedStyle(btn).backgroundColor};
+  });
+  hl.cls&&hl.bg&&hl.bg!=='rgba(0, 0, 0, 0)'&&hl.bg!=='transparent'
+    ?ok('选中分组高亮（active+主色背景）',hl.bg)
+    :bad('选中分组未高亮',JSON.stringify(hl));
   await shot('01-brand-country-us.png');
 
   // ④ 切回行业视图 → 保留上次行业分组（tech）
