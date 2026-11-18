@@ -368,6 +368,13 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
    mixes var(--line) 55% toward white — one step lighter than .box so cards don't compete with the shell. */
 .pickers-grid .picker-group,.scale-mode-group{--card-line:color-mix(in srgb,var(--line) 55%,#fff)}
 .pickers-grid .picker-group{border:1px solid var(--card-line);border-radius:10px;padding:10px;min-width:0;background:#FBFCFD}
+/* 主/副/第三色块边框各自取本角色色（维护者反馈：主色用主色、副色用副色）——随主题实时变化；
+   第三色仅三色模式存在 --third，缺省回退浅灰。拖拽悬停仍是 outline（虚线主色调），不冲突。
+   <lang en>Primary/secondary/third cards take their own role colour as the border (maintainer feedback),
+   live with the theme; third falls back to the grey line when absent. Drag hover keeps its dashed outline. */
+.pickers-grid .picker-group[data-picker="primary"]{border-color:var(--primary)}
+.pickers-grid .picker-group[data-picker="secondary"]{border-color:var(--secondary)}
+.pickers-grid .picker-group[data-picker="third"]{border-color:var(--third,var(--card-line))}
 /* 色阶生成模式卡：与拾色器组同框同色边框；行内布局沿用 control-group。
    <lang en>The scale-mode card shares the same frame and border colour as the picker groups.</lang> */
 .scale-mode-group{border:1px solid var(--card-line);border-radius:10px;padding:10px;background:#FBFCFD;min-width:0}
