@@ -356,7 +356,10 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
 .pp-mini-actions .pp-slot-del:disabled:hover{border-color:var(--line);color:var(--danger)}
 .pp-drag-hint{font-size:11px;color:var(--muted);margin-left:4px}
 .preset-aux-group{flex:1 1 auto;min-width:28px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
-.pickers-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0}
+/* 与上方"主题名称/主题分类"行保持呼吸间距（维护者反馈：色块卡与上区挤在一块）。
+   <lang en>Keeps breathing room below the theme-name/category row (maintainer feedback: the picker cards
+   sat flush against the section above).</lang> */
+.pickers-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;min-width:0}
 /* 操作台四块统一浅灰边框（维护者反馈 W-tb-P47：色阶生成模式块与主/副/第三色块混淆——
    四个集群全部加"同色浅灰边框"形成卡片分区；虚线仅保留为拖拽悬停 outline，不占边框位）。
    边框色用 var(--line) 的 55% 白混（比 .box 的 --line 更浅一档，避免与外层卡片争夺层级）。
