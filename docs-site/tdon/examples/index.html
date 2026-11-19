@@ -32,6 +32,21 @@
   <section class="doc">
     <h2><span class="zh">怎么用</span><span class="en">How to use</span></h2>
     <p><span class="zh"><b>在 Theme Builder 里</b>：预览区切到「自定义支持」→ 选「URL 源」或「本地文件」→ 连接；或直接点「加载示例」。</span><span class="en"><b>In Theme Builder</b>: switch the preview to "Custom Support" → choose a URL or local file → connect; or click "Load example" directly.</span></p>
+
+    <h2><span class="zh">官方 URL 直连</span><span class="en">Official URLs</span></h2>
+    <p><span class="zh">官方适配包随本站发布（与 npm 包同一来源、同一集成测试覆盖）。在应用的「自定义支持」里选<b>URL 源</b>，粘贴以下地址即可直连（GitHub Pages 带 CORS 允许头，桌面端与第三方站点同样可取）。</span><span class="en">Official adapters are published with this site (same source and same integration tests as the npm package). In the app, choose <b>URL source</b> and paste any address below — GitHub Pages serves permissive CORS headers, so desktop apps and third-party sites can fetch them too.</span></p>
+    <table>
+      <tr><th><span class="zh">文件</span><span class="en">File</span></th><th><span class="zh">官方 URL（复制到应用「URL 源」）</span><span class="en">Official URL (paste into the app's URL source)</span></th></tr>
+      <tr><td><code>vitepress-docs.tdon.json</code></td><td><code>https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/vitepress-docs.tdon.json</code></td></tr>
+      <tr><td><code>admin-dashboard.tdon.json</code></td><td><code>https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/admin-dashboard.tdon.json</code></td></tr>
+      <tr><td><code>minimal.tdon.json</code></td><td><code>https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/minimal.tdon.json</code></td></tr>
+    </table>
+    <div class="tip">
+      <b><span class="zh">同源保证</span><span class="en">Single source</span></b><br>
+      <span class="zh">本目录文件由 Pages 工作流直接从 <code>HIA/tdon/tdon-examples/</code> 拷贝发布（应用内置示例同源）——包更新即自动重发布，不会出现「官网版本落后」。</span>
+      <span class="en">Files in this directory are published by the Pages workflow straight from <code>HIA/tdon/tdon-examples/</code> (the same source as the app's built-in examples) — package updates republish automatically, so the site never lags behind.</span>
+    </div>
+
     <pre><code>npm install @hia/tdon</code></pre>
     <pre><code>import { parseTdonDocument, renderTdonPreview, createTdonExportTarget } from '@hia/tdon';
 import { readFileSync } from 'node:fs';
@@ -48,7 +63,7 @@ if (doc) {
     <table>
       <tr><th><span class="zh">文件</span><span class="en">File</span></th><th><span class="zh">覆盖能力</span><span class="en">Covers</span></th></tr>
       <tr><td><code>minimal.tdon.json</code></td><td><span class="zh">最小合法文档：仅 <code>target</code> + 1 个导出文件。适合作为起点拷贝。</span><span class="en">Minimal valid document: <code>target</code> plus one export file. Good starting point.</span></td></tr>
-      <tr><td><code>vitepress-docs.tdon.json</code></td><td><span class="zh">文档站：hero / nav / raw-text / table / list / divider / card + <code>alias</code> + <code>constraints</code> + 三种 <code>effects</code>。</span><span class="en">Docs site: hero/nav/raw-text/table/list/divider/card plus <code>alias</code>, <code>constraints</code> and all three <code>effects</code>.</span></td></tr>
+      <tr><td><code>vitepress-docs.tdon.json</code></td><td><span class="zh">文档页全貌（ADR-019 重制）：两栏布局 + 文档树 / 代码块 / 提示容器 + nav / table / divider / raw-text + <code>alias</code> + <code>constraints</code> + effects + 真实 VitePress 目录导出。</span><span class="en">Full docs page (ADR-019 remake): two-column layout + tree / code-block / callout + nav/table/divider/raw-text plus <code>alias</code>, <code>constraints</code>, effects and a real VitePress directory export.</span></td></tr>
       <tr><td><code>admin-dashboard.tdon.json</code></td><td><span class="zh">后台：nav / stats / table / form / card + 多令牌映射。</span><span class="en">Admin: nav/stats/table/form/card plus multiple token mappings.</span></td></tr>
     </table>
 

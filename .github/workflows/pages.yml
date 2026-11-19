@@ -122,6 +122,14 @@ jobs:
           mkdir -p stage/docs
           cp -r HIA/web/dist/* stage/
           cp -r docs-site/* stage/docs/
+          # TDON 官方示例随 Pages 发布（T-tb-TDON-P1）：把包内 tdon-examples 实体文件发布到
+          #   docs/tdon/examples/（与示例介绍页同路径），供应用内「URL 源」直连与第三方复用；
+          #   触发 paths 已含 HIA/tdon/**——示例更新即自动重部署。仅新增文件，不覆盖子站 index.html。
+          # <lang en>Publish official TDON adapters via Pages (T-tb-TDON-P1): copy the package's
+          #   tdon-examples into docs/tdon/examples/ (next to the intro page) so the app's URL source
+          #   can connect directly; the workflow paths trigger already covers HIA/tdon/**. Additive only,
+          #   the subsite index.html is never overwritten.</lang>
+          cp -r HIA/tdon/tdon-examples/. stage/docs/tdon/examples/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
