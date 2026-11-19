@@ -123,24 +123,44 @@ function parsed(preview) {
   return res.doc;
 }
 
-test('两栏：sidebar-left 首节点入 aside，其余入 main；sidebar-right 末节点入 aside', () => {
-  const nodes = [{ type: 'tree', sections: [{ label: 'a', items: [{ label: 'x' }] }] }, { type: 'raw-text', text: '正文一' }, { type: 'raw-text', text: '正文二' }];
-  const left = renderTdonPreview(parsed({ layout: 'sidebar-left', nodes: [...nodes] }), THEME);
+test('两栏：sidebar-left 首节点（tree）入 aside；sidebar-right 末节点（tree）入 aside（语义门槛修订后）', () => {
+  // 左：tree 打头；右：tree 收尾——语义门槛要求边界节点为 tree（ADR-019 修订 2026-11-20）。
+  const leftNodes = [{ type: 'tree', sections: [{ label: 'a', items: [{ label: 'x' }] }] }, { type: 'raw-text', text: '正文一' }, { type: 'raw-text', text: '正文二' }];
+  const left = renderTdonPreview(parsed({ layout: 'sidebar-left', nodes: [...leftNodes] }), THEME);
   const asidePos = left.indexOf('tdon-aside'), mainPos = left.indexOf('tdon-main');
   assert.ok(asidePos >= 0 && mainPos >= 0, '应输出 aside/main 结构');
   assert.ok(asidePos < mainPos, 'sidebar-left 的 aside 应在 main 前');
   assert.ok(left.indexOf('tdon-tree') > asidePos && left.indexOf('tdon-tree') < mainPos, '首节点（tree）应在 aside 内');
-  const right = renderTdonPreview(parsed({ layout: 'sidebar-right', nodes: [...nodes] }), THEME);
+  const rightNodes = [{ type: 'raw-text', text: '正文一' }, { type: 'raw-text', text: '正文二' }, { type: 'tree', sections: [{ label: 'a', items: [{ label: 'x' }] }] }];
+  const right = renderTdonPreview(parsed({ layout: 'sidebar-right', nodes: [...rightNodes] }), THEME);
   assert.ok(right.indexOf('tdon-main') < right.indexOf('tdon-aside'), 'sidebar-right 的 main 应在 aside 前');
-  // 末节点（第二个 raw-text）进 aside：aside 内应含"正文二"。
+  // 末节点（tree）进 aside：aside 内应含树结构。
   const asideChunk = right.slice(right.indexOf('tdon-aside'));
-  assert.ok(asideChunk.includes('正文二'), 'sidebar-right 末节点应入 aside');
+  assert.ok(asideChunk.includes('tdon-tree'), 'sidebar-right 末节点（tree）应入 aside');
 });
 
 test('两栏：单节点 sidebar-left 退化为无 aside 的平铺（避免空主列）', () => {
   const html = renderTdonPreview(parsed({ layout: 'sidebar-left', nodes: [{ type: 'raw-text', text: '独行' }] }), THEME);
   assert.ok(!html.includes('tdon-aside'), '单节点不应产出 aside');
   assert.ok(html.includes('tdon-layout-sidebar-left'), '布局类保留');
+});
+
+test('两栏语义门槛（ADR-019 修订 2026-11-20）：首节点为 nav 时不两栏——顶部导航不被塞进窄列', () => {
+  // 后台仪表盘形态（admin-dashboard 同构）：nav（顶部导航）+ stats/table——机械"首节点进侧栏"
+  // 会把导航压进 220px 竖条（维护者截图反馈的实际缺陷）。
+  const html = renderTdonPreview(parsed({ layout: 'sidebar-left', nodes: [
+    { type: 'nav', items: ['仪表盘', '订单', '客户'] },
+    { type: 'stats', items: [{ label: '订单', value: '1,284' }] },
+    { type: 'raw-text', text: '表格区' }
+  ] }), THEME);
+  assert.ok(!html.includes('tdon-aside'), '首节点为 nav 不应产出 aside');
+  assert.ok(html.includes('tdon-nav'), 'nav 保持单列流式（全宽）');
+  // 对照：首节点为 tree 时两栏依旧成立。
+  const withTree = renderTdonPreview(parsed({ layout: 'sidebar-left', nodes: [
+    { type: 'tree', sections: [{ label: 'a', items: [{ label: 'x' }] }] },
+    { type: 'raw-text', text: '内容' }
+  ] }), THEME);
+  assert.ok(withTree.includes('tdon-aside'), '首节点为 tree 应两栏');
 });
 
 // ===== 6. 新节点渲染结构与安全 =====

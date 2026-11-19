@@ -371,6 +371,18 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const code=document.querySelector<HTMLElement>(`[data-gradient-code="${def.key}"]`);
       if(code)code.textContent=`${cfg.family==='primary'?'主色':'副色'} ${cfg.start} → ${cfg.end}`;
     });
+    // TDON 预览与导出树随主题实时重绘（维护者 2026-11-20 反馈的 bug 修复）：applyRuntimeTheme 是
+    //   两条主题变更链（applyCurrentTheme 与排版/间距链直调）的最深汇点，在此挂 TDON 重绘使
+    //   "操作台改色 → 预览自动变化"，无需重新连接（TDON-8.3 的随主题重解析路径）。
+    //   守卫 tdonDoc：未连接时不打扰占位面板；页签与预览内点击态（tdonPage）跨重绘保留。
+    // <lang en>TDON preview and export tree redraw live with the theme (bug reported by the maintainer,
+    //   2026-11-20): applyRuntimeTheme is the deepest common sink of both theme-change chains, so hooking
+    //   here makes console colour edits update the preview without reconnecting (the TDON-8.3
+    //   re-resolution path). Guarded by tdonDoc; page state survives re-renders.</lang>
+    if(tdonDoc){
+      renderTdonPanel();
+      renderTdonExport();
+    }
   }
 
   // 将草稿写回各表单控件（界面→状态的反向同步，用于载入预设/候选切换后刷新输入）。

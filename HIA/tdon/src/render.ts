@@ -421,22 +421,25 @@ export function renderTdonPreview(doc:TdonDocument,theme:Theme,opts?:{page?:stri
   }else{
     nodes=preview.nodes??[];
   }
-  // 两栏布局（`T-tb-TDON-P1`/ADR-019/TDON-5.18）：sidebar-left 首节点入侧栏列、sidebar-right 末节点入侧栏列。
-  // <lang zh-CN>仅当顶层 ≥2 个节点时启用结构化包裹（aside/main），单节点文档退化为 stack 行为，避免空主列；
-  //   DOM 顺序与视觉左右一致：sidebar-left = aside,main；sidebar-right = main,aside。
-  //   其余布局（stack/hero）保持原有的单列流式排布。</lang>
-  // <lang en>Two-column layouts (`T-tb-TDON-P1`/ADR-019/TDON-5.18): sidebar-left puts the first top-level
-  //   node into the aside column, sidebar-right the last. Structural aside/main wrapping applies only with
-  //   ≥2 nodes — single-node docs degrade to stack behaviour (no empty column). DOM order matches the
-  //   visual order: sidebar-left = aside,main; sidebar-right = main,aside. Other layouts keep flat flow.</lang>
-  const isSidebar=layout==='sidebar-left'||layout==='sidebar-right';
-  if(isSidebar&&nodes.length>=2){
-    const asideIndex=layout==='sidebar-left'?0:nodes.length-1;
+  // 两栏布局（`T-tb-TDON-P1`/ADR-019/TDON-5.18；2026-11-20 语义门槛修订）：sidebar-left 首节点、
+  //   sidebar-right 末节点**且该边界节点是 `tree`（侧栏语义节点）**时才两栏；否则单列流式。
+  // <lang zh-CN>语义门槛是必要的：后台仪表盘等目标的首节点常是 nav（顶部导航条）——机械地"首个节点
+  //   进侧栏列"会把顶部导航塞进 220px 窄列（维护者截图反馈的实际缺陷）。单节点文档退化为 stack。
+  //   DOM 顺序与视觉左右一致：sidebar-left = aside,main；sidebar-right = main,aside。</lang>
+  // <lang en>Two-column layouts (`T-tb-TDON-P1`/ADR-019/TDON-5.18; semantic gate refined 2026-11-20):
+  //   wrap aside/main only when the edge node (first for sidebar-left, last for sidebar-right) is a
+  //   `tree` — the sidebar-semantics node. Otherwise flat flow: dashboards often start with a top nav,
+  //   and mechanically assigning the first node to the aside column squeezes it into a 220px rail (the
+  //   defect reported by the maintainer's screenshot). Single-node docs degrade to stack.</lang>
+  const edgeIndex=layout==='sidebar-left'?0:nodes.length-1;
+  const isSidebar=(layout==='sidebar-left'||layout==='sidebar-right')&&nodes.length>=2&&nodes[edgeIndex]?.type==='tree';
+  if(isSidebar){
+    const asideIndex=edgeIndex;
     const aside=renderNode(theme,nodes[asideIndex]!,doc,0);
     const rest=nodes.filter((_,i)=>i!==asideIndex).map(n=>renderNode(theme,n,doc,0)).join('\n');
     const asideHtml=`<div class="tdon-aside">${aside}</div>`;
     const mainHtml=`<div class="tdon-main">${rest}</div>`;
-    return`<div class="tdon-preview tdon-layout-${layout}">${title}${preview.layout==='sidebar-left'?asideHtml+mainHtml:mainHtml+asideHtml}</div>`;
+    return`<div class="tdon-preview tdon-layout-${layout} tdon-two-col">${title}${preview.layout==='sidebar-left'?asideHtml+mainHtml:mainHtml+asideHtml}</div>`;
   }
   const rendered=nodes.map(n=>renderNode(theme,n,doc,0)).join('\n');
   return`<div class="tdon-preview tdon-layout-${layout}">${title}${rendered}</div>`;
@@ -450,15 +453,19 @@ export function renderTdonPreview(doc:TdonDocument,theme:Theme,opts?:{page?:stri
 export const TDON_PREVIEW_CSS=`
 .tdon-preview{display:flex;flex-direction:column;gap:12px;font-family:var(--hia-font-body,system-ui,sans-serif);line-height:var(--hia-line-height-body,1.6)}
 .tdon-preview-title{font-size:var(--hia-fs-h3,18px);font-weight:700}
-/* 两栏布局（ADR-019 / TDON-5.18）：aside 列 ≈220px + main 列；标题行横跨全宽；窄屏单列回退。
-   <lang en>Two-column layouts (ADR-019 / TDON-5.18): aside column ≈220px + main column; the title spans
-   full width; narrow screens fall back to a single column.</lang> */
-.tdon-layout-sidebar-left,.tdon-layout-sidebar-right{display:grid;grid-template-columns:220px minmax(0,1fr);gap:12px;align-items:start}
-.tdon-layout-sidebar-right{grid-template-columns:minmax(0,1fr) 220px}
-.tdon-layout-sidebar-left>.tdon-preview-title,.tdon-layout-sidebar-right>.tdon-preview-title{grid-column:1/-1}
+/* 两栏布局（ADR-019 / TDON-5.18；2026-11-20 语义门槛修订）：网格仅在渲染器附加 .tdon-two-col
+   （结构化 aside/main 包裹成立）时生效——sidebar 布局声明在语义门槛不满足时（如首节点为 nav）
+   保持单列流式，不会被网格强行分栏。标题行横跨全宽；窄屏单列回退。
+   <lang en>Two-column layout (ADR-019 / TDON-5.18; semantic gate refined 2026-11-20): the grid applies
+   only when the renderer adds .tdon-two-col (structural aside/main wrapping) — a sidebar declaration
+   whose edge node lacks sidebar semantics (e.g. a leading nav) stays flat instead of being force-split.
+   Title spans full width; narrow screens fall back to one column.</lang> */
+.tdon-layout-sidebar-left.tdon-two-col,.tdon-layout-sidebar-right.tdon-two-col{display:grid;grid-template-columns:220px minmax(0,1fr);gap:12px;align-items:start}
+.tdon-layout-sidebar-right.tdon-two-col{grid-template-columns:minmax(0,1fr) 220px}
+.tdon-layout-sidebar-left.tdon-two-col>.tdon-preview-title,.tdon-layout-sidebar-right.tdon-two-col>.tdon-preview-title{grid-column:1/-1}
 .tdon-aside{min-width:0}
 .tdon-main{min-width:0;display:flex;flex-direction:column;gap:12px}
-@media (max-width:720px){.tdon-layout-sidebar-left,.tdon-layout-sidebar-right{grid-template-columns:1fr}}
+@media (max-width:720px){.tdon-layout-sidebar-left.tdon-two-col,.tdon-layout-sidebar-right.tdon-two-col{grid-template-columns:1fr}}
 .tdon-node{border-radius:10px}
 .tdon-hero{padding:24px;border-radius:12px;color:#fff}
 .tdon-hero-title{margin:0 0 6px;font-size:var(--hia-fs-h2,22px)}
