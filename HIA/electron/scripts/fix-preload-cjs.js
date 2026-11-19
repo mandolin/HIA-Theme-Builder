@@ -22,6 +22,16 @@ if (!m || !m[1]) {
   process.exit(1);
 }
 const channel = m[1];
+// W-tb-P48：更新通道常量同样提取内联（单一事实源仍是 src/main.ts）。
+// <lang en>W-tb-P48: updater channel constants extracted the same way (src/main.ts stays the single source).</lang>
+const um = mainCode.match(/UPDATER_CHECK\s*=\s*['"]([^'"]+)['"]/);
+const sm = mainCode.match(/UPDATER_STATUS\s*=\s*['"]([^'"]+)['"]/);
+if (!um || !um[1] || !sm || !sm[1]) {
+  console.error('fix-preload-cjs: 无法提取 UPDATER_CHECK/UPDATER_STATUS（Cannot extract updater channels）');
+  process.exit(1);
+}
+const updaterCheck = um[1];
+const updaterStatus = sm[1];
 
 const src = join(distDir, 'preload.js');
 let code = readFileSync(src, 'utf8');
@@ -33,8 +43,10 @@ code = code.replace(
   "const { contextBridge, ipcRenderer } = require('electron');"
 );
 code = code.replace(
-  /import\s*\{\s*CHANNEL\s*\}\s*from\s*['"]\.\/main\.js['"];?/,
-  `const CHANNEL = ${JSON.stringify(channel)};`
+  /import\s*\{\s*CHANNEL\s*,\s*UPDATER_CHECK\s*,\s*UPDATER_STATUS\s*\}\s*from\s*['"]\.\/main\.js['"];?/,
+  `const CHANNEL = ${JSON.stringify(channel)};\n` +
+  `const UPDATER_CHECK = ${JSON.stringify(updaterCheck)};\n` +
+  `const UPDATER_STATUS = ${JSON.stringify(updaterStatus)};`
 );
 writeFileSync(src, code, 'utf8');
 console.log(`preload converted to CJS (channel=${channel})`);

@@ -517,6 +517,47 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // 统一应用当前草稿到界面：读取输入→注入变量→同步表单→令牌/元信息→重渲染候选。
   // <lang zh-CN>绝大多数交互的汇聚点；readInputs 失败则整体中止。</lang>
   // <lang en>Convergence point for most interactions; aborts entirely if readInputs fails.</lang>
+  // 桌面端更新入口（W-tb-P48）：仅当 Electron preload 桥存在时注入「检查更新」按钮——
+  //   Pages/Tauri 无此桥则完全不渲染（web 版零影响）。点击→IPC 检查→终态以 alert 呈现；
+  //   下载中状态实时刷新按钮文案；downloaded 后由主进程弹确认框（绝不静默安装）。
+  // <lang en>Desktop update entry (W-tb-P48): inject an update-check button only when the Electron preload
+  //   bridge exists (Pages/Tauri unaffected). Click→IPC check→terminal state via alert; downloading states
+  //   refresh the button label; the main process pops the confirm dialog on downloaded — never silent.</lang>
+  if(typeof window!=='undefined'&&(window as unknown as Record<string,unknown>).hiaUpdater){
+    const slot=document.getElementById('updaterSlot');
+    if(slot){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='btn ghost';
+      btn.style.cssText='font-size:12px;padding:4px 10px';
+      btn.textContent=t('p48.update.check');
+      let busy=false;
+      const label=(txt:string)=>{btn.textContent=txt;};
+      const hiaUp=(window as unknown as {hiaUpdater:{check:()=>Promise<{state:string;version?:string;message?:string}>;onStatus:(cb:(s:{state:string;version?:string;percent?:number})=>void)=>void}});
+      hiaUp.hiaUpdater.onStatus((st)=>{
+        if(st.state==='downloading')label(t('p48.update.downloading',{p:String(st.percent??0)}));
+        else if(st.state==='downloaded')label(t('p48.update.ready'));
+        else if(!busy&&st.state==='available')label(t('p48.update.check'));
+      });
+      btn.addEventListener('click',async()=>{
+        if(busy)return;
+        busy=true;label(t('p48.update.checking'));
+        try{
+          const r=await hiaUp.hiaUpdater.check();
+          const map:Record<string,string>={available:'p48.update.available',none:'p48.update.none',downloaded:'p48.update.ready',error:'p48.update.error',disabled:'p48.update.disabled'};
+          const key=map[r.state]??'p48.update.none';
+          const msg=t(key,{v:r.version??''})+(r.message?'\n'+r.message:'');
+          platform.alert(msg);
+        }catch(e){
+          platform.alert(t('p48.update.error')+(e instanceof Error?'\n'+e.message:''));
+        }finally{
+          busy=false;label(t('p48.update.check'));
+        }
+      });
+      slot.appendChild(btn);
+    }
+  }
+
   function applyCurrentTheme(updateName=true){
     if(!readInputs(updateName))return;
     applyRuntimeTheme();syncInputs();updateTokenOutputs();updatePreviewMeta();

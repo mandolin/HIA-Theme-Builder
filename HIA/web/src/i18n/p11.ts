@@ -185,6 +185,17 @@ registerStrings({
   'p47.mode.grid': { zh: '等差栅格', en: 'Uniform grid' },
   'p47.mode.curve': { zh: '曲线', en: 'Curve' },
   'p47.curve.strength': { zh: '曲线强度', en: 'Curve strength' },
+  // 桌面端更新入口（W-tb-P48）：仅 Electron 桥存在时渲染；占位符 {p}=下载百分比、{v}=新版本号。
+  // <lang en>Desktop update entry (W-tb-P48): rendered only when the Electron bridge exists; {p} = download
+  //   percent, {v} = new version.</lang>
+  'p48.update.check': { zh: '检查更新', en: 'Check updates' },
+  'p48.update.checking': { zh: '检查中…', en: 'Checking…' },
+  'p48.update.downloading': { zh: '下载中 {p}%', en: 'Downloading {p}%' },
+  'p48.update.ready': { zh: '新版本已就绪', en: 'Update ready' },
+  'p48.update.available': { zh: '发现新版本 {v}，后台下载中…', en: 'Version {v} found; downloading in background…' },
+  'p48.update.none': { zh: '已是最新版本。', en: 'You are up to date.' },
+  'p48.update.error': { zh: '更新检查失败：', en: 'Update check failed:' },
+  'p48.update.disabled': { zh: '当前环境未启用更新（开发/未打包）。', en: 'Updates unavailable in this environment (dev/unpackaged).' },
   'p18.brand.view.group': { zh: '企业选色分组方式', en: 'Brand grouping mode' },
   'p18.brand.view.industry': { zh: '按行业', en: 'By industry' },
   'p18.brand.view.country': { zh: '按国家/地区', en: 'By country/region' },

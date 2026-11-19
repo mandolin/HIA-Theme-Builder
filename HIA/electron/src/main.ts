@@ -8,11 +8,18 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { collectSignalsV2 } from './render-adapter.js';
 import { analyzeThemeV2 } from '@hia/theme-core';
+import { setupUpdater, type UpdaterStatus } from './updater.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** @lang zh-CN 取色 IPC 通道名。 @lang en Extraction IPC channel name. */
 const CHANNEL = 'extract-from-url';
+
+/** @lang zh-CN 手动检查更新 IPC 通道（W-tb-P48）。 @lang en Manual update-check IPC channel (W-tb-P48). */
+const UPDATER_CHECK = 'check-updates';
+
+/** @lang zh-CN 更新状态广播通道（主→渲染）。 @lang en Update status broadcast channel (main→renderer). */
+const UPDATER_STATUS = 'updater-status';
 
 /**
  * @lang zh-CN 打开主窗口并载入渲染页。
@@ -58,11 +65,31 @@ function registerIpc(): void {
       return { ok: false, ssrf: msg.startsWith('SSRF:'), reason: msg };
     }
   });
+  // 手动检查更新（W-tb-P48）：由 setupUpdater 返回的检查函数承载；禁用态返回 disabled。
+  // <lang en>Manual update check (W-tb-P48): backed by the checker from setupUpdater; disabled state returned when inactive.</lang>
+  ipcMain.handle(UPDATER_CHECK, async (): Promise<UpdaterStatus> => {
+    if (!manualCheck) return { state: 'disabled', message: 'updater not active' };
+    return manualCheck();
+  });
 }
 
 app.whenReady().then(() => {
   registerIpc();
   createWindow();
+  // 更新通道装配（W-tb-P48）：状态广播到所有窗口（渲染层经 preload 桥收听）。
+  // <lang en>Wire the update channel (W-tb-P48): broadcast status to all windows (renderer listens via preload bridge).</lang>
+  setupUpdater((status) => {
+    // stdout 标记：E2E/排障用（update-feed-e2e 等待 downloaded 标记）。
+    // <lang en>stdout marker for E2E/debugging (update-feed-e2e waits for the downloaded marker).</lang>
+    console.log('[updater-state]', status.state, status.version ?? '', status.percent ?? '', status.message ?? '');
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send(UPDATER_STATUS, status);
+    }
+  }).then((check) => {
+    manualCheck = check;
+  }).catch((e) => {
+    console.error('[updater] setup failed:', e);
+  });
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -72,5 +99,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-/** @lang zh-CN 导出通道名供预加载复用。 @lang en Export channel name for preload reuse. */
-export { CHANNEL };
+/** @lang zh-CN 手动检查函数引用（setupUpdater 异步装配后回填）。 @lang en Manual checker reference (backfilled once setupUpdater resolves). */
+let manualCheck: (() => Promise<UpdaterStatus>) | null = null;
+
+/** @lang zh-CN 导出通道名供预加载复用（fix-preload-cjs 提取内联）。 @lang en Export channel names for preload reuse (extracted & inlined by fix-preload-cjs). */
+export { CHANNEL, UPDATER_CHECK, UPDATER_STATUS };
