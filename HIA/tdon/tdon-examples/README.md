@@ -10,7 +10,7 @@
 | 文件 | 覆盖能力 |
 | --- | --- |
 | `minimal.tdon.json` | 最小合法文档：仅 `target` + 1 个导出文件。适合作为起点拷贝 |
-| `vitepress-docs.tdon.json` | **文档页全貌适配**（ADR-019 重制）：sidebar-left 两栏布局 + 文档树 `tree` / 代码块 `code-block` / 提示容器 `callout`（语义色 var() 回退）+ nav / table / divider / raw-text + `alias` + `constraints` + effects + 真实 VitePress 目录导出（`docs/.vitepress/theme/` 亮暗两段全变量覆盖） |
+| `vitepress-docs.tdon.json` | **多页全貌适配**（ADR-019/020 重制）：home / docs / config 三页（`page` 引用，预览内点击由宿主换页）+ 两栏文档页（文档树 / 代码块 / 提示容器，语义色 var() 回退）+ `alias` + `constraints` + effects + 真实 VitePress 目录导出（亮暗两段全变量覆盖） |
 | `admin-dashboard.tdon.json` | 后台：nav / stats / table / form / card + 多令牌映射 |
 
 ## 反例（`invalid/`）

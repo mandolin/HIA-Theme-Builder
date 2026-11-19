@@ -109,10 +109,26 @@ export interface TdonNode{
   attrs:Record<string,unknown>;
 }
 
+// 预览页声明（§5 / ADR-020 / TDON-5.20）：多页形态的一页。
+// <lang zh-CN>id 为文档内页引用键（kebab-case ≤32，不得重复）；首页即落地页；layout 页级可选，
+//   缺省回退 preview.layout；节点规模预算与单页共享（TDON-5.2 合计口径）。</lang>
+// <lang en>One page of the multi-page form. id is the intra-document page reference key (kebab-case,
+//   ≤32, unique); the first page is the landing page; page layout falls back to preview.layout;
+//   node budget is shared with the single-page form (TDON-5.2 totals).</lang>
+export interface TdonPage{
+  id:string;
+  title?:string;
+  layout?:TdonPreviewLayout;
+  nodes:TdonNode[];
+}
+
 // 预览声明（§5）。
-// <lang zh-CN>nodes 为扁平顶层列表；children 由校验器归一化进 attrs。</lang>
-// <lang en>nodes is the flat top level; children are normalized into attrs by the validator.</lang>
-export interface TdonPreview{title?:string;layout:TdonPreviewLayout;nodes:TdonNode[];}
+// <lang zh-CN>单页形态用 nodes；多页形态用 pages（ADR-020 / TDON-5.20）——两者互斥（同给
+//   E_CONFLICT，由校验器强制）。nodes 为扁平顶层列表；children 由校验器归一化进 attrs。</lang>
+// <lang en>Single-page form uses nodes; multi-page form uses pages (ADR-020 / TDON-5.20) — mutually
+//   exclusive, enforced by the validator (E_CONFLICT). nodes is the flat top level; children are
+//   normalized into attrs by the validator.</lang>
+export interface TdonPreview{title?:string;layout:TdonPreviewLayout;nodes?:TdonNode[];pages?:TdonPage[];}
 
 // 导出文件条目（§6.1）：template 与 templateRef 二选一。
 // <lang zh-CN>互斥由校验器强制（同时给 = E_CONFLICT，都不给 = E_REQUIRED）。</lang>

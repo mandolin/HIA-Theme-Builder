@@ -18,6 +18,9 @@ export type TdonIssueCode=
   |'E_TOKEN_SYNTAX'|'E_TOKEN_UNRESOLVED'|'E_SHADE_RANGE'
   // 预览层
   |'E_UNKNOWN_NODE'|'E_NODE_ATTR'|'E_MEDIA_URL'
+  // <lang zh-CN>page 引用指向未声明页（ADR-020 / TDON-5.21）。</lang>
+  // <lang en>A page reference points at an undeclared page (ADR-020 / TDON-5.21).</lang>
+  |'E_PAGE_REF'
   // 导出层
   |'E_BAD_PATH'|'E_INTERP'|'E_TEMPLATE_REF'
   // 约束与特效层

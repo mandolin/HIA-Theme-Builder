@@ -8,7 +8,7 @@
  *   already whitelisted by the validator — this layer only dispatches on type.
  */
 import type{Theme}from'@hia/theme-core';
-import{TDON_MAX_NESTING,type TdonDocument,type TdonNode,type TdonEffect}from'./types.js';
+import{TDON_MAX_NESTING,type TdonDocument,type TdonNode,type TdonEffect,type TdonPreviewLayout}from'./types.js';
 import{resolveTdonToken}from'./resolve.js';
 
 // HTML 转义：文本节点与属性值统一走此函数（TDON-5.4）。
@@ -99,9 +99,14 @@ function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):str
     case 'hero':{
       const bg=css(theme,a.bgToken);
       const actions=Array.isArray(a.actions)?a.actions.map((act)=>{
-        const label=escapeTdonHtml(String((act as {label:string}).label??''));
-        const token=css(theme,(act as {token?:string}).token);
-        return`<span class="tdon-hero-action"${token?` style="background:${token}"`:''}>${label}</span>`;
+        const it=act as {label:string;token?:string;page?:string};
+        const label=escapeTdonHtml(String(it.label??''));
+        const token=css(theme,it.token);
+        // page 引用（ADR-020 / TDON-5.22）：只输出 data 属性 + tdon-link 类，事件由宿主实现。
+        // <lang en>page reference (ADR-020 / TDON-5.22): emits data attribute + tdon-link class only;
+        //   interaction belongs to the host.</lang>
+        const pageAttr=it.page?` data-tdon-page="${escapeTdonHtml(it.page)}"`:'';
+        return`<span class="tdon-hero-action${it.page?' tdon-link':''}"${pageAttr}${token?` style="background:${token}"`:''}>${label}</span>`;
       }).join(''):'';
       // 图片作为底层铺满、文字叠在其上（hero 的常见形态）；无图片时不产生额外节点。
       // <lang zh-CN>图片层绝对定位由样式表控制，渲染器只负责产出结构。</lang>
@@ -122,9 +127,12 @@ function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):str
       const bg=css(theme,a.bgToken);
       const activeCss=css(theme,a.activeToken);
       const items=Array.isArray(a.items)?a.items.map((raw)=>{
-        const it=raw as {label:string;active?:boolean};
+        const it=raw as {label:string;active?:boolean;page?:string};
         const st=it.active&&activeCss?` style="color:${activeCss}"`:'';
-        return`<span class="tdon-nav-item${it.active?' is-active':''}"${st}>${escapeTdonHtml(String(it.label??''))}</span>`;
+        // page 引用（ADR-020 / TDON-5.22）：data 属性 + tdon-link 类，事件由宿主实现。
+        // <lang en>page reference (ADR-020 / TDON-5.22): data attribute + tdon-link class; host implements interaction.</lang>
+        const pageAttr=it.page?` data-tdon-page="${escapeTdonHtml(it.page)}"`:'';
+        return`<span class="tdon-nav-item${it.active?' is-active':''}${it.page?' tdon-link':''}"${pageAttr}${st}>${escapeTdonHtml(String(it.label??''))}</span>`;
       }).join(''):'';
       return`<nav class="tdon-node tdon-nav${fx.cls}"${idAttr}${bg?` style="background:${bg}"`:''}${fx.styleAttr}>${items}${kids}</nav>`;
     }
@@ -239,9 +247,12 @@ function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):str
     case 'tree':{
       const bg=css(theme,a.bgToken);
       const ac=css(theme,a.accentToken);
-      const sections=Array.isArray(a.sections)?a.sections as {label:string;items:{label:string;active:boolean}[]}[]:[];
+      const sections=Array.isArray(a.sections)?a.sections as {label:string;items:{label:string;active:boolean;page?:string}[]}[]:[];
       const html=sections.map(sec=>`<div class="tdon-tree-section"><div class="tdon-tree-heading">${escapeTdonHtml(sec.label)}</div>${sec.items.map(it=>{
-        return`<div class="tdon-tree-item${it.active?' is-active':''}"${it.active&&ac?` style="color:${ac};background:${hexTint(ac,0.12)}"`:''}>${escapeTdonHtml(it.label)}</div>`;
+        // page 引用（ADR-020 / TDON-5.22）：data 属性 + tdon-link 类，事件由宿主实现。
+        // <lang en>page reference (ADR-020 / TDON-5.22): data attribute + tdon-link class; host implements interaction.</lang>
+        const pageAttr=it.page?` data-tdon-page="${escapeTdonHtml(it.page)}"`:'';
+        return`<div class="tdon-tree-item${it.active?' is-active':''}${it.page?' tdon-link':''}"${pageAttr}${it.active&&ac?` style="color:${ac};background:${hexTint(ac,0.12)}"`:''}>${escapeTdonHtml(it.label)}</div>`;
       }).join('')}</div>`).join('');
       return`<div class="tdon-node tdon-tree${fx.cls}"${idAttr}${bg?` style="background:${bg}"`:''}${fx.styleAttr}>${html}${kids}</div>`;
     }
@@ -392,11 +403,24 @@ function nl2br(text:string):string{
 // <lang en>Layout only selects a container class; concrete arrangement comes from the packaged CSS (no generated CSS).
 //   `doc` should come from `parseTdonDocument` (nodes normalized). Raw JSON yields empty node content rather
 //   than throwing — the contract lives in the API docs and types, not in a runtime crash.</lang>
-export function renderTdonPreview(doc:TdonDocument,theme:Theme):string{
+export function renderTdonPreview(doc:TdonDocument,theme:Theme,opts?:{page?:string}):string{
   const preview=doc?.preview;
   if(!preview)return'';
   const title=preview.title?`<div class="tdon-preview-title">${escapeTdonHtml(preview.title)}</div>`:'';
-  const nodes=preview.nodes??[];
+  // 页选择（ADR-020 / TDON-5.22）：多页文档按 opts.page 取页（未知/缺省回退首页 = 落地页）；
+  //   页级 layout 覆盖文档级缺省；单页文档行为与既有完全一致。
+  // <lang en>Page selection (ADR-020 / TDON-5.22): multi-page docs pick by opts.page (unknown/absent
+  //   falls back to the first page = landing); page layout overrides the document default; single-page
+  //   behaviour is unchanged.</lang>
+  let nodes:TdonNode[];
+  let layout:TdonPreviewLayout=preview.layout;
+  if(preview.pages&&preview.pages.length){
+    const current=(opts?.page?preview.pages.find(pg=>pg.id===opts?.page):undefined)??preview.pages[0]!;
+    nodes=current.nodes;
+    layout=current.layout??preview.layout;
+  }else{
+    nodes=preview.nodes??[];
+  }
   // 两栏布局（`T-tb-TDON-P1`/ADR-019/TDON-5.18）：sidebar-left 首节点入侧栏列、sidebar-right 末节点入侧栏列。
   // <lang zh-CN>仅当顶层 ≥2 个节点时启用结构化包裹（aside/main），单节点文档退化为 stack 行为，避免空主列；
   //   DOM 顺序与视觉左右一致：sidebar-left = aside,main；sidebar-right = main,aside。
@@ -405,17 +429,17 @@ export function renderTdonPreview(doc:TdonDocument,theme:Theme):string{
   //   node into the aside column, sidebar-right the last. Structural aside/main wrapping applies only with
   //   ≥2 nodes — single-node docs degrade to stack behaviour (no empty column). DOM order matches the
   //   visual order: sidebar-left = aside,main; sidebar-right = main,aside. Other layouts keep flat flow.</lang>
-  const isSidebar=preview.layout==='sidebar-left'||preview.layout==='sidebar-right';
+  const isSidebar=layout==='sidebar-left'||layout==='sidebar-right';
   if(isSidebar&&nodes.length>=2){
-    const asideIndex=preview.layout==='sidebar-left'?0:nodes.length-1;
+    const asideIndex=layout==='sidebar-left'?0:nodes.length-1;
     const aside=renderNode(theme,nodes[asideIndex]!,doc,0);
     const rest=nodes.filter((_,i)=>i!==asideIndex).map(n=>renderNode(theme,n,doc,0)).join('\n');
     const asideHtml=`<div class="tdon-aside">${aside}</div>`;
     const mainHtml=`<div class="tdon-main">${rest}</div>`;
-    return`<div class="tdon-preview tdon-layout-${preview.layout}">${title}${preview.layout==='sidebar-left'?asideHtml+mainHtml:mainHtml+asideHtml}</div>`;
+    return`<div class="tdon-preview tdon-layout-${layout}">${title}${preview.layout==='sidebar-left'?asideHtml+mainHtml:mainHtml+asideHtml}</div>`;
   }
   const rendered=nodes.map(n=>renderNode(theme,n,doc,0)).join('\n');
-  return`<div class="tdon-preview tdon-layout-${preview.layout}">${title}${rendered}</div>`;
+  return`<div class="tdon-preview tdon-layout-${layout}">${title}${rendered}</div>`;
 }
 
 // 预览所需 CSS（随 core 分发，不含任何用户输入）。

@@ -49,157 +49,343 @@
     }
   },
   "preview": {
-    "title": "VitePress 文档站预览（文档页全貌）",
+    "title": "VitePress 文档站预览（多页全貌）",
     "layout": "sidebar-left",
-    "nodes": [
+    "pages": [
       {
-        "type": "tree",
-        "bgToken": "primary.50",
-        "accentToken": "primary.700",
-        "sections": [
+        "id": "home",
+        "title": "首页",
+        "layout": "stack",
+        "nodes": [
           {
-            "label": "指南",
-            "items": [
+            "type": "hero",
+            "title": "HIA × VitePress",
+            "subtitle": "HIA 主题驱动的 VitePress 文档站——品牌色、语义容器、代码块与亮暗两段全覆盖。",
+            "bgToken": "gradient:carousel",
+            "actions": [
               {
-                "label": "介绍"
+                "label": "快速上手",
+                "page": "docs"
               },
               {
-                "label": "快速上手"
-              },
-              {
-                "label": "为什么选 VitePress"
+                "label": "变量映射",
+                "page": "config"
               }
-            ]
+            ],
+            "effect": "shift"
           },
           {
-            "label": "配置",
-            "items": [
-              {
-                "label": "站点配置"
-              },
-              {
-                "label": "默认主题配置"
-              }
-            ]
+            "type": "card",
+            "title": "品牌色",
+            "text": "主色 / 副色全档位映射 --vp-c-brand-* 与按钮、链接、侧栏。",
+            "bgToken": "primary.50",
+            "titleToken": "primary.900",
+            "textToken": "primary.700"
           },
           {
-            "label": "主题",
-            "items": [
-              {
-                "label": "自定义 CSS",
-                "active": true
-              },
-              {
-                "label": "扩展默认主题"
-              },
-              {
-                "label": "全局组件"
-              }
-            ]
+            "type": "card",
+            "title": "语义容器",
+            "text": "TIP / INFO / WARNING / DANGER 容器映射语义状态色（success / info / warning / danger）。",
+            "bgToken": "primary.50",
+            "titleToken": "primary.900",
+            "textToken": "primary.700"
+          },
+          {
+            "type": "card",
+            "title": "亮暗两段",
+            "text": "html.dark 切换时全部功能组跟随，画布保持 VitePress 原生白 / 黑。",
+            "bgToken": "primary.50",
+            "titleToken": "primary.900",
+            "textToken": "primary.700"
+          },
+          {
+            "type": "divider",
+            "token": "primary.100",
+            "thickness": 1
+          },
+          {
+            "type": "raw-text",
+            "text": "由 HIA Theme Builder 驱动 · vitepress-docs.tdon.json",
+            "textToken": "primary.500",
+            "size": "fs:small"
           }
         ]
       },
       {
-        "type": "nav",
-        "items": [
-          "HIA Docs",
+        "id": "docs",
+        "title": "自定义 CSS",
+        "nodes": [
           {
-            "label": "指南",
-            "active": true
-          },
-          "配置",
-          "主题"
-        ],
-        "bgToken": "primary.50",
-        "activeToken": "primary.700"
-      },
-      {
-        "type": "raw-text",
-        "text": "自定义 CSS",
-        "textToken": "primary.900",
-        "size": "fs:h1"
-      },
-      {
-        "type": "raw-text",
-        "text": "VitePress 的默认主题通过 CSS 变量暴露全部功能色。HIA 适配把品牌色、语义状态色、文本层级、侧栏、代码块与提示容器一次性接好，并按亮 / 暗两段输出。",
-        "textToken": "primary.800"
-      },
-      {
-        "type": "callout",
-        "kind": "tip",
-        "title": "TIP",
-        "text": "接入只需两个文件：.vitepress/theme/index.ts 注册入口 + custom.css 变量覆盖。明暗两种模式下都完整生效。",
-        "effect": "fade"
-      },
-      {
-        "type": "code-block",
-        "lang": "css",
-        "title": "custom.css",
-        "accentToken": "primary.600",
-        "code": ":root {\n  --vp-c-brand-1: var(--hia-primary-600);\n  --vp-c-brand-soft: var(--hia-primary-100);\n  --vp-c-text-1: var(--hia-primary-900);\n  --vp-sidebar-bg-color: var(--hia-primary-50);\n}\nhtml.dark {\n  --vp-c-brand-1: var(--hia-primary-300);\n  --vp-c-text-1: var(--hia-primary-100);\n}"
-      },
-      {
-        "type": "table",
-        "columns": [
-          {
-            "key": "var",
-            "label": "VitePress 变量"
-          },
-          {
-            "key": "token",
-            "label": "来源令牌"
-          },
-          {
-            "key": "meaning",
-            "label": "语义"
-          }
-        ],
-        "rows": [
-          {
-            "var": "--vp-c-brand-1",
-            "token": "primary.600",
-            "meaning": "品牌实色文本 / 链接"
+            "type": "tree",
+            "bgToken": "primary.50",
+            "accentToken": "primary.700",
+            "sections": [
+              {
+                "label": "指南",
+                "items": [
+                  {
+                    "label": "介绍",
+                    "page": "docs"
+                  },
+                  {
+                    "label": "快速上手",
+                    "page": "docs"
+                  },
+                  {
+                    "label": "为什么选 VitePress",
+                    "page": "docs"
+                  }
+                ]
+              },
+              {
+                "label": "配置",
+                "items": [
+                  {
+                    "label": "站点配置",
+                    "page": "config"
+                  },
+                  {
+                    "label": "默认主题配置",
+                    "page": "config"
+                  }
+                ]
+              },
+              {
+                "label": "主题",
+                "items": [
+                  {
+                    "label": "自定义 CSS",
+                    "active": true,
+                    "page": "docs"
+                  },
+                  {
+                    "label": "扩展默认主题",
+                    "page": "docs"
+                  },
+                  {
+                    "label": "全局组件",
+                    "page": "docs"
+                  }
+                ]
+              }
+            ]
           },
           {
-            "var": "--vp-c-brand-soft",
+            "type": "nav",
+            "items": [
+              {
+                "label": "HIA Docs",
+                "page": "home"
+              },
+              {
+                "label": "指南",
+                "active": true
+              },
+              {
+                "label": "配置",
+                "page": "config"
+              },
+              {
+                "label": "主题",
+                "page": "docs"
+              }
+            ],
+            "bgToken": "primary.50",
+            "activeToken": "primary.700"
+          },
+          {
+            "type": "raw-text",
+            "text": "自定义 CSS",
+            "textToken": "primary.900",
+            "size": "fs:h1"
+          },
+          {
+            "type": "raw-text",
+            "text": "VitePress 的默认主题通过 CSS 变量暴露全部功能色。HIA 适配把品牌色、语义状态色、文本层级、侧栏、代码块与提示容器一次性接好，并按亮 / 暗两段输出。",
+            "textToken": "primary.800"
+          },
+          {
+            "type": "callout",
+            "kind": "tip",
+            "title": "TIP",
+            "text": "接入只需两个文件：.vitepress/theme/index.ts 注册入口 + custom.css 变量覆盖。明暗两种模式下都完整生效。",
+            "effect": "fade"
+          },
+          {
+            "type": "code-block",
+            "lang": "css",
+            "title": "custom.css",
+            "accentToken": "primary.600",
+            "code": ":root {\n  --vp-c-brand-1: var(--hia-primary-600);\n  --vp-c-brand-soft: var(--hia-primary-100);\n  --vp-c-text-1: var(--hia-primary-900);\n  --vp-sidebar-bg-color: var(--hia-primary-50);\n}\nhtml.dark {\n  --vp-c-brand-1: var(--hia-primary-300);\n  --vp-c-text-1: var(--hia-primary-100);\n}"
+          },
+          {
+            "type": "table",
+            "columns": [
+              {
+                "key": "var",
+                "label": "VitePress 变量"
+              },
+              {
+                "key": "token",
+                "label": "来源令牌"
+              },
+              {
+                "key": "meaning",
+                "label": "语义"
+              }
+            ],
+            "rows": [
+              {
+                "var": "--vp-c-brand-1",
+                "token": "primary.600",
+                "meaning": "品牌实色文本 / 链接"
+              },
+              {
+                "var": "--vp-c-brand-soft",
+                "token": "primary.100",
+                "meaning": "品牌浅底"
+              },
+              {
+                "var": "--vp-c-text-1",
+                "token": "primary.900",
+                "meaning": "正文主文本"
+              },
+              {
+                "var": "--vp-custom-block-tip-bg",
+                "token": "success.50",
+                "meaning": "TIP 容器底色"
+              },
+              {
+                "var": "--vp-sidebar-bg-color",
+                "token": "primary.50",
+                "meaning": "侧栏底色"
+              }
+            ],
+            "headerToken": "primary.900",
+            "cellToken": "primary.800"
+          },
+          {
+            "type": "callout",
+            "kind": "warning",
+            "title": "WARNING",
+            "text": "本适配保持 VitePress 原生画布（--vp-c-bg）不覆盖，仅着色功能层；若需全画布着色，请自行追加并复核文本对比度。"
+          },
+          {
+            "type": "divider",
             "token": "primary.100",
-            "meaning": "品牌浅底"
+            "thickness": 1
           },
           {
-            "var": "--vp-c-text-1",
-            "token": "primary.900",
-            "meaning": "正文主文本"
-          },
-          {
-            "var": "--vp-custom-block-tip-bg",
-            "token": "success.50",
-            "meaning": "TIP 容器底色"
-          },
-          {
-            "var": "--vp-sidebar-bg-color",
-            "token": "primary.50",
-            "meaning": "侧栏底色"
+            "type": "raw-text",
+            "text": "← 快速上手 · 全局组件 →",
+            "textToken": "primary.500",
+            "size": "fs:small"
           }
-        ],
-        "headerToken": "primary.900",
-        "cellToken": "primary.800"
+        ]
       },
       {
-        "type": "callout",
-        "kind": "warning",
-        "title": "WARNING",
-        "text": "本适配保持 VitePress 原生画布（--vp-c-bg）不覆盖，仅着色功能层；若需全画布着色，请自行追加并复核文本对比度。"
-      },
-      {
-        "type": "divider",
-        "token": "primary.100",
-        "thickness": 1
-      },
-      {
-        "type": "raw-text",
-        "text": "← 快速上手 · 全局组件 →",
-        "textToken": "primary.500",
-        "size": "fs:small"
+        "id": "config",
+        "title": "站点配置",
+        "layout": "stack",
+        "nodes": [
+          {
+            "type": "nav",
+            "items": [
+              {
+                "label": "HIA Docs",
+                "page": "home"
+              },
+              {
+                "label": "指南",
+                "page": "docs"
+              },
+              {
+                "label": "配置",
+                "active": true
+              },
+              {
+                "label": "主题",
+                "page": "docs"
+              }
+            ],
+            "bgToken": "primary.50",
+            "activeToken": "primary.700"
+          },
+          {
+            "type": "raw-text",
+            "text": "变量映射速查",
+            "textToken": "primary.900",
+            "size": "fs:h1"
+          },
+          {
+            "type": "raw-text",
+            "text": "除品牌色与文本层级外，适配还覆盖按钮、首页 Hero 渐变标题、侧栏与徽章。以下为常用配置项：",
+            "textToken": "primary.800"
+          },
+          {
+            "type": "table",
+            "columns": [
+              {
+                "key": "var",
+                "label": "VitePress 变量"
+              },
+              {
+                "key": "token",
+                "label": "来源令牌"
+              },
+              {
+                "key": "meaning",
+                "label": "语义"
+              }
+            ],
+            "rows": [
+              {
+                "var": "--vp-button-brand-bg",
+                "token": "primary.600",
+                "meaning": "品牌按钮底色"
+              },
+              {
+                "var": "--vp-button-brand-hover-bg",
+                "token": "primary.700",
+                "meaning": "按钮悬停底色"
+              },
+              {
+                "var": "--vp-home-hero-name-background",
+                "token": "gradient:carousel",
+                "meaning": "Hero 渐变标题"
+              },
+              {
+                "var": "--vp-font-family-base",
+                "token": "font:body",
+                "meaning": "正文字体族"
+              },
+              {
+                "var": "--vp-badge-tip-bg",
+                "token": "success.50",
+                "meaning": "TIP 徽章底色"
+              }
+            ],
+            "headerToken": "primary.900",
+            "cellToken": "primary.800"
+          },
+          {
+            "type": "callout",
+            "kind": "info",
+            "title": "INFO",
+            "text": "主题入口 index.ts 由导出物提供；已有主题扩展的用户只需并入 import './custom.css' 一行。"
+          },
+          {
+            "type": "divider",
+            "token": "primary.100",
+            "thickness": 1
+          },
+          {
+            "type": "raw-text",
+            "text": "← 变量映射 · 回到首页 →",
+            "textToken": "primary.500",
+            "size": "fs:small"
+          }
+        ]
       }
     ]
   },

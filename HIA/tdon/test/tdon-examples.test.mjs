@@ -56,19 +56,26 @@ test('三个合法示例全部通过校验并产出非空文件树', () => {
   }
 });
 
-test('vitepress-docs：预览含三类新节点，导出覆盖真实 VP 目录结构与完整变量映射', () => {
+test('vitepress-docs：三页全貌（home/docs/config）+ 页引用 + 导出覆盖真实 VP 目录', () => {
   const raw = load('vitepress-docs.tdon.json');
   const res = parseTdonDocument(raw, { theme: THEME });
   assert.equal(res.result.ok, true, JSON.stringify(res.result.errors));
   const doc = res.doc;
-  // 预览：文档页全貌——sidebar-left 两栏 + tree（侧栏）/code-block/callout 三类签名元素。
+  // 多页结构（ADR-020）：三页 + 页序（home 落地）+ 文档级 layout。
   assert.equal(doc.preview.layout, 'sidebar-left');
-  const types = doc.preview.nodes.map(n => n.type);
-  for (const t of ['tree', 'code-block', 'callout']) {
-    assert.ok(types.includes(t), `预览应含 ${t} 节点（VitePress 文档页签名元素）`);
+  assert.deepEqual(doc.preview.pages.map(p => p.id), ['home', 'docs', 'config']);
+  // docs 页（pages[1]）含三类签名节点；页引用挂在 tree/nav/hero。
+  const types = doc.preview.pages[1].nodes.map(n => n.type);
+  for (const t of ['tree', 'code-block', 'callout', 'nav']) {
+    assert.ok(types.includes(t), `docs 页应含 ${t} 节点（VitePress 文档页签名元素）`);
   }
-  const html = renderTdonPreview(doc, THEME);
-  assert.ok(html.includes('tdon-aside') && html.includes('tdon-main'), 'sidebar-left 应输出两栏结构');
+  // 落地页缺省渲染（hero + page 引用）；docs 页两栏结构。
+  const landing = renderTdonPreview(doc, THEME);
+  assert.ok(landing.includes('tdon-hero'), '落地页应渲染 hero');
+  assert.ok(landing.includes('data-tdon-page="docs"'), '落地页 action 应挂页引用');
+  const docsHtml = renderTdonPreview(doc, THEME, { page: 'docs' });
+  assert.ok(docsHtml.includes('tdon-aside') && docsHtml.includes('tdon-main'), 'docs 页应输出两栏结构');
+  assert.ok(docsHtml.includes('data-tdon-page="home"'), '侧栏/导航应挂页引用');
   // 导出：覆盖真实 VitePress 主题扩展目录（npm create vitepress 默认 srcDir=docs）。
   const files = createTdonExportTarget(doc).files(THEME);
   const paths = files.map(f => f.path);

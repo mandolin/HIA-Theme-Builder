@@ -255,6 +255,21 @@ button,input,select,textarea{font:inherit} button{cursor:pointer} a{color:inheri
    TDON runtime panel: target meta, validation issue list and export toolbar. */
 .tdon-meta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:8px 12px;margin-bottom:10px;border-radius:8px;background:var(--p50);border:1px solid var(--line);font-size:12px}
 .tdon-meta b{font-size:13px}
+/* TDON 预览框架容器（ADR-020 / TDON-5.23，维护者 2026-11-20 要求）：浅色边框把"目标端模拟页面"
+   与 Builder 面板区分开；画布底与模式块（W-tb-P47）同族浅底。页签条置于框架上方。
+   <lang en>TDON preview frame (ADR-020 / TDON-5.23, maintainer 2026-11-20): a light border separates the
+   target mock from Builder chrome; canvas tint matches the W-tb-P47 mode-block family. Tabs sit above the frame. */
+.tdon-page-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tdon-page-tab{border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.tdon-page-tab:hover{border-color:var(--p300);color:var(--text)}
+.tdon-page-tab.is-active{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.tdon-frame{border:1px solid var(--line);border-radius:12px;background:#FBFCFD;padding:16px}
+/* 预览内页引用的可达性（宿主 opt-in，ADR-020 / TDON-5.22）：包 CSS 不设假可点，交互样式归宿主。
+   <lang en>In-preview reference affordance is a host opt-in (ADR-020 / TDON-5.22): package CSS never fakes
+   interactivity; interaction styling belongs to the host. */
+.tdon-frame [data-tdon-page]{cursor:pointer}
+.tdon-frame .tdon-tree-item[data-tdon-page]:hover{background:var(--p50)}
+.tdon-frame .tdon-nav-item[data-tdon-page]:hover,.tdon-frame .tdon-hero-action[data-tdon-page]:hover{text-decoration:underline}
 .tdon-issues{margin-bottom:12px;font-size:12px}
 .tdon-issue-group{margin-bottom:8px}
 .tdon-issue-group > b{display:block;margin-bottom:4px}

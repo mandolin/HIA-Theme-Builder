@@ -212,6 +212,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>tdonDoc non-null means "registered"; tdonResult keeps issues for persistent display.
   //   Keeping doc and result separate lets a theme change re-validate without re-fetching (TDON-8.3).</lang>
   let tdonDoc:TdonDocument|null=null;
+  // 当前预览页 id（ADR-020 / TDON-5.23）：多页文档的页签与预览内点击共用一态；
+  //   undefined = 渲染落地页（首页）。单页文档始终忽略。
+  // <lang en>Current preview page id (ADR-020 / TDON-5.23): shared by the page tabs and in-preview clicks;
+  //   undefined renders the landing page. Always ignored for single-page docs.</lang>
+  let tdonPage:string|undefined;
   let tdonResult:TdonValidationResult|null=null;
   let tdonSourceLabel='';
   let tdonConnecting=false;
@@ -1354,21 +1359,32 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       return;
     }
     // 已连接：预览 HTML + 目标元信息。
-    // <lang zh-CN>预览为空（无 preview 声明）时给出说明——合法但无预览是允许的组合。</lang>
-    // <lang en>An empty preview (no preview block) is legal; explain rather than show a blank area.</lang>
-    const html=tdonDoc.preview?renderTdonPreviewView(tdonDoc):`<div class="tdon-placeholder"><p>${t('p9.tdon.noPreview')}</p></div>`;
+    // <lang zh-CN>预览为空（无 preview 声明）时给出说明——合法但无预览是允许的组合。
+    //   多页文档（ADR-020）在预览上方渲染页签条，页签与预览内 [data-tdon-page] 点击共用 tdonPage 态；
+    //   预览体包在 .tdon-frame 框架容器内——浅色边框把"目标端模拟页面"与 Builder 面板区分开（维护者 2026-11-20 要求）。</lang>
+    // <lang en>An empty preview (no preview block) is legal; explain rather than show a blank area.
+    //   Multi-page docs (ADR-020) get a page-tab strip above the preview; tabs and in-preview
+    //   [data-tdon-page] clicks share the tdonPage state. The preview body sits inside a .tdon-frame
+    //   wrapper whose light border separates the target mock from Builder chrome (maintainer, 2026-11-20).</lang>
+    const pages=tdonDoc.preview?.pages??[];
+    const tabs=pages.length>1
+      ?`<div class="tdon-page-tabs" role="tablist" aria-label="Preview pages">${pages.map(pg=>`<button type="button" class="tdon-page-tab ${pg.id===tdonPage||(tdonPage===undefined&&pg===pages[0])?'is-active':''}" data-tdon-goto="${escapeHtml(pg.id)}" aria-pressed="${pg.id===tdonPage||(tdonPage===undefined&&pg===pages[0])?'true':'false'}">${escapeHtml(pg.title??pg.id)}</button>`).join('')}</div>`
+      :'';
+    const html=tdonDoc.preview?`<div class="tdon-frame">${renderTdonPreviewView(tdonDoc,tdonPage)}</div>`:`<div class="tdon-placeholder"><p>${t('p9.tdon.noPreview')}</p></div>`;
     const meta=`<div class="tdon-meta"><b>${escapeHtml(tdonDoc.target.name)}</b><span class="small">${tdonDoc.target.nameEn!==tdonDoc.target.name?escapeHtml(tdonDoc.target.nameEn):''}</span>${tdonDoc.target.author?`<span class="small">· ${escapeHtml(tdonDoc.target.author)}</span>`:''}<span class="small">· ${t('p9.tdon.exportCount',{n:String(tdonDoc.exportManifest.files.length)})}</span></div>`;
-    body.innerHTML=meta+html;
+    body.innerHTML=meta+tabs+html;
     issuesWrap.innerHTML=tdonResult?renderTdonIssues(tdonResult):'';
     setText('tdonStatusLabel',t('p9.tdon.status.ok',{source:tdonSourceLabel}));
   }
 
-  // 调用 core 渲染器生成预览 HTML（包装一次以便统一注入样式表）。
-  // <lang zh-CN>样式表为 core 常量（TDON_PREVIEW_CSS），不含任何用户输入拼接。</lang>
-  // <lang en>The stylesheet is a core constant (TDON_PREVIEW_CSS) with no user-input concatenation.</lang>
-  function renderTdonPreviewView(doc:TdonDocument):string{
+  // 调用 core 渲染器生成预览 HTML（包装一次以便统一注入样式表；透传页选择）。
+  // <lang zh-CN>样式表为 core 常量（TDON_PREVIEW_CSS），不含任何用户输入拼接；page 透传给
+  //   renderTdonPreview（ADR-020 / TDON-5.22），undefined 即落地页。</lang>
+  // <lang en>The stylesheet is a core constant (TDON_PREVIEW_CSS) with no user-input concatenation; the page
+  //   selection passes through to renderTdonPreview (ADR-020 / TDON-5.22), undefined = landing page.</lang>
+  function renderTdonPreviewView(doc:TdonDocument,page?:string):string{
     ensureTdonStyle();
-    return renderTdonPreview(doc,theme());
+    return renderTdonPreview(doc,theme(),page!==undefined?{page}:undefined);
   }
 
   // 注入 TDON 预览样式表（幂等，仅首次插入）。
@@ -1489,6 +1505,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const parsed=parseTdonDocument(text,{theme:theme()});
     tdonResult=parsed.result;
     tdonDoc=parsed.doc??null;
+    // 新文档注册时重置页选择——旧文档的页 id 对新文档无意义（ADR-020）。
+    // <lang en>Reset the page selection on every new registration: the old doc's page ids mean nothing to the new one (ADR-020).</lang>
+    tdonPage=undefined;
     selectedTdonFile=null;
     renderTdonPanel();renderTdonExport();
   }
@@ -3542,6 +3561,18 @@ ${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
     // <lang zh-CN>已连接的文档属于"上一次操作结果"，切换来源不应把它清掉。</lang>
     // <lang en>A connected document is the result of a previous action; switching source must not clear it.</lang>
     byId<HTMLSelectElement>('tdonSourceSelect').addEventListener('change',()=>{const v=byId<HTMLSelectElement>('tdonSourceSelect').value;if(v==='url'||v==='local'){tdonSource=v;applyPreviewMode(previewMode);}});
+    // 多页换页（ADR-020 / TDON-5.23）：页签（data-tdon-goto）与预览内引用（data-tdon-page）共用
+    //   tdonPage 态；挂载容器级事件委托——面板重渲染后监听依然有效，无需逐元素绑定。
+    // <lang en>Multi-page switching (ADR-020 / TDON-5.23): tabs (data-tdon-goto) and in-preview references
+    //   (data-tdon-page) share tdonPage; container-level delegation survives re-renders without per-element binding.</lang>
+    byId<HTMLElement>('tdonPreviewBody').addEventListener('click',e=>{
+      const el=(e.target as HTMLElement).closest('[data-tdon-goto],[data-tdon-page]');
+      if(!el)return;
+      const id=el.getAttribute('data-tdon-goto')??el.getAttribute('data-tdon-page');
+      if(!id)return;
+      tdonPage=id;
+      renderTdonPanel();
+    });
     // 连接按钮：取回 → 解析校验 → 注册（`W-tb-P26`）。
     // <lang zh-CN>见 connectTdon；按钮在连接期间由 tdonConnecting 防重复。</lang>
     // <lang en>See connectTdon; tdonConnecting guards duplicate clicks.</lang>

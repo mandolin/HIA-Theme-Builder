@@ -16,7 +16,7 @@ import{
   TDON_WARN_TEMPLATE_BYTES,TDON_MAX_TEMPLATE_BYTES,TDON_WARN_TEMPLATE_TOTAL,TDON_MAX_TEMPLATE_TOTAL,
   TDON_WARN_FILE_COUNT,TDON_MAX_FILE_COUNT,TDON_MAX_IMAGE_URL,
   TDON_NODE_TYPES,type TdonDocument,type TdonNode,type TdonNodeType,type TdonPreviewLayout,
-  type TdonExportFile,type TdonEffect,type TdonContrastRule,type TdonTokens,type TdonTemplateReserved
+  type TdonExportFile,type TdonEffect,type TdonContrastRule,type TdonTokens,type TdonTemplateReserved,type TdonPage,type TdonPreview
 }from'./types.js';
 import{tdonError,tdonWarning,type TdonIssue,type TdonIssueCode,type TdonValidationResult}from'./issues.js';
 import{checkTdonPath,isDangerousKey,TDON_MAX_PATH_LENGTH}from'./paths.js';
@@ -34,6 +34,13 @@ interface Ctx{
   nodeCount:number;
   /** @lang zh-CN 软阈值警告只发一次，避免逐节点刷屏。 @lang en Soft-cap warnings fire once rather than per node. */
   warnedTotal:boolean;
+  /**
+   * @lang zh-CN 已声明的页 id 集合（ADR-020 / TDON-5.21）：校验 preview.pages 壳时先行收集，
+   *   供 page 引用做存在性判定；单页文档（无 pages）为空集——出现引用一律 E_PAGE_REF。
+   * @lang en Declared page ids (ADR-020 / TDON-5.21): collected while validating page shells before
+   *   page references are checked; empty for single-page docs, so any reference fails with E_PAGE_REF.
+   */
+  pageIds:Set<string>;
 }
 
 // 追加一条错误（命中上限后置 truncated 并丢弃后续，保证列表不无限增长）。
@@ -450,27 +457,100 @@ function validateNode(ctx:Ctx,raw:unknown,path:string,depth:number):TdonNode|und
   return{type,...common,attrs};
 }
 
-// 预览声明校验：title/layout/nodes 三键。
-// <lang zh-CN>nodes 顶层 1–80（TDON-5.2），layout 缺省 stack（TDON-5.1）。</lang>
-// <lang en>Top-level nodes 1–80 (TDON-5.2); layout defaults to stack (TDON-5.1).</lang>
+// 页 id 语法（ADR-020 / TDON-5.20/5.21）：kebab-case ≤32，与 target.id 同族但独立域。
+// <lang en>Page id grammar (ADR-020): kebab-case ≤32; same family as target.id but a separate namespace.</lang>
+const PAGE_ID_RE=/^[a-z][a-z0-9-]{0,31}$/;
+
+// page 引用校验（ADR-020 / TDON-5.21）：值必须命中本文档已声明的页 id。
+// <lang zh-CN>pageIds 与主题无关（pages 解析先行），无主题的结构校验同样能判定存在性；
+//   单页文档 pageIds 为空集，出现引用即 E_PAGE_REF。</lang>
+// <lang en>pageIds is theme-independent (page shells are parsed first), so structure-only validation
+//   still checks existence; an empty set (single-page doc) makes any reference E_PAGE_REF.</lang>
+function pageRef(ctx:Ctx,v:unknown,p:string):string|undefined{
+  const s=wantString(ctx,v,p,32);
+  if(s===undefined)return undefined;
+  if(!PAGE_ID_RE.test(s)){
+    pushError(ctx,'E_PATTERN',p,`页引用「${s}」不合法（小写字母开头，可含数字与连字符，≤32）。`,`Illegal page reference "${s}" (lowercase first, digits/hyphens, ≤32).`);
+    return undefined;
+  }
+  if(!ctx.pageIds.has(s)){
+    const known=[...ctx.pageIds].join('、')||'（无）';
+    pushError(ctx,'E_PAGE_REF',p,`页引用「${s}」不存在；本文档声明的页：${known}。`,`Page reference "${s}" does not exist; declared pages: ${known}.`);
+    return undefined;
+  }
+  return s;
+}
+
+// 预览声明校验：title/layout + nodes（单页）或 pages（多页）。
+// <lang zh-CN>多页两阶段（ADR-020 / TDON-5.20）：先校验页壳并收集全部页 id，再逐页校验节点——
+//   保证"后页引用前页/前页引用后页"都能命中；nodes 与 pages 互斥（同给 E_CONFLICT）；
+//   节点软硬阈值跨页共享（nodeCount 全局计数）。layout 为文档级缺省，页级可覆盖。</lang>
+// <lang en>Multi-page runs in two phases (ADR-020): first validate page shells and collect all page ids,
+//   then validate each page's nodes — so forward/backward page references both resolve. nodes and pages
+//   are mutually exclusive (E_CONFLICT); node budgets are shared across pages via the global nodeCount.
+//   layout is the document-level default, overridable per page.</lang>
 function validatePreview(ctx:Ctx,raw:unknown,path:string){
   if(!isPlainObject(raw)){
     pushError(ctx,'E_TYPE',path,'preview 应为对象。','preview must be an object.');
     return undefined;
   }
   if(rejectDangerousKeys(ctx,raw,path))return undefined;
-  checkKnownKeys(ctx,raw,path,['title','layout','nodes']);
+  checkKnownKeys(ctx,raw,path,['title','layout','nodes','pages']);
   const title=wantString(ctx,raw.title,`${path}.title`,80);
   const layout=wantEnum<TdonPreviewLayout>(ctx,raw.layout,`${path}.layout`,['stack','sidebar-left','sidebar-right','hero'] as const)??'stack';
-  // 软阈值提示（TDON-5.2）：大于 100 个顶层节点通常是"该拆页面"的信号，但不阻断。
-  // <lang zh-CN>硬上限仍为 300，防止构造的空壳节点树拖死渲染。</lang>
-  // <lang en>The hard cap stays at 300 so a constructed shell tree cannot stall rendering.</lang>
+  const hasNodes=raw.nodes!==undefined;
+  const hasPages=raw.pages!==undefined;
+  // 互斥（TDON-5.20）：单页用 nodes，多页用 pages。
+  // <lang en>Mutually exclusive (TDON-5.20): nodes for a single page, pages for multi-page.</lang>
+  if(hasNodes&&hasPages){
+    pushError(ctx,'E_CONFLICT',path,'nodes 与 pages 互斥：单页用 nodes，多页用 pages。','nodes and pages are mutually exclusive: use nodes for a single page, pages for multi-page.');
+    return undefined;
+  }
+  if(hasPages){
+    // 阶段一：页壳校验 + 页 id 收集（引用校验依赖全量 id，必须先于所有节点校验）。
+    // <lang en>Phase 1: page shells + id collection (reference checks need the full id set first).</lang>
+    interface PageShell{id:string;title?:string;layout?:TdonPreviewLayout;rawNodes:unknown;ip:string;}
+    const shells=wantArray<PageShell>(ctx,raw.pages,`${path}.pages`,1,16,(rp,ip)=>{
+      if(!isPlainObject(rp)){pushError(ctx,'E_TYPE',ip,'页应为对象。','A page must be an object.');return undefined;}
+      if(rejectDangerousKeys(ctx,rp,ip))return undefined;
+      checkKnownKeys(ctx,rp,ip,['id','title','layout','nodes']);
+      const id=requireString(ctx,rp.id,ip+'.id',32);
+      if(id===undefined)return undefined;
+      if(!PAGE_ID_RE.test(id)){
+        pushError(ctx,'E_PATTERN',ip+'.id',`页 id「${id}」不合法（小写字母开头，可含数字与连字符，≤32）。`,`Illegal page id "${id}" (lowercase first, digits/hyphens, ≤32).`);
+        return undefined;
+      }
+      return{id,title:wantString(ctx,rp.title,ip+'.title',80),layout:wantEnum<TdonPreviewLayout>(ctx,rp.layout,ip+'.layout',['stack','sidebar-left','sidebar-right','hero'] as const),rawNodes:rp.nodes,ip};
+    });
+    if(shells===undefined)return undefined;
+    const ids=new Set<string>();
+    for(const shell of shells){
+      if(ids.has(shell.id)){
+        pushError(ctx,'E_CONFLICT',`${path}.pages`,`页 id「${shell.id}」重复。`,`Page id "${shell.id}" is duplicated.`);
+        continue;
+      }
+      ids.add(shell.id);
+    }
+    ctx.pageIds=ids;
+    // 阶段二：逐页节点校验（nodeCount 全局共享，跨页累计；首页即数组首位 = 落地页）。
+    // <lang en>Phase 2: per-page node validation (global nodeCount accumulates across pages; the
+    //   first array entry is the landing page).</lang>
+    const pages:TdonPage[]=[];
+    for(const shell of shells){
+      const nodes=wantArray(ctx,shell.rawNodes,`${shell.ip}.nodes`,1,TDON_MAX_PREVIEW_NODES,(v,p)=>validateNode(ctx,v,p,0));
+      if(nodes===undefined)continue;
+      pages.push({id:shell.id,...(shell.title!==undefined?{title:shell.title}:{}),...(shell.layout!==undefined?{layout:shell.layout}:{}),nodes});
+    }
+    return{...(title!==undefined?{title}:{}),layout,...(pages.length?{pages}:{})};
+  }
+  // 单页路径（既有契约）：nodes 必填。
+  // <lang en>Single-page path (existing contract): nodes required.</lang>
   if(Array.isArray(raw.nodes)&&raw.nodes.length>TDON_WARN_PREVIEW_NODES&&raw.nodes.length<=TDON_MAX_PREVIEW_NODES){
     pushWarning(ctx,'W_NODE_LIMIT',`${path}.nodes`,`顶层节点 ${raw.nodes.length} 个，超过建议值 ${TDON_WARN_PREVIEW_NODES}。`,`${raw.nodes.length} top-level nodes exceed the suggested ${TDON_WARN_PREVIEW_NODES}.`);
   }
   const nodes=wantArray(ctx,raw.nodes,`${path}.nodes`,1,TDON_MAX_PREVIEW_NODES,(v,p)=>validateNode(ctx,v,p,0));
   if(nodes===undefined){
-    pushError(ctx,'E_REQUIRED',`${path}.nodes`,'preview.nodes 必填。','preview.nodes is required.');
+    pushError(ctx,'E_REQUIRED',`${path}.nodes`,'preview.nodes 必填（多页请改用 pages）。','preview.nodes is required (use pages for multi-page).');
     return undefined;
   }
   return{...(title!==undefined?{title}:{}),layout,nodes};
@@ -842,11 +922,12 @@ const NODE_SPECS:Record<TdonNodeType,NodeSpec>={
         case 'actions':return wantArray(ctx,v,p,1,3,(raw,ip)=>{
           if(!isPlainObject(raw)){pushError(ctx,'E_TYPE',ip,'动作项应为对象。','An action must be an object.');return undefined;}
           if(rejectDangerousKeys(ctx,raw,ip))return undefined;
-          checkKnownKeys(ctx,raw,ip,['label','token']);
+          checkKnownKeys(ctx,raw,ip,['label','token','page']);
           const label=requireString(ctx,raw.label,ip+'.label',40);
           const token=wantToken(ctx,raw.token,ip+'.token');
+          const page=pageRef(ctx,raw.page,ip+'.page');
           if(label===undefined)return undefined;
-          return{label,...(token?{token}:{})};
+          return{label,...(token?{token}:{}),...(page?{page}:{})};
         });
         default:return undefined;
       }
@@ -864,12 +945,13 @@ const NODE_SPECS:Record<TdonNodeType,NodeSpec>={
             const s=wantString(ctx,raw,ip,40);
             return s===undefined?undefined:{label:s};
           }
-          if(!isPlainObject(raw)){pushError(ctx,'E_TYPE',ip,'导航项应为字符串或 {label, active}。','A nav item must be a string or {label, active}.');return undefined;}
+          if(!isPlainObject(raw)){pushError(ctx,'E_TYPE',ip,'导航项应为字符串或 {label, active, page}。','A nav item must be a string or {label, active, page}.');return undefined;}
           if(rejectDangerousKeys(ctx,raw,ip))return undefined;
-          checkKnownKeys(ctx,raw,ip,['label','active']);
+          checkKnownKeys(ctx,raw,ip,['label','active','page']);
           const label=requireString(ctx,raw.label,ip+'.label',40);
+          const page=pageRef(ctx,raw.page,ip+'.page');
           if(label===undefined)return undefined;
-          return{label,active:raw.active===true};
+          return{label,active:raw.active===true,...(page?{page}:{})};
         });
         case 'bgToken':return optToken()(ctx,v,p);
         case 'activeToken':return optToken()(ctx,v,p);
@@ -1072,7 +1154,7 @@ const NODE_SPECS:Record<TdonNodeType,NodeSpec>={
             const items=wantArray(ctx,raw.items,ip+'.items',1,12,(ritem,ip2)=>{
               if(!isPlainObject(ritem)){pushError(ctx,'E_TYPE',ip2,'树项应为对象。','A tree item must be an object.');return undefined;}
               if(rejectDangerousKeys(ctx,ritem,ip2))return undefined;
-              checkKnownKeys(ctx,ritem,ip2,['label','active']);
+              checkKnownKeys(ctx,ritem,ip2,['label','active','page']);
               const itemLabel=requireString(ctx,ritem.label,ip2+'.label',60);
               // active 仅接受布尔；缺省视为 false，渲染层按 ===true 判定。
               // <lang zh-CN>不做真值强制转换——非布尔一律类型错误，避免 "active":"yes" 这类隐式语义。</lang>
@@ -1085,7 +1167,8 @@ const NODE_SPECS:Record<TdonNodeType,NodeSpec>={
                 }
                 active=ritem.active;
               }
-              return itemLabel===undefined?undefined:{label:itemLabel,active};
+              const page=pageRef(ctx,ritem.page,ip2+'.page');
+              return itemLabel===undefined?undefined:{label:itemLabel,active,...(page?{page}:{})};
             });
             if(label===undefined||items===undefined)return undefined;
             return{label,items};
@@ -1218,7 +1301,7 @@ export interface TdonParseResult{
   doc?:TdonDocument;
 }
 export function parseTdonDocument(raw:unknown,options:{theme?:Theme}={}):TdonParseResult{
-  const ctx:Ctx={errors:[],warnings:[],truncated:false,nodeCount:0,warnedTotal:false,...(options.theme?{theme:options.theme}:{})};
+  const ctx:Ctx={errors:[],warnings:[],truncated:false,nodeCount:0,warnedTotal:false,pageIds:new Set(),...(options.theme?{theme:options.theme}:{})};
   // 大小预检：调用方通常已按字节判断，这里对字符串形态再兜一次（TDON-2.3）。
   // <lang zh-CN>字符数 ≤ 字节数，故用 length 判定不会放过超限文件。</lang>
   // <lang en>Character count ≤ byte count, so length cannot let an oversized file through.</lang>
@@ -1277,7 +1360,11 @@ export function parseTdonDocument(raw:unknown,options:{theme?:Theme}={}):TdonPar
   // <lang zh-CN>tokens 返回 undefined 表示未提供或全空，语义等价。</lang>
   // <lang en>tokens returning undefined means absent or empty — semantically equivalent.</lang>
   const tokens=obj.tokens===undefined?undefined:validateTokens(ctx,obj.tokens,'$.tokens');
-  const preview=obj.preview===undefined?undefined:validatePreview(ctx,obj.preview,'$.preview');
+  // 显式标注校验后类型（ADR-020）：validatePreview 的多页/单页返回联合会让 TS 无法窄化
+  //   preview.nodes/pages 访问，这里按重建后的 TdonPreview 契约声明。
+  // <lang en>Annotate the validated type (ADR-020): validatePreview's multi/single-page return union
+  //   blocks narrowing of preview.nodes/pages access; declare against the rebuilt TdonPreview contract.</lang>
+  const preview:TdonPreview|undefined=obj.preview===undefined?undefined:validatePreview(ctx,obj.preview,'$.preview');
   const exportManifest=validateExportManifest(ctx,obj.exportManifest,'$.exportManifest');
   const constraints=obj.constraints===undefined?undefined:validateConstraints(ctx,obj.constraints,'$.constraints');
   const effects=obj.effects===undefined?undefined:validateEffects(ctx,obj.effects,'$.effects');
@@ -1298,7 +1385,13 @@ export function parseTdonDocument(raw:unknown,options:{theme?:Theme}={}):TdonPar
         if(Array.isArray(kids))checkNodes(kids as TdonNode[],`${base}[${i}].children`);
       });
     };
-    checkNodes(preview.nodes,'$.preview.nodes');
+    // 特效引用遍历（ADR-020）：多页文档逐页检查，单页沿用原路径。
+    // <lang en>Effect reference traversal (ADR-020): multi-page docs are walked per page; single-page keeps the original path.</lang>
+    if(preview.pages){
+      preview.pages.forEach((pg,pi)=>checkNodes(pg.nodes,`$.preview.pages[${pi}].nodes`));
+    }else if(preview.nodes){
+      checkNodes(preview.nodes,'$.preview.nodes');
+    }
   }
   // 对比度断言（TDON-7.1）：需要主题与规则两者齐备。
   // <lang zh-CN>放在结构校验之后，避免在半成品文档上执行。</lang>
