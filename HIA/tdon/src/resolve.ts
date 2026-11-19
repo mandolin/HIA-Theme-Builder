@@ -19,9 +19,13 @@ import{FONT_SIZE_STEPS}from'@hia/theme-core';
 // <lang en>value is a CSS value ready for a style declaration (color/gradient/font family/dimension).</lang>
 export type TdonTokenResult={ok:true;value:string}|{ok:false;reasonZh:string;reasonEn:string};
 
-// 颜色角色解析：primary/secondary/third/aux<N> → RoleColor。
-// <lang zh-CN>third 仅在 triad 模式存在；aux<N> 越界即失败（TDON-4.2）。</lang>
-// <lang en>third exists only in triad mode; aux<N> out of range fails (TDON-4.2).</lang>
+// 颜色角色解析：primary/secondary/third/aux<N> + 语义状态角色 → RoleColor。
+// <lang zh-CN>third 仅在 triad 模式存在；aux<N> 越界即失败（TDON-4.2）；语义状态角色
+//   success/info/warning/danger（ADR-012 组）解析自 theme.semantic（ADR-019 / TDON-5.19）——
+//   语义组为可选字段，主题未派生语义色时对应引用不可解析（错误文案引导用户先启用语义状态色）。</lang>
+// <lang en>third exists only in triad mode; aux<N> out of range fails (TDON-4.2); semantic status roles
+//   success/info/warning/danger (ADR-012 group) resolve from theme.semantic (ADR-019 / TDON-5.19) —
+//   the semantic group is optional, so references fail to resolve when a theme has none derived.</lang>
 function roleColorFor(theme:Theme,role:string){
   if(role==='primary')return theme.primary;
   if(role==='secondary')return theme.secondary;
@@ -29,6 +33,12 @@ function roleColorFor(theme:Theme,role:string){
   // <lang zh-CN>错误文案点明模式要求，便于用户理解而非猜测。</lang>
   // <lang en>The message names the mode requirement so users understand rather than guess.</lang>
   if(role==='third')return theme.thirdColor??null;
+  // 语义状态角色（ADR-019 加性扩展）：四名固定，直取语义组的完整 RoleColor。
+  // <lang zh-CN>不引入新引用形式——语法形状与 <role>.<shade> 完全一致，仅扩充角色集合。</lang>
+  // <lang en>No new reference form — the shape matches <role>.<shade> exactly; only the role set grows.</lang>
+  if(role==='success'||role==='info'||role==='warning'||role==='danger'){
+    return theme.semantic?.[role]??null;
+  }
   // 辅助槽位：aux0..auxN（N 从 0，需小于当前槽数）。
   // <lang zh-CN>正则严格匹配 `aux` + 非负整数，`aux` 后跟字母不算。</lang>
   // <lang en>Strictly `aux` plus a non-negative integer; letters after aux do not match.</lang>
@@ -150,12 +160,15 @@ export function isTdonTokenSyntax(ref:string):boolean{
 }
 
 // 列出当前主题可用的颜色角色名（供校验器做 aux 越界判定与 UI 提示）。
-// <lang zh-CN>顺序固定：主→副→第三→辅助，便于错误文案保持一致。</lang>
-// <lang en>Fixed order — primary, secondary, third, auxiliary — keeps error copy consistent.</lang>
+// <lang zh-CN>顺序固定：主→副→第三→辅助→语义状态（ADR-019），便于错误文案保持一致；
+//   语义角色仅在主题已派生语义色时列出，与解析器的可用性判定保持一致。</lang>
+// <lang en>Fixed order — primary, secondary, third, auxiliary, semantic (ADR-019) — keeps error copy
+//   consistent; semantic roles are listed only when the theme has them derived, matching the resolver.</lang>
 export function listTdonColorRoles(theme:Theme):string[]{
   const roles=['primary','secondary'];
   if(theme.thirdColor)roles.push('third');
   theme.auxiliary.forEach((_,i)=>roles.push(`aux${i}`));
+  if(theme.semantic)roles.push('success','info','warning','danger');
   return roles;
 }
 

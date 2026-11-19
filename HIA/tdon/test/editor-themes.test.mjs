@@ -35,8 +35,8 @@ function doc(nodes) {
 }
 
 // ===== 1. 节点类型 =====
-test('节点类型：新增 code-editor 后共 10 类（加性，TDON-13.1）', () => {
-  assert.equal(TDON_NODE_TYPES.length, 10);
+test('节点类型：ADR-019 新增 tree/code-block/callout 后共 13 类（加性，TDON-13.1）', () => {
+  assert.equal(TDON_NODE_TYPES.length, 13);
   assert.ok(TDON_NODE_TYPES.includes('code-editor'));
 });
 

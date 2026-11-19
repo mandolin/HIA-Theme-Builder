@@ -1051,6 +1051,103 @@ const NODE_SPECS:Record<TdonNodeType,NodeSpec>={
         default:return undefined;
       }
     }
+  },
+  // tree：分组导航树/文档树（`T-tb-TDON-P1`/ADR-019/TDON-5.15）——VitePress 侧栏、WP 后台菜单等目标签名元素。
+  // <lang zh-CN>sections 1–6、每节 items 1–12；active 多项为真时取首个并警告 W_TREE_ACTIVE；
+  //   bgToken 面板底、accentToken 激活项颜色。结构校验通过后在 sections 键上一次性做激活数检查。</lang>
+  // <lang en>tree node (`T-tb-TDON-P1`/ADR-019/TDON-5.15): grouped nav/doc tree — the signature element of
+  //   VitePress sidebars and WP admin menus. sections 1–6, items 1–12 per section; when several items are
+  //   active the first wins with a W_TREE_ACTIVE warning; bgToken paints the panel, accentToken the active item.
+  //   The active count check runs once over the normalized sections array.</lang>
+  'tree':{
+    keys:['sections','bgToken','accentToken'],
+    validate:(ctx,v,p,key)=>{
+      switch(key){
+        case 'sections':{
+          const sections=wantArray(ctx,v,p,1,6,(raw,ip)=>{
+            if(!isPlainObject(raw)){pushError(ctx,'E_TYPE',ip,'树节应为对象。','A tree section must be an object.');return undefined;}
+            if(rejectDangerousKeys(ctx,raw,ip))return undefined;
+            checkKnownKeys(ctx,raw,ip,['label','items']);
+            const label=requireString(ctx,raw.label,ip+'.label',40);
+            const items=wantArray(ctx,raw.items,ip+'.items',1,12,(ritem,ip2)=>{
+              if(!isPlainObject(ritem)){pushError(ctx,'E_TYPE',ip2,'树项应为对象。','A tree item must be an object.');return undefined;}
+              if(rejectDangerousKeys(ctx,ritem,ip2))return undefined;
+              checkKnownKeys(ctx,ritem,ip2,['label','active']);
+              const itemLabel=requireString(ctx,ritem.label,ip2+'.label',60);
+              // active 仅接受布尔；缺省视为 false，渲染层按 ===true 判定。
+              // <lang zh-CN>不做真值强制转换——非布尔一律类型错误，避免 "active":"yes" 这类隐式语义。</lang>
+              // <lang en>Booleans only — no truthiness coercion, so "active":"yes" is a type error, not implicit semantics.</lang>
+              let active=false;
+              if(ritem.active!==undefined){
+                if(typeof ritem.active!=='boolean'){
+                  pushError(ctx,'E_TYPE',ip2+'.active','active 应为布尔值。','active must be a boolean.');
+                  return undefined;
+                }
+                active=ritem.active;
+              }
+              return itemLabel===undefined?undefined:{label:itemLabel,active};
+            });
+            if(label===undefined||items===undefined)return undefined;
+            return{label,items};
+          });
+          if(sections===undefined)return undefined;
+          // 激活数检查：>1 个 active 只保留语义上的"当前页"含义（首个），其余警告提示。
+          // <lang zh-CN>计数贯穿所有 sections；警告一次，不逐项报。</lang>
+          // <lang en>Counts across all sections; warns once, not per item.</lang>
+          const activeCount=sections.reduce((n,s)=>n+s.items.filter(it=>it.active).length,0);
+          if(activeCount>1){
+            pushWarning(ctx,'W_TREE_ACTIVE',p,`tree 共有 ${activeCount} 个激活项，渲染仅高亮首个（VitePress/WP 语义中"当前页"唯一）。`,`tree has ${activeCount} active items; only the first is highlighted (the "current page" is unique in VitePress/WP semantics).`);
+          }
+          return sections;
+        }
+        case 'bgToken':return optToken()(ctx,v,p);
+        case 'accentToken':return optToken()(ctx,v,p);
+        default:return undefined;
+      }
+    }
+  },
+  // code-block：文档代码块（`T-tb-TDON-P1`/ADR-019/TDON-5.16）——区别于 code-editor 的编辑器 chrome。
+  // <lang zh-CN>code 必填 ≤2000；lang ≤16（缺省 text）；title ≤80（文件名/代码组标签，可选）；
+  //   accentToken 控制语言标签底色。着色与 code-editor 同源（四类近似，行级）。</lang>
+  // <lang en>code-block node (`T-tb-TDON-P1`/ADR-019/TDON-5.16): a document code block, distinct from the
+  //   code-editor chrome. code is required (≤2000); lang ≤16 (defaults to text); title ≤80 optional
+  //   (filename/code-group tab); accentToken colors the language badge. Colouring shares the code-editor
+  //   tokenizer (four approximate classes, line-level).</lang>
+  'code-block':{
+    keys:['code','lang','title','accentToken'],
+    validate:(ctx,v,p,key)=>{
+      switch(key){
+        case 'code':return reqString(2000)(ctx,v,p);
+        case 'lang':return optString(16)(ctx,v,p);
+        case 'title':return optString(80)(ctx,v,p);
+        case 'accentToken':return optToken()(ctx,v,p);
+        default:return undefined;
+      }
+    }
+  },
+  // callout：提示容器（`T-tb-TDON-P1`/ADR-019/TDON-5.17）——VitePress 容器、WP 通知等语义提示框。
+  // <lang zh-CN>kind 必填枚举（未知 → E_ENUM，wantEnum 对 undefined 不报错，故缺省在此显式补 E_REQUIRED）；
+  //   缺省语义色映射见 TDON-5.17（渲染器直读主题语义组）；token 为显式覆盖引用。</lang>
+  // <lang en>callout node (`T-tb-TDON-P1`/ADR-019/TDON-5.17): admonition container. kind is a required enum
+  //   (wantEnum tolerates undefined, so E_REQUIRED is raised here explicitly); the default semantic colour
+  //   mapping lives in TDON-5.17 (the renderer reads the theme's semantic group); token is an explicit override.</lang>
+  'callout':{
+    keys:['kind','title','text','token'],
+    validate:(ctx,v,p,key)=>{
+      switch(key){
+        case 'kind':{
+          if(v===undefined){
+            pushError(ctx,'E_REQUIRED',p,'kind 必填。','kind is required.');
+            return undefined;
+          }
+          return wantEnum(ctx,v,p,['info','note','tip','important','warning','caution','danger','details'] as const);
+        }
+        case 'title':return optString(80)(ctx,v,p);
+        case 'text':return reqString(2000)(ctx,v,p);
+        case 'token':return optToken()(ctx,v,p);
+        default:return undefined;
+      }
+    }
   }
 };
 

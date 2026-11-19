@@ -4,105 +4,274 @@
     "id": "vitepress-docs",
     "name": "VitePress 文档主题",
     "nameEn": "VitePress Docs Theme",
-    "author": "HIA 官方示例",
+    "author": "HIA 官方适配",
     "homepage": "https://vitepress.dev/",
     "targetVersion": ">=1.0"
   },
   "tokens": {
     "include": {
-      "color": ["primary", "secondary"],
+      "color": [
+        "primary",
+        "secondary"
+      ],
       "colorShades": "all",
-      "gradient": ["carousel", "banner"],
-      "typography": ["fontFamily", "fontSizeScale"],
+      "gradient": [
+        "carousel",
+        "banner"
+      ],
+      "typography": [
+        "fontFamily",
+        "fontSizeScale"
+      ],
       "spacing": "all"
     },
     "alias": {
-      "--vp-c-brand": "primary.500",
+      "--vp-c-brand": "primary.600",
       "--vp-c-brand-1": "primary.600",
       "--vp-c-brand-2": "primary.700",
-      "--vp-c-bg-soft": "primary.50"
+      "--vp-c-brand-3": "primary.500",
+      "--vp-c-brand-soft": "primary.100",
+      "--vp-c-bg-alt": "primary.50",
+      "--vp-c-bg-soft": "primary.50",
+      "--vp-c-text-1": "primary.900",
+      "--vp-c-text-2": "primary.700",
+      "--vp-c-text-3": "primary.500",
+      "--vp-c-border": "primary.200",
+      "--vp-c-divider": "primary.100",
+      "--vp-c-gutter": "primary.100",
+      "--vp-code-color": "primary.700",
+      "--vp-code-block-bg": "primary.50",
+      "--vp-sidebar-bg-color": "primary.50",
+      "--vp-nav-bg-color": "primary.50",
+      "--vp-button-brand-bg": "primary.600",
+      "--vp-button-brand-hover-bg": "primary.700",
+      "--vp-button-brand-active-bg": "primary.800"
     }
   },
   "preview": {
-    "title": "VitePress 文档站预览",
-    "layout": "stack",
+    "title": "VitePress 文档站预览（文档页全貌）",
+    "layout": "sidebar-left",
     "nodes": [
       {
-        "type": "hero",
-        "title": "文档站主视觉",
-        "subtitle": "渐变令牌直接驱动 hero 背景，标题字号取 fs:h1。",
-        "bgToken": "gradient:carousel",
-        "actions": [
-          { "label": "开始使用", "token": "primary.600" },
-          { "label": "查看配置", "token": "primary.100" }
-        ],
-        "effect": "fade"
+        "type": "tree",
+        "bgToken": "primary.50",
+        "accentToken": "primary.700",
+        "sections": [
+          {
+            "label": "指南",
+            "items": [
+              {
+                "label": "介绍"
+              },
+              {
+                "label": "快速上手"
+              },
+              {
+                "label": "为什么选 VitePress"
+              }
+            ]
+          },
+          {
+            "label": "配置",
+            "items": [
+              {
+                "label": "站点配置"
+              },
+              {
+                "label": "默认主题配置"
+              }
+            ]
+          },
+          {
+            "label": "主题",
+            "items": [
+              {
+                "label": "自定义 CSS",
+                "active": true
+              },
+              {
+                "label": "扩展默认主题"
+              },
+              {
+                "label": "全局组件"
+              }
+            ]
+          }
+        ]
       },
       {
         "type": "nav",
-        "items": ["指南", { "label": "配置", "active": true }, "主题", "插件"],
+        "items": [
+          "HIA Docs",
+          {
+            "label": "指南",
+            "active": true
+          },
+          "配置",
+          "主题"
+        ],
         "bgToken": "primary.50",
         "activeToken": "primary.700"
       },
       {
         "type": "raw-text",
-        "text": "下面的表格演示列键与行数据的映射：多余的行键被忽略，缺失的键渲染为空单元格。",
-        "textToken": "primary.800",
-        "size": "fs:small"
+        "text": "自定义 CSS",
+        "textToken": "primary.900",
+        "size": "fs:h1"
+      },
+      {
+        "type": "raw-text",
+        "text": "VitePress 的默认主题通过 CSS 变量暴露全部功能色。HIA 适配把品牌色、语义状态色、文本层级、侧栏、代码块与提示容器一次性接好，并按亮 / 暗两段输出。",
+        "textToken": "primary.800"
+      },
+      {
+        "type": "callout",
+        "kind": "tip",
+        "title": "TIP",
+        "text": "接入只需两个文件：.vitepress/theme/index.ts 注册入口 + custom.css 变量覆盖。明暗两种模式下都完整生效。",
+        "effect": "fade"
+      },
+      {
+        "type": "code-block",
+        "lang": "css",
+        "title": "custom.css",
+        "accentToken": "primary.600",
+        "code": ":root {\n  --vp-c-brand-1: var(--hia-primary-600);\n  --vp-c-brand-soft: var(--hia-primary-100);\n  --vp-c-text-1: var(--hia-primary-900);\n  --vp-sidebar-bg-color: var(--hia-primary-50);\n}\nhtml.dark {\n  --vp-c-brand-1: var(--hia-primary-300);\n  --vp-c-text-1: var(--hia-primary-100);\n}"
       },
       {
         "type": "table",
         "columns": [
-          { "key": "token", "label": "令牌" },
-          { "key": "value", "label": "用途" }
+          {
+            "key": "var",
+            "label": "VitePress 变量"
+          },
+          {
+            "key": "token",
+            "label": "来源令牌"
+          },
+          {
+            "key": "meaning",
+            "label": "语义"
+          }
         ],
         "rows": [
-          { "token": "--vp-c-brand", "value": "主品牌色（primary.500）" },
-          { "token": "--vp-c-brand-1", "value": "悬停态（primary.600）" },
-          { "token": "--vp-c-bg-soft", "value": "浅底块（primary.50）" }
+          {
+            "var": "--vp-c-brand-1",
+            "token": "primary.600",
+            "meaning": "品牌实色文本 / 链接"
+          },
+          {
+            "var": "--vp-c-brand-soft",
+            "token": "primary.100",
+            "meaning": "品牌浅底"
+          },
+          {
+            "var": "--vp-c-text-1",
+            "token": "primary.900",
+            "meaning": "正文主文本"
+          },
+          {
+            "var": "--vp-custom-block-tip-bg",
+            "token": "success.50",
+            "meaning": "TIP 容器底色"
+          },
+          {
+            "var": "--vp-sidebar-bg-color",
+            "token": "primary.50",
+            "meaning": "侧栏底色"
+          }
         ],
         "headerToken": "primary.900",
         "cellToken": "primary.800"
       },
       {
-        "type": "list",
-        "items": ["令牌别名只影响导出文本，预览一律用 HIA 变量", "表格行键必须属于列键", "对比度断言在 strict 模式下阻断注册"],
-        "textToken": "primary.800",
-        "markerToken": "secondary.500"
+        "type": "callout",
+        "kind": "warning",
+        "title": "WARNING",
+        "text": "本适配保持 VitePress 原生画布（--vp-c-bg）不覆盖，仅着色功能层；若需全画布着色，请自行追加并复核文本对比度。"
       },
-      { "type": "divider", "token": "primary.200", "thickness": 2 },
       {
-        "type": "card",
-        "title": "副色用于强调",
-        "text": "副色出现在链接悬停与强调标记上，符合 HIA 副色语义。",
-        "bgToken": "primary.50",
-        "titleToken": "primary.900",
-        "textToken": "primary.700",
-        "effect": "lift"
+        "type": "divider",
+        "token": "primary.100",
+        "thickness": 1
+      },
+      {
+        "type": "raw-text",
+        "text": "← 快速上手 · 全局组件 →",
+        "textToken": "primary.500",
+        "size": "fs:small"
       }
     ]
   },
   "exportManifest": {
     "files": [
       {
-        "path": ".vitepress/theme/hia-brand.css",
-        "template": "/* 由 HIA Theme Builder 生成 — {{meta:name}} */\n:root {\n  --vp-c-brand: {{token:primary.500}};\n  --vp-c-brand-1: {{token:primary.600}};\n  --vp-c-brand-2: {{token:primary.700}};\n  --vp-c-bg-soft: {{token:primary.50}};\n  --vp-c-text-1: {{token:primary.900}};\n}\n"
+        "path": "docs/.vitepress/theme/index.ts",
+        "template": "// HIA Theme Builder 生成 — {{meta:name}}（vitepress-docs.tdon.json）\n// Generated by HIA Theme Builder — target: VitePress docs site.\n// 用法 / Usage:\n//   1) 站点尚无主题扩展：直接使用本文件（npm create vitepress 默认 srcDir=docs）。\n//   2) 已有 .vitepress/theme/index.ts：把下面 import './custom.css' 一行并入现有入口。\nimport DefaultTheme from 'vitepress/theme';\nimport './custom.css';\n\nexport default DefaultTheme;\n"
       },
-      { "path": "docs/hia-tokens.css", "templateRef": "builtin:hia-tokens-css" },
-      { "path": "docs/hia-tokens.json", "templateRef": "builtin:hia-tokens-json" }
-    ],
-    "package": { "rootDir": "docs/" }
+      {
+        "path": "docs/.vitepress/theme/custom.css",
+        "template": "/* HIA Theme Builder 生成 — {{meta:name}}（目标：VitePress 文档站）\n   Generated by HIA Theme Builder — target: VitePress docs site.\n   HIA → VitePress 默认主题变量全覆盖（亮 / 暗两段）。\n   Full HIA → VitePress default-theme variable mapping, light & dark.\n   变量语义核对自官方 vars.css（vuejs/vitepress，2026-11 取得）。\n   画布（--vp-c-bg）保持 VitePress 原生值，仅着色功能层。安装见 HIA-THEME-INSTALL.md。 */\n\n/* ===== 亮色（light）===== */\n:root {\n  color-scheme: light;\n\n  /* 品牌色 brand：1=实色文本 / 2=hover / 3=实色底 / soft=浅底 */\n  --vp-c-brand-1: {{token:primary.600}};\n  --vp-c-brand-2: {{token:primary.700}};\n  --vp-c-brand-3: {{token:primary.500}};\n  --vp-c-brand-soft: {{token:primary.100}};\n  --vp-c-brand: {{token:primary.600}};\n\n  /* 画布与层次 bg：侧栏 / 代码块 / 组件浅底着主色最浅档 */\n  --vp-c-bg-alt: {{token:primary.50}};\n  --vp-c-bg-soft: {{token:primary.50}};\n\n  /* 文本层级 text */\n  --vp-c-text-1: {{token:primary.900}};\n  --vp-c-text-2: {{token:primary.700}};\n  --vp-c-text-3: {{token:primary.500}};\n\n  /* 边线 border / divider / gutter */\n  --vp-c-border: {{token:primary.200}};\n  --vp-c-divider: {{token:primary.100}};\n  --vp-c-gutter: {{token:primary.100}};\n\n  /* 代码 code */\n  --vp-code-color: {{token:primary.700}};\n  --vp-code-bg: {{token:primary.50}};\n  --vp-code-block-color: {{token:primary.900}};\n  --vp-code-block-bg: {{token:primary.50}};\n  --vp-code-lang-color: {{token:primary.500}};\n  --vp-code-line-highlight-color: {{token:primary.100}};\n  --vp-code-line-number-color: {{token:primary.300}};\n\n  /* 语义提示容器 custom blocks：tip→success / info,note→info / important→primary /\n     warning,caution→warning / danger→danger / details→中性 */\n  --vp-custom-block-info-border: var(--hia-info-300, {{token:primary.300}});\n  --vp-custom-block-info-text: var(--hia-info-800, {{token:primary.800}});\n  --vp-custom-block-info-bg: var(--hia-info-50, {{token:primary.50}});\n  --vp-custom-block-note-border: var(--hia-info-300, {{token:primary.300}});\n  --vp-custom-block-note-text: var(--hia-info-800, {{token:primary.800}});\n  --vp-custom-block-note-bg: var(--hia-info-50, {{token:primary.50}});\n  --vp-custom-block-tip-border: var(--hia-success-300, {{token:primary.300}});\n  --vp-custom-block-tip-text: var(--hia-success-800, {{token:primary.800}});\n  --vp-custom-block-tip-bg: var(--hia-success-50, {{token:primary.50}});\n  --vp-custom-block-important-border: {{token:primary.300}};\n  --vp-custom-block-important-text: {{token:primary.800}};\n  --vp-custom-block-important-bg: {{token:primary.50}};\n  --vp-custom-block-warning-border: var(--hia-warning-300, {{token:primary.300}});\n  --vp-custom-block-warning-text: var(--hia-warning-800, {{token:primary.800}});\n  --vp-custom-block-warning-bg: var(--hia-warning-50, {{token:primary.50}});\n  --vp-custom-block-caution-border: var(--hia-warning-300, {{token:primary.300}});\n  --vp-custom-block-caution-text: var(--hia-warning-800, {{token:primary.800}});\n  --vp-custom-block-caution-bg: var(--hia-warning-50, {{token:primary.50}});\n  --vp-custom-block-danger-border: var(--hia-danger-300, {{token:primary.300}});\n  --vp-custom-block-danger-text: var(--hia-danger-800, {{token:primary.800}});\n  --vp-custom-block-danger-bg: var(--hia-danger-50, {{token:primary.50}});\n  --vp-custom-block-details-border: {{token:primary.200}};\n  --vp-custom-block-details-text: {{token:primary.800}};\n  --vp-custom-block-details-bg: {{token:primary.50}};\n\n  /* 按钮 brand */\n  --vp-button-brand-border: {{token:primary.600}};\n  --vp-button-brand-text: {{token:on:primary}};\n  --vp-button-brand-bg: {{token:primary.600}};\n  --vp-button-brand-hover-border: {{token:primary.700}};\n  --vp-button-brand-hover-text: {{token:on:primary}};\n  --vp-button-brand-hover-bg: {{token:primary.700}};\n  --vp-button-brand-active-border: {{token:primary.800}};\n  --vp-button-brand-active-text: {{token:on:primary}};\n  --vp-button-brand-active-bg: {{token:primary.800}};\n\n  /* 首页 Hero 渐变标题（VitePress 以 background-clip:text 渲染） */\n  --vp-home-hero-name-color: transparent;\n  --vp-home-hero-name-background: {{token:gradient:carousel}};\n\n  /* 布局面板 layout */\n  --vp-sidebar-bg-color: {{token:primary.50}};\n  --vp-nav-bg-color: {{token:primary.50}};\n\n  /* 徽章 badges */\n  --vp-badge-info-border: var(--hia-info-300, {{token:primary.300}});\n  --vp-badge-info-text: var(--hia-info-800, {{token:primary.800}});\n  --vp-badge-info-bg: var(--hia-info-50, {{token:primary.50}});\n  --vp-badge-tip-border: var(--hia-success-300, {{token:primary.300}});\n  --vp-badge-tip-text: var(--hia-success-800, {{token:primary.800}});\n  --vp-badge-tip-bg: var(--hia-success-50, {{token:primary.50}});\n  --vp-badge-warning-border: var(--hia-warning-300, {{token:primary.300}});\n  --vp-badge-warning-text: var(--hia-warning-800, {{token:primary.800}});\n  --vp-badge-warning-bg: var(--hia-warning-50, {{token:primary.50}});\n  --vp-badge-danger-border: var(--hia-danger-300, {{token:primary.300}});\n  --vp-badge-danger-text: var(--hia-danger-800, {{token:primary.800}});\n  --vp-badge-danger-bg: var(--hia-danger-50, {{token:primary.50}});\n\n  /* 字体族（覆盖默认捆绑的 Inter） */\n  --vp-font-family-base: {{token:font:body}};\n  --vp-font-family-mono: {{token:font:mono}};\n}\n\n/* ===== 暗色（dark，html.dark 由 VitePress 明暗切换挂载）===== */\nhtml.dark {\n  color-scheme: dark;\n\n  --vp-c-brand-1: {{token:primary.300}};\n  --vp-c-brand-2: {{token:primary.200}};\n  --vp-c-brand-3: {{token:primary.400}};\n  --vp-c-brand-soft: {{token:primary.800}};\n  --vp-c-brand: {{token:primary.300}};\n\n  --vp-c-bg-alt: {{token:primary.950}};\n  --vp-c-bg-elv: {{token:primary.900}};\n  --vp-c-bg-soft: {{token:primary.900}};\n\n  --vp-c-text-1: {{token:primary.100}};\n  --vp-c-text-2: {{token:primary.200}};\n  --vp-c-text-3: {{token:primary.300}};\n\n  --vp-c-border: {{token:primary.700}};\n  --vp-c-divider: {{token:primary.800}};\n  --vp-c-gutter: {{token:primary.800}};\n\n  --vp-code-color: {{token:primary.300}};\n  --vp-code-bg: {{token:primary.900}};\n  --vp-code-block-color: {{token:primary.100}};\n  --vp-code-block-bg: {{token:primary.950}};\n  --vp-code-lang-color: {{token:primary.400}};\n  --vp-code-line-highlight-color: {{token:primary.900}};\n  --vp-code-line-number-color: {{token:primary.600}};\n\n  --vp-custom-block-info-border: var(--hia-info-700, {{token:primary.700}});\n  --vp-custom-block-info-text: var(--hia-info-200, {{token:primary.200}});\n  --vp-custom-block-info-bg: var(--hia-info-950, {{token:primary.950}});\n  --vp-custom-block-note-border: var(--hia-info-700, {{token:primary.700}});\n  --vp-custom-block-note-text: var(--hia-info-200, {{token:primary.200}});\n  --vp-custom-block-note-bg: var(--hia-info-950, {{token:primary.950}});\n  --vp-custom-block-tip-border: var(--hia-success-700, {{token:primary.700}});\n  --vp-custom-block-tip-text: var(--hia-success-200, {{token:primary.200}});\n  --vp-custom-block-tip-bg: var(--hia-success-950, {{token:primary.950}});\n  --vp-custom-block-important-border: {{token:primary.700}};\n  --vp-custom-block-important-text: {{token:primary.200}};\n  --vp-custom-block-important-bg: {{token:primary.950}};\n  --vp-custom-block-warning-border: var(--hia-warning-700, {{token:primary.700}});\n  --vp-custom-block-warning-text: var(--hia-warning-200, {{token:primary.200}});\n  --vp-custom-block-warning-bg: var(--hia-warning-950, {{token:primary.950}});\n  --vp-custom-block-caution-border: var(--hia-warning-700, {{token:primary.700}});\n  --vp-custom-block-caution-text: var(--hia-warning-200, {{token:primary.200}});\n  --vp-custom-block-caution-bg: var(--hia-warning-950, {{token:primary.950}});\n  --vp-custom-block-danger-border: var(--hia-danger-700, {{token:primary.700}});\n  --vp-custom-block-danger-text: var(--hia-danger-200, {{token:primary.200}});\n  --vp-custom-block-danger-bg: var(--hia-danger-950, {{token:primary.950}});\n  --vp-custom-block-details-border: {{token:primary.700}};\n  --vp-custom-block-details-text: {{token:primary.200}};\n  --vp-custom-block-details-bg: {{token:primary.950}};\n\n  --vp-button-brand-border: {{token:primary.400}};\n  --vp-button-brand-text: {{token:on:primary}};\n  --vp-button-brand-bg: {{token:primary.400}};\n  --vp-button-brand-hover-border: {{token:primary.300}};\n  --vp-button-brand-hover-text: {{token:on:primary}};\n  --vp-button-brand-hover-bg: {{token:primary.300}};\n  --vp-button-brand-active-border: {{token:primary.200}};\n  --vp-button-brand-active-text: {{token:on:primary}};\n  --vp-button-brand-active-bg: {{token:primary.200}};\n\n  --vp-home-hero-name-color: transparent;\n  --vp-home-hero-name-background: {{token:gradient:carousel}};\n\n  --vp-sidebar-bg-color: {{token:primary.950}};\n  --vp-nav-bg-color: {{token:primary.950}};\n\n  --vp-badge-info-border: var(--hia-info-700, {{token:primary.700}});\n  --vp-badge-info-text: var(--hia-info-200, {{token:primary.200}});\n  --vp-badge-info-bg: var(--hia-info-950, {{token:primary.950}});\n  --vp-badge-tip-border: var(--hia-success-700, {{token:primary.700}});\n  --vp-badge-tip-text: var(--hia-success-200, {{token:primary.200}});\n  --vp-badge-tip-bg: var(--hia-success-950, {{token:primary.950}});\n  --vp-badge-warning-border: var(--hia-warning-700, {{token:primary.700}});\n  --vp-badge-warning-text: var(--hia-warning-200, {{token:primary.200}});\n  --vp-badge-warning-bg: var(--hia-warning-950, {{token:primary.950}});\n  --vp-badge-danger-border: var(--hia-danger-700, {{token:primary.700}});\n  --vp-badge-danger-text: var(--hia-danger-200, {{token:primary.200}});\n  --vp-badge-danger-bg: var(--hia-danger-950, {{token:primary.950}});\n}\n"
+      },
+      {
+        "path": "docs/hia-tokens.css",
+        "templateRef": "builtin:hia-tokens-css"
+      },
+      {
+        "path": "docs/hia-tokens.json",
+        "templateRef": "builtin:hia-tokens-json"
+      },
+      {
+        "path": "docs/HIA-THEME-INSTALL.md",
+        "template": "# HIA 主题接入说明（VitePress）— {{meta:name}}\n\nGenerated by HIA Theme Builder（vitepress-docs.tdon.json）。Generated by HIA Theme Builder.\n\n## 全新站点（Fresh site）\n\n1. 本包按 `npm create vitepress` 默认目录约定生成（srcDir = `docs/`）；\n2. 把包内文件按原路径复制进项目根（`docs/.vitepress/theme/index.ts`、`docs/.vitepress/theme/custom.css`）；\n3. 重启 dev server（`npm run docs:dev`），品牌色 / 侧栏 / 代码块 / 提示容器即刻生效。\n\n## 已有主题扩展（Existing theme entry）\n\n- 把 `custom.css` 内容并入现有 `.vitepress/theme/custom.css`（或在入口中 `import './custom.css'`）；\n- `index.ts` 只需保证 `import './custom.css'` 存在，其余保持原样；\n- `hia-tokens.css` / `hia-tokens.json` 为可选的完整令牌清单（供工具链消费），不引用也不影响主题。\n\n## 明暗模式（Light / Dark）\n\n- 覆盖分亮 / 暗两段；暗色段挂在 `html.dark`（VitePress 原生切换机制），跟随站点的明暗切换按钮；\n- 画布（`--vp-c-bg`）未覆盖，保持 VitePress 原生白 / 黑。\n\n> 本适配仅使用文字标识说明目标端，不包含目标端图像资源。\n> Trademark note: target names are used as identification only; no target artwork is included.\n"
+      }
+    ]
   },
   "constraints": {
-    "requiredTokens": ["primary.500", "primary.900"],
+    "requiredTokens": [
+      "primary.500",
+      "primary.900"
+    ],
     "requireContrast": [
-      { "fg": "primary.900", "bg": "primary.50", "min": 4.5 }
+      {
+        "fg": "primary.900",
+        "bg": "primary.50",
+        "min": 4.5
+      },
+      {
+        "fg": "success.800",
+        "bg": "success.50",
+        "min": 4.5
+      },
+      {
+        "fg": "warning.800",
+        "bg": "warning.50",
+        "min": 4.5
+      },
+      {
+        "fg": "danger.800",
+        "bg": "danger.50",
+        "min": 4.5
+      },
+      {
+        "fg": "info.800",
+        "bg": "info.50",
+        "min": 4.5
+      }
     ],
     "strict": false
   },
   "effects": {
-    "fade": { "type": "fade-in", "duration": 400 },
-    "lift": { "type": "hover-lift", "distance": 2 },
-    "shift": { "type": "gradient-shift" }
+    "fade": {
+      "type": "fade-in",
+      "duration": 400
+    },
+    "lift": {
+      "type": "hover-lift",
+      "distance": 2
+    },
+    "shift": {
+      "type": "gradient-shift"
+    }
   }
 }

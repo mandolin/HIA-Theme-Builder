@@ -26,6 +26,10 @@ export type TdonIssueCode=
   |'W_CONTRAST'|'W_TOKEN_UNRESOLVED'
   // 软阈值与预留提示（TDON-1.7 / §10.1 / §14）
   |'W_TOO_LARGE'|'W_NODE_LIMIT'|'W_FILE_COUNT'|'W_TEMPLATE_SIZE'|'W_TDOT_RESERVED'|'W_FONT_RESERVED'
+  // 预览节点提示（ADR-019）
+  // <lang zh-CN>tree 激活项多于一个时提示（渲染只高亮首个，TDON-5.15）。</lang>
+  // <lang en>Warns when a tree has more than one active item (only the first is highlighted, TDON-5.15).</lang>
+  |'W_TREE_ACTIVE'
   // TDOT 模板语言（ADR-011 §6）
   // <lang en>TDOT template language codes (ADR-011 §6).</lang>
   |'E_TDOT_VERSION'|'E_TDOT_SYNTAX'|'E_TDOT_TYPE'|'E_TDOT_LIMIT'|'W_TDOT_UNDEFINED';

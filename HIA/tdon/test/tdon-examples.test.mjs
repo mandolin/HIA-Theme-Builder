@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { buildTheme, GRADIENT_DEFAULTS, generateAuxiliaryCandidates, tonalScale, bestOnColor } from '@hia/theme-core';
+import { buildTheme, GRADIENT_DEFAULTS, generateAuxiliaryCandidates, tonalScale, bestOnColor, deriveSemanticTokens } from '@hia/theme-core';
 import { parseTdonDocument, renderTdonPreview, createTdonExportTarget, TDON_SPEC_VERSION } from '../dist/index.js';
 
 /** @lang zh-CN 示例目录绝对路径。 @lang en Absolute path of the examples directory. */
@@ -22,16 +22,18 @@ function load(name) {
   return JSON.parse(readFileSync(join(EX_DIR, name), 'utf8'));
 }
 /**
- * @lang zh-CN 基准主题：双色基底 + 由 core 候选生成的两个辅助槽（含真实色阶），
- *   使示例中的 `aux0` 引用可解析——示例本身按真实主题能力编写。
- * @lang en Base theme: dual-mode base plus two aux slots generated from core candidates (real scales),
- *   so the `aux0` reference in the examples resolves — examples are written against real theme capability.
+ * @lang zh-CN 基准主题：双色基底 + 由 core 候选生成的两个辅助槽（含真实色阶）+ 派生语义状态组，
+ *   使示例中的 `aux0` 与语义角色（`success.*` 等，ADR-019）引用可解析——示例本身按真实主题能力编写
+ *   （应用内主题自 `W-tb-P37` 起默认派生语义组）。
+ * @lang en Base theme: dual-mode base plus two aux slots from core candidates (real scales) and the derived
+ *   semantic group, so `aux0` and semantic references (`success.*`, ADR-019) resolve — examples are written
+ *   against real theme capability (in-app themes have derived semantics by default since `W-tb-P37`).
  */
 const BASE = buildTheme({ name: '示例主题', category: 'demo', industry: 'tech', primary: '#0047AB', secondary: '#00A8D3', gradients: GRADIENT_DEFAULTS });
 const AUX = generateAuxiliaryCandidates(BASE, 'dual').slice(0, 2).map(c => ({
   name: c.name, value: c.hex, scale: tonalScale(c.hex), on: bestOnColor(c.hex).hex
 }));
-const THEME = { ...BASE, auxiliary: AUX };
+const THEME = { ...BASE, auxiliary: AUX, semantic: deriveSemanticTokens(BASE.primary.value) };
 
 test('三个合法示例全部通过校验并产出非空文件树', () => {
   for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json']) {
@@ -52,6 +54,36 @@ test('三个合法示例全部通过校验并产出非空文件树', () => {
       assert.ok(!f.content.includes('{{token:'), `${name}/${f.path} 残留未解析令牌`);
     }
   }
+});
+
+test('vitepress-docs：预览含三类新节点，导出覆盖真实 VP 目录结构与完整变量映射', () => {
+  const raw = load('vitepress-docs.tdon.json');
+  const res = parseTdonDocument(raw, { theme: THEME });
+  assert.equal(res.result.ok, true, JSON.stringify(res.result.errors));
+  const doc = res.doc;
+  // 预览：文档页全貌——sidebar-left 两栏 + tree（侧栏）/code-block/callout 三类签名元素。
+  assert.equal(doc.preview.layout, 'sidebar-left');
+  const types = doc.preview.nodes.map(n => n.type);
+  for (const t of ['tree', 'code-block', 'callout']) {
+    assert.ok(types.includes(t), `预览应含 ${t} 节点（VitePress 文档页签名元素）`);
+  }
+  const html = renderTdonPreview(doc, THEME);
+  assert.ok(html.includes('tdon-aside') && html.includes('tdon-main'), 'sidebar-left 应输出两栏结构');
+  // 导出：覆盖真实 VitePress 主题扩展目录（npm create vitepress 默认 srcDir=docs）。
+  const files = createTdonExportTarget(doc).files(THEME);
+  const paths = files.map(f => f.path);
+  for (const p of ['docs/.vitepress/theme/index.ts', 'docs/.vitepress/theme/custom.css', 'docs/HIA-THEME-INSTALL.md']) {
+    assert.ok(paths.includes(p), `导出应含 ${p}`);
+  }
+  // 核心交付物 custom.css：亮/暗两段 + 品牌/语义容器/按钮/Hero/侧栏功能组全覆盖。
+  const css = files.find(f => f.path === 'docs/.vitepress/theme/custom.css')?.content ?? '';
+  assert.ok(css.includes('html.dark'), 'custom.css 应含暗色段（html.dark）');
+  for (const group of ['--vp-c-brand-1', '--vp-custom-block-tip-bg', '--vp-button-brand-bg', '--vp-home-hero-name-background', '--vp-sidebar-bg-color', '--vp-font-family-base']) {
+    assert.ok(css.includes(group), `custom.css 应覆盖 ${group}`);
+  }
+  // 插值完成：不残留未解析占位。
+  assert.ok(!css.includes('{{token:'), 'custom.css 不应残留未解析令牌');
+  assert.ok(!css.includes('{{meta:'), '导出文件不应残留未解析 meta');
 });
 
 test('反例文件按文件名命中目标错误码', () => {
@@ -80,9 +112,9 @@ test('反例文件按文件名命中目标错误码', () => {
 test('示例中的 alias 与预览令牌都能在当前主题解析', () => {
   const res = parseTdonDocument(load('vitepress-docs.tdon.json'), { theme: THEME });
   assert.equal(res.result.ok, true, JSON.stringify(res.result.errors));
-  // alias 仅影响导出：导出的品牌变量应含真实色值。
+  // alias 仅影响导出：导出的品牌变量应含真实色值（ADR-019 起品牌映射集中在 custom.css）。
   const files = createTdonExportTarget(res.doc).files(THEME);
-  const css = files.find(f => f.path === '.vitepress/theme/hia-brand.css');
+  const css = files.find(f => f.path === 'docs/.vitepress/theme/custom.css');
   assert.ok(css, '应产出品牌 CSS');
   assert.match(css.content, /--vp-c-brand: #[0-9a-f]{6}/i);
 });

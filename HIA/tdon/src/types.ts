@@ -56,10 +56,14 @@ export const TDON_MAX_IMAGE_URL=2048;
 // <lang en>Layout only selects container arrangement semantics; no arbitrary CSS.</lang>
 export type TdonPreviewLayout='stack'|'sidebar-left'|'sidebar-right'|'hero';
 
-// 预览节点类型（TDON-5.3）：固定 9 类，未知值一律拒绝。
-// <lang zh-CN>顺序即文档与 UI 的展示顺序。</lang>
-// <lang en>Order doubles as the documentation/UI listing order.</lang>
-export const TDON_NODE_TYPES=['hero','nav','card','stats','list','table','form','divider','raw-text','code-editor']as const;
+// 预览节点类型（TDON-5.3）：固定 13 类，未知值一律拒绝。
+// <lang zh-CN>顺序即文档与 UI 的展示顺序。ADR-015 加性新增 code-editor；ADR-019 加性新增
+//   tree（分组导航树/文档树）、code-block（文档代码块）、callout（提示容器）——均为目标端
+//   全貌保真所需（T-tb-TDON-P1，VitePress/WordPress 真实页面签名元素）。</lang>
+// <lang en>Order doubles as the documentation/UI listing order. ADR-015 added code-editor; ADR-019
+//   additively added tree (grouped nav/doc tree), code-block (document code block) and callout
+//   (admonition container) — all needed for target-faithful previews (T-tb-TDON-P1).</lang>
+export const TDON_NODE_TYPES=['hero','nav','card','stats','list','table','form','divider','raw-text','code-editor','tree','code-block','callout']as const;
 export type TdonNodeType=typeof TDON_NODE_TYPES[number];
 
 // 目标元信息（§3）。
