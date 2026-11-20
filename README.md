@@ -4,7 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 HIA Theme Builder. Rebuilds the original single-file tool `HIA_theme_manager.html` into a reusable, publishable theme management system based on TypeScript and componentization, with a shared core (`core`) from which the web, Electron and Tauri editions are derived.
 
-**Current release [v1.0.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v1.0.0)** (2026-11-18): 1.0 — contract freeze (142-export API snapshot), editor themes & TDON 1.0 spec, draft auto-restore · [Web app (GitHub Pages)](https://mandolin.github.io/HIA-Theme-Builder/) · [Docs](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [Desktop downloads](https://github.com/mandolin/HIA-Theme-Builder/releases)
+**Current release [v1.1.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v1.1.0)** (2026-11-21): 1.1 — brand/country colour sources, scale generation modes (grid/curve), desktop auto-update, TDON 0.4 multi-page preview & WordPress adapter · [Web app (GitHub Pages)](https://mandolin.github.io/HIA-Theme-Builder/) · [Docs](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [Desktop downloads](https://github.com/mandolin/HIA-Theme-Builder/releases)
 
 ## Demo
 
