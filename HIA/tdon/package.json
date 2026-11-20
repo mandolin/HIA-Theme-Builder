@@ -1,7 +1,7 @@
 {
   "name": "@hia/tdon",
-  "version": "0.3.0",
-  "description": "HIA TDON runtime: declarative theme-adapter documents (tdon-0.2) — zero-dependency validator, preview renderer and export adapter. Pure functions, no IO.",
+  "version": "0.4.0",
+  "description": "HIA TDON runtime: declarative theme-adapter documents (tdon-0.2) \u2014 zero-dependency validator, preview renderer and export adapter. Pure functions, no IO.",
   "license": "MIT",
   "author": "HIA Theme Builder contributors",
   "homepage": "https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/",
