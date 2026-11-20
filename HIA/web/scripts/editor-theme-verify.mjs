@@ -69,18 +69,39 @@ let failed=0;
 await page.evaluate(()=>document.querySelector('#previewTypeSwitch .seg[data-preview-mode="tdon"]')?.click());
 await new Promise(r=>setTimeout(r,500));
 
-// 1) 按钮存在且可见。
-// <lang en>The button exists and is visible.</lang>
-const btn=await page.evaluate(()=>{
-  const b=document.getElementById('tdonLoadEditorExampleBtn');
-  return{exists:!!b,visible:!!b&&!b.hidden&&b.offsetParent!==null,text:b?.textContent?.trim()};
+// 1) 「内置示例」源与示例下拉存在且可见（维护者 2026-11-20 定案：两个示例按钮并入源下拉）。
+// <lang en>The "built-in example" source and its picker exist and are visible (maintainer decision,
+//   2026-11-20: both example buttons folded into the source dropdown).</lang>
+await page.evaluate(()=>{
+  const src=document.getElementById('tdonSourceSelect');
+  src.value='builtin';
+  src.dispatchEvent(new Event('change',{bubbles:true}));
 });
-console.log('[button]',JSON.stringify(btn));
-if(!btn.exists||!btn.visible){console.error('❌ 「加载编辑器主题示例」按钮缺失或不可见');failed++;}
+await new Promise(r=>setTimeout(r,300));
+await page.evaluate(()=>{
+  const picker=document.getElementById('tdonBuiltinSelect');
+  picker.value='editor-themes.tdon.json';
+  picker.dispatchEvent(new Event('change',{bubbles:true}));
+});
+await new Promise(r=>setTimeout(r,300));
+const btn=await page.evaluate(()=>{
+  const b=document.getElementById('tdonBuiltinSelect');
+  const src=document.getElementById('tdonSourceSelect');
+  const c=document.getElementById('tdonConnectBtn');
+  return{
+    sourceValue:src?.value,
+    exists:!!b,visible:!!b&&!b.hidden&&b.offsetParent!==null,value:b?.value,
+    connectVisible:!!c&&!c.hidden&&c.offsetParent!==null
+  };
+});
+console.log('[builtin-picker]',JSON.stringify(btn));
+if(!btn.exists||!btn.visible){console.error('❌ 「内置示例」下拉缺失或不可见');failed++;}
+if(btn.value!=='editor-themes.tdon.json'){console.error(`❌ 内置示例下拉选择未生效：${btn.value}`);failed++;}
+if(!btn.connectVisible){console.error('❌ 「连接 TDON」按钮不可见（新入口必需）');failed++;}
 
-// 2) 点击 → code-editor 节点渲染。
-// <lang en>Click → the code-editor node renders.</lang>
-await page.evaluate(()=>document.getElementById('tdonLoadEditorExampleBtn')?.click());
+// 2) 点击连接 → code-editor 节点渲染。
+// <lang en>Click Connect → the code-editor node renders.</lang>
+await page.evaluate(()=>document.getElementById('tdonConnectBtn')?.click());
 await new Promise(r=>setTimeout(r,900));
 const preview=await page.evaluate(()=>({
   codeEditors:document.querySelectorAll('#tdonPreviewBody .tdon-code-editor').length,

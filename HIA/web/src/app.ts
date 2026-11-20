@@ -205,7 +205,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   let previewMode:'default'|'classic'|'tdon'='default';
   let classicTargetId:'wordpress-child'|'tailwind-config'='wordpress-child';
   let exportTargetId='wordpress-child';
-  let tdonSource:'url'|'local'='url';
+  // TDON 来源（维护者 2026-11-20 定案）：三态 —— URL / 本地文件 / 内置示例。
+  //   内置示例占用原「加载示例」「加载编辑器主题示例」两个按钮的位置，统一由「连接 TDON」触发，
+  //   避免按钮散落造成的入口混淆。tdonBuiltin 为内置示例的具体文件（包内 tdon-examples 同名）。
+  // <lang en>TDON source (maintainer decision, 2026-11-20): three states — URL / local file / built-in
+  //   example. The built-in option absorbs the former two example buttons, all triggered by "Connect TDON"
+  //   so scattered entries cannot confuse. tdonBuiltin names the in-package tdon-examples file.</lang>
+  let tdonSource:'url'|'local'|'builtin'='url';
+  /** @lang zh-CN 内置示例文件（`tdon-examples/` 内文件名，取值见 TDON_EXAMPLE_LABELS）。 @lang en Built-in example filename (see TDON_EXAMPLE_LABELS). */
+  let tdonBuiltin:'admin-dashboard.tdon.json'|'editor-themes.tdon.json'='admin-dashboard.tdon.json';
   // TDON 运行时状态（`W-tb-P26`）：已连接文档、校验结果、来源标签与进行中标志。
   // <lang zh-CN>tdonDoc 非空即"已注册"；tdonResult 常驻保存错误/警告（连接失败时最需要）。
   //   文档与校验结果分开保存——主题变更后可只重跑校验而不重新取回（TDON-8.3）。</lang>
@@ -1261,8 +1269,11 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     byId<HTMLElement>('tdonUrlInput').hidden=!tdonMode||tdonSource!=='url';
     byId<HTMLElement>('tdonFileLabel').hidden=!tdonMode||tdonSource!=='local';
     byId<HTMLElement>('tdonFileName').hidden=!tdonMode||tdonSource!=='local';
+    // 内置示例下拉：仅「内置示例」源显示（维护者 2026-11-20 定案，替代原两个示例按钮）。
+    // <lang en>The built-in picker shows only for the "built-in" source (maintainer decision, 2026-11-20),
+    //   replacing the former two example buttons.</lang>
+    byId<HTMLElement>('tdonBuiltinSelect').hidden=!tdonMode||tdonSource!=='builtin';
     byId<HTMLButtonElement>('tdonConnectBtn').hidden=!tdonMode;
-    byId<HTMLButtonElement>('tdonLoadExampleBtn').hidden=!tdonMode;
     // 断开按钮仅在已连接时出现（无连接时点它没有意义）。
     // <lang zh-CN>与"连接"并列，避免用户找不到退出口。</lang>
     // <lang en>Sits beside Connect so users always have an exit.</lang>
@@ -1431,6 +1442,15 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>两种来源都先取文本，再走同一解析路径——保证校验口径一致。</lang>
     // <lang en>Both sources fetch text first and share one parse path, keeping validation identical.</lang>
     let fetched;
+    if(tdonSource==='builtin'){
+      // 内置示例（维护者 2026-11-20 定案）：与「加载示例」按钮同一条内联载入路径，只是入口统一到
+      //   「连接 TDON」——校验口径、状态回报与 URL/本地完全一致。
+      // <lang en>Built-in example (maintainer decision, 2026-11-20): the same inlined loading path the old
+      //   "Load example" button used; only the entry point moved to "Connect TDON", keeping validation and
+      //   status reporting identical to URL/local.</lang>
+      await loadTdonExample(tdonBuiltin);
+      return;
+    }
     if(tdonSource==='url'){
       const url=inputValue('tdonUrlInput').trim();
       if(!url){setText('tdonStatusLabel',t('p9.tdon.err.noUrl'));return;}
@@ -1478,7 +1498,16 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   //   随后走与连接器完全相同的解析校验入口，避免两条路径的校验口径分叉。</lang>
   // <lang en>Example text comes from the @hia/tdon package's tdon-examples (inlined as a string via Vite `?raw`), then goes
   //   through exactly the same parse/validate entry as the connector so the two paths cannot diverge.</lang>
-  async function loadTdonExample(name:'vitepress-docs.tdon.json'|'editor-themes.tdon.json'='vitepress-docs.tdon.json'){
+  // 内置示例清单（维护者 2026-11-20 定案）：与「内置示例」源下拉的选项一一对应。
+  //   URL 旗舰示例（vitepress-docs 多页文档站）保持官网直连，不再重复出现在内置列表——
+  //   两者目标形态必须明显不同，避免"同一内容两个入口"的重复感。
+  // <lang en>Built-in example registry (maintainer decision, 2026-11-20): mirrors the built-in source
+  //   dropdown one-to-one. The URL flagship example (vitepress-docs multi-page docs site) stays
+  //   URL-only here — the two entries must differ clearly in target shape, never duplicate content.</lang>
+  type TdonExampleName='admin-dashboard.tdon.json'|'editor-themes.tdon.json';
+  const TDON_EXAMPLE_LABELS:Record<TdonExampleName,string>={'admin-dashboard.tdon.json':'p9.tdon.builtin.admin','editor-themes.tdon.json':'p9.tdon.builtin.editor'};
+
+  async function loadTdonExample(name:TdonExampleName='admin-dashboard.tdon.json'){
     try{
       // `?raw` 让 Vite 把示例 JSON 内联为字符串（无需网络与文件选择）。
       // <lang zh-CN>路径指向 @hia/tdon 包内示例，保持"示例即文档"的单一来源。
@@ -1488,13 +1517,16 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       //   the console cannot load it.</lang>
       const mod=name==='editor-themes.tdon.json'
         ?await import('../../tdon/tdon-examples/editor-themes.tdon.json?raw')
-        :await import('../../tdon/tdon-examples/vitepress-docs.tdon.json?raw');
+        :await import('../../tdon/tdon-examples/admin-dashboard.tdon.json?raw');
       const text=String((mod as {default:string}).default??'');
-      applyTdonText(text,name);
+      // 来源标签用本地化示例名（状态行"已连接：后台仪表盘示例"），而非裸文件名。
+      // <lang en>The source label uses the localized example name (status: "Connected: Dashboard example"),
+      //   not the bare filename.</lang>
+      applyTdonText(text,t(TDON_EXAMPLE_LABELS[name]));
     }catch(e){
       tdonDoc=null;
       tdonResult={ok:false,errors:[{code:'E_JSON',path:'$',message:`示例加载失败：${e instanceof Error?e.message:String(e)}`,messageEn:`Example load failed: ${e instanceof Error?e.message:String(e)}`}],warnings:[],truncated:false};
-      tdonSourceLabel=name;
+      tdonSourceLabel=t(TDON_EXAMPLE_LABELS[name]);
       renderTdonPanel();renderTdonExport();
     }
   }
@@ -3572,7 +3604,15 @@ ${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
     // TDON 源子 Tab：切换输入控件显隐并重绘（连接状态保持，不因切换源而丢失已加载文档）。
     // <lang zh-CN>已连接的文档属于"上一次操作结果"，切换来源不应把它清掉。</lang>
     // <lang en>A connected document is the result of a previous action; switching source must not clear it.</lang>
-    byId<HTMLSelectElement>('tdonSourceSelect').addEventListener('change',()=>{const v=byId<HTMLSelectElement>('tdonSourceSelect').value;if(v==='url'||v==='local'){tdonSource=v;applyPreviewMode(previewMode);}});
+    byId<HTMLSelectElement>('tdonSourceSelect').addEventListener('change',()=>{const v=byId<HTMLSelectElement>('tdonSourceSelect').value;if(v==='url'||v==='local'||v==='builtin'){tdonSource=v;applyPreviewMode(previewMode);}});
+    // 内置示例下拉（维护者 2026-11-20 定案）：记录选择并刷新显隐/状态行；实际加载仍由「连接 TDON」触发。
+    // <lang en>Built-in example picker (maintainer decision, 2026-11-20): records the choice and refreshes
+    //   visibility/status; loading still happens on "Connect TDON".</lang>
+    byId<HTMLSelectElement>('tdonBuiltinSelect').addEventListener('change',()=>{
+      const v=byId<HTMLSelectElement>('tdonBuiltinSelect').value;
+      if(v==='admin-dashboard.tdon.json'||v==='editor-themes.tdon.json')tdonBuiltin=v;
+      renderTdonPanel();
+    });
     // 多页换页（ADR-020 / TDON-5.23）：页签（data-tdon-goto）与预览内引用（data-tdon-page）共用
     //   tdonPage 态；挂载容器级事件委托——面板重渲染后监听依然有效，无需逐元素绑定。
     // <lang en>Multi-page switching (ADR-020 / TDON-5.23): tabs (data-tdon-goto) and in-preview references
@@ -3589,13 +3629,11 @@ ${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
     // <lang zh-CN>见 connectTdon；按钮在连接期间由 tdonConnecting 防重复。</lang>
     // <lang en>See connectTdon; tdonConnecting guards duplicate clicks.</lang>
     byId<HTMLButtonElement>('tdonConnectBtn').addEventListener('click',()=>{void connectTdon();});
-    // 加载内置示例：无需网络与文件选择即可体验完整链路。
-    // <lang zh-CN>示例来自 core 包内 tdon-examples（单一来源）。</lang>
-    // <lang en>Examples come from core's tdon-examples (single source).</lang>
-    byId<HTMLButtonElement>('tdonLoadExampleBtn').addEventListener('click',()=>{void loadTdonExample();});
-    // 编辑器主题示例（`W-tb-P42`/ADR-015）：四格式导出 + code-editor 预览节点。
-    // <lang en>Editor-theme example (`W-tb-P42`/ADR-015): four-format exports + the code-editor preview node.</lang>
-    byId<HTMLButtonElement>('tdonLoadEditorExampleBtn').addEventListener('click',()=>{void loadTdonExample('editor-themes.tdon.json');});
+    // 内置示例的两个独立按钮已并入「内置示例」源下拉（维护者 2026-11-20 定案）——
+    //   入口统一到「连接 TDON」，此处不再绑定；示例清单见 TDON_EXAMPLE_LABELS。
+    // <lang en>The two standalone example buttons were folded into the "built-in" source dropdown
+    //   (maintainer decision, 2026-11-20): one entry point, "Connect TDON". The registry lives in
+    //   TDON_EXAMPLE_LABELS.</lang>
     // 断开：清空已连接文档与校验结果，面板回到未连接说明态。
     // <lang zh-CN>断开后按钮自身也随之隐藏（由 applyPreviewMode 统一刷新显隐）。</lang>
     // <lang en>The button hides itself afterwards (visibility is refreshed by applyPreviewMode).</lang>

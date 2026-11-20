@@ -120,8 +120,18 @@ await new Promise(r=>setTimeout(r,400));
 // 1. 空态
 await shotEl('#tdonPreviewPanel','01-tdon-empty.png');
 
-// 2. 示例预览（内置示例）
-await page.evaluate(()=>document.getElementById('tdonLoadExampleBtn')?.click());
+// 2. 示例预览（内置示例 → 后台仪表盘；维护者 2026-11-20 定案：入口并入源下拉）
+// <lang en>Example preview (built-in → dashboard; maintainer decision 2026-11-20: entry folded into the source dropdown).</lang>
+await page.evaluate(()=>{
+  const src=document.getElementById('tdonSourceSelect');
+  src.value='builtin';src.dispatchEvent(new Event('change',{bubbles:true}));
+});
+await new Promise(r=>setTimeout(r,300));
+await page.evaluate(()=>{
+  const picker=document.getElementById('tdonBuiltinSelect');
+  picker.value='admin-dashboard.tdon.json';picker.dispatchEvent(new Event('change',{bubbles:true}));
+});
+await page.evaluate(()=>document.getElementById('tdonConnectBtn')?.click());
 await page.waitForFunction(()=>document.querySelectorAll('#tdonPreviewBody .tdon-node').length>=5,{timeout:15000});
 await new Promise(r=>setTimeout(r,500));
 await shotEl('#tdonPreviewPanel','02-tdon-preview-example.png');

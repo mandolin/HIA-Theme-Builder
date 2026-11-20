@@ -28,18 +28,34 @@ registerStrings({
   'p9.classic.wp.note': { zh: 'WordPress 子主题场景：前台页头/主视觉/卡片与后台（管理栏 + 侧边菜单）均消费 --hia-* 令牌；theme.json 面板与渐变预设见「导出与集成」。', en: 'WordPress child-theme scenario: front-end header/hero/cards and the admin side (admin bar + menu) all consume --hia-* tokens; the theme.json palette and gradient presets live in Export & Integration.' },
   'p9.classic.tw.note': { zh: 'Tailwind 场景：导航/主视觉/特性卡/页脚映射 tailwind.config.js 的 colors 与 fontFamily（bg-primary-700、font-heading 等类名直接可用）。', en: 'Tailwind scenario: nav/hero/feature cards/footer map to tailwind.config.js colors and fontFamily (bg-primary-700, font-heading, etc. work out of the box).' },
   // TDON 自定义支持。
-  // <lang zh-CN>源子 Tab（URL/本地）、输入控件、连接/示例按钮、状态与问题清单文案（`W-tb-P26` 运行时已接入）。</lang>
-  // <lang en>Source sub-tab (URL/local), inputs, connect/example buttons, status and issue-list copy
-  //   (the runtime landed in `W-tb-P26`).</lang>
+  // <lang zh-CN>源子 Tab（URL / 本地 / 内置示例）、输入控件、连接按钮、状态与问题清单文案（`W-tb-P26` 运行时已接入；
+  //   内置示例源为维护者 2026-11-20 定案，取代原两个散落示例按钮）。</lang>
+  // <lang en>Source sub-tab (URL / local / built-in), inputs, connect button, status and issue-list copy
+  //   (the runtime landed in `W-tb-P26`; the built-in source is a maintainer decision of 2026-11-20,
+  //   replacing the two scattered example buttons).</lang>
   'p9.tdon.title': { zh: '自定义支持（TDON）', en: 'Custom Support (TDON)' },
-  'p9.tdon.desc': { zh: '连接 TDON 声明式适配文件（tdon-0.1）后，Theme Builder 按其声明生成本目标的预览区与导出文件树。', en: 'Once a TDON declarative adapter file (tdon-0.1) is connected, Theme Builder renders this target\'s preview and export tree from its declaration.' },
+  'p9.tdon.desc': { zh: '连接 TDON 声明式适配文件（tdon-0.2）后，Theme Builder 按其声明生成本目标的预览区与导出文件树。', en: 'Once a TDON declarative adapter file (tdon-0.2) is connected, Theme Builder renders this target\'s preview and export tree from its declaration.' },
   'p9.tdon.source.url': { zh: 'URL 源', en: 'URL source' },
   'p9.tdon.source.local': { zh: '本地文件', en: 'Local file' },
+  'p9.tdon.source.builtin': { zh: '内置示例', en: 'Built-in example' },
+  // 内置示例两项（维护者 2026-11-20 定案）：与 URL 旗舰示例（VitePress 多页文档站）目标形态明显不同。
+  // <lang en>The two built-in entries (maintainer decision, 2026-11-20) differ clearly in target shape from
+  //   the URL flagship (VitePress multi-page docs site).</lang>
+  'p9.tdon.builtin.admin': { zh: '后台仪表盘示例', en: 'Dashboard example' },
+  'p9.tdon.builtin.editor': { zh: '编辑器主题示例', en: 'Editor-theme example' },
+  // 控件 aria-label（此前的 data-i18n-aria 引用为悬空键，界面会把键名当读屏标签——同批补齐）。
+  // <lang en>Control aria-labels (the previous data-i18n-aria references were dangling, so the raw key leaked
+  //   into the accessible name — filled in together).</lang>
+  'aria.p9.tdonSource': { zh: 'TDON 文件来源', en: 'TDON file source' },
+  'aria.p9.tdonUrl': { zh: 'TDON 文件 URL', en: 'TDON file URL' },
+  'aria.p9.tdonBuiltin': { zh: '内置示例选择', en: 'Built-in example' },
+  // URL 输入框占位说明（此前缺键，界面直接显示键名——维护者截图反馈的缺陷）。
+  // <lang en>URL placeholder (previously a missing key, so the raw key name leaked into the UI — the defect
+  //   seen in the maintainer's screenshot).</lang>
+  'p9.tdon.url.placeholder': { zh: '粘贴 TDON 文件地址（也可用官网示例地址）', en: 'Paste a TDON file URL (the official example URL works too)' },
   'p9.tdon.pickFile': { zh: '选择文件', en: 'Choose file' },
   'p9.tdon.connect': { zh: '连接 TDON', en: 'Connect TDON' },
   'p9.tdon.disconnect': { zh: '断开', en: 'Disconnect' },
-  'p9.tdon.loadExample': { zh: '加载示例', en: 'Load example' },
-  'p9.tdon.loadEditorExample': { zh: '加载编辑器主题示例', en: 'Load editor-theme example' },
   'p9.tdon.status.pending': { zh: '未连接', en: 'Not connected' },
   'p9.tdon.status.loading': { zh: '正在加载…', en: 'Loading…' },
   'p9.tdon.status.ok': { zh: '已连接：{source}', en: 'Connected: {source}' },
@@ -47,7 +63,7 @@ registerStrings({
   'p9.tdon.err.noUrl': { zh: '请先填写 TDON 文件 URL。', en: 'Enter the TDON file URL first.' },
   'p9.tdon.err.noFile': { zh: '请先选择本地 TDON 文件。', en: 'Choose a local TDON file first.' },
   'p9.tdon.placeholder.title': { zh: 'TDON 运行时已就绪', en: 'TDON runtime is ready' },
-  'p9.tdon.placeholder.desc': { zh: '连接器（URL / 本地文件）→ JSON 解析 → specVersion 路由 → 结构校验 → 令牌解析 → 注册为自定义目标。选择来源后点击「连接 TDON」，或直接「加载示例」体验完整链路。', en: 'Connector (URL / local file) → JSON parse → specVersion routing → structural validation → token resolution → register as a custom target. Pick a source and click "Connect TDON", or "Load example" to try the full path.' },
+  'p9.tdon.placeholder.desc': { zh: '连接器（URL 源 / 本地文件 / 内置示例）→ JSON 解析 → specVersion 路由 → 结构校验 → 令牌解析 → 注册为自定义目标。选择来源（内置示例需再选具体示例）后点击「连接 TDON」即可加载。', en: 'Connector (URL / local file / built-in example) → JSON parse → specVersion routing → structural validation → token resolution → register as a custom target. Pick a source (and a specific example for built-in), then click "Connect TDON".' },
   'p9.tdon.specVersion': { zh: '当前支持的规范版本：{v}', en: 'Supported spec version: {v}' },
   'p9.tdon.noPreview': { zh: '该 TDON 未声明 preview 段，因此没有预览内容（导出仍然可用）。', en: 'This TDON declares no preview block, so there is nothing to preview (export still works).' },
   'p9.tdon.exportCount': { zh: '{n} 个导出文件', en: '{n} export file(s)' },
