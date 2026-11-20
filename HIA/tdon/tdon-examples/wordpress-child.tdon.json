@@ -1,0 +1,267 @@
+{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "wordpress-child",
+    "name": "WordPress 子主题",
+    "nameEn": "WordPress Child Theme",
+    "author": "HIA 官方适配",
+    "homepage": "https://wordpress.org/",
+    "targetVersion": ">=5.9"
+  },
+  "tokens": {
+    "include": {
+      "color": [
+        "primary",
+        "secondary"
+      ],
+      "colorShades": "all",
+      "typography": [
+        "fontFamily",
+        "fontSizeScale"
+      ]
+    }
+  },
+  "preview": {
+    "title": "WordPress 前台预览（内容站形态）",
+    "layout": "stack",
+    "pages": [
+      {
+        "id": "home",
+        "title": "首页",
+        "layout": "stack",
+        "nodes": [
+          {
+            "type": "nav",
+            "items": [
+              {
+                "label": "我的 WordPress 站",
+                "active": true
+              },
+              "最新文章",
+              "分类",
+              "关于"
+            ],
+            "bgToken": "primary.50",
+            "activeToken": "primary.700"
+          },
+          {
+            "type": "hero",
+            "title": "用 HIA 主题驱动你的 WordPress 站点",
+            "subtitle": "块主题子主题四件套：调色板、排版档位、样式加载顺序，一次连接全部就位。",
+            "bgToken": "primary.700",
+            "actions": [
+              {
+                "label": "开始阅读",
+                "page": "article"
+              }
+            ]
+          },
+          {
+            "type": "divider",
+            "token": "primary.100",
+            "thickness": 1
+          },
+          {
+            "type": "card",
+            "title": "块主题四件套是什么",
+            "text": "style.css 主题头与 HIA 变量、theme.json 调色板与字号档、functions.php 样式顺序、readme 安装说明——上传即启用。",
+            "bgToken": "primary.50",
+            "titleToken": "primary.900",
+            "textToken": "primary.700"
+          },
+          {
+            "type": "card",
+            "title": "与经典导出的关系",
+            "text": "TDON 版覆盖调色板与排版核心；渐变预设与自定义色阶请使用经典导出的 WordPress 子主题。",
+            "bgToken": "primary.50",
+            "titleToken": "primary.900",
+            "textToken": "primary.700"
+          },
+          {
+            "type": "stats",
+            "items": [
+              {
+                "label": "调色板条目",
+                "value": "22"
+              },
+              {
+                "label": "字号档位",
+                "value": "6"
+              },
+              {
+                "label": "需要联网",
+                "value": "0"
+              }
+            ],
+            "labelToken": "primary.600",
+            "valueToken": "primary.900"
+          },
+          {
+            "type": "divider",
+            "token": "primary.100",
+            "thickness": 1
+          },
+          {
+            "type": "raw-text",
+            "text": "由 HIA Theme Builder 驱动 · wordpress-child.tdon.json",
+            "textToken": "primary.500",
+            "size": "fs:small"
+          }
+        ]
+      },
+      {
+        "id": "article",
+        "title": "文章页",
+        "layout": "stack",
+        "nodes": [
+          {
+            "type": "nav",
+            "items": [
+              {
+                "label": "我的 WordPress 站",
+                "page": "home"
+              },
+              "最新文章",
+              {
+                "label": "分类",
+                "active": true
+              },
+              "关于"
+            ],
+            "bgToken": "primary.50",
+            "activeToken": "primary.700"
+          },
+          {
+            "type": "raw-text",
+            "text": "HIA 调色板如何在块编辑器里生效",
+            "textToken": "primary.900",
+            "size": "fs:h1"
+          },
+          {
+            "type": "raw-text",
+            "text": "2026-11-20 · HIA 官方 · 6 分钟阅读",
+            "textToken": "primary.500",
+            "size": "fs:small"
+          },
+          {
+            "type": "raw-text",
+            "text": "启用子主题后，打开站点编辑器任意颜色选择器：主色与副色各 10 个档位以 hia-primary-*、hia-secondary-* slug 出现，块级配色与全局样式均可直接取用，无需手写十六进制值。",
+            "textToken": "primary.800"
+          },
+          {
+            "type": "callout",
+            "kind": "tip",
+            "title": "TIP",
+            "text": "排版字号档同步注入 --wp--custom--hia--fs-*：标题层级跟随 HIA 字号比例尺，正文行高保持 1.65。",
+            "effect": "fade"
+          },
+          {
+            "type": "table",
+            "columns": [
+              {
+                "key": "slug",
+                "label": "slug"
+              },
+              {
+                "key": "token",
+                "label": "来源令牌"
+              },
+              {
+                "key": "meaning",
+                "label": "语义"
+              }
+            ],
+            "rows": [
+              {
+                "slug": "hia-primary",
+                "token": "primary.500",
+                "meaning": "主色基色"
+              },
+              {
+                "slug": "hia-primary-900",
+                "token": "primary.900",
+                "meaning": "主色最深档"
+              },
+              {
+                "slug": "hia-secondary-300",
+                "token": "secondary.300",
+                "meaning": "副色浅档"
+              }
+            ],
+            "headerToken": "primary.900",
+            "cellToken": "primary.800"
+          },
+          {
+            "type": "divider",
+            "token": "primary.100",
+            "thickness": 1
+          },
+          {
+            "type": "raw-text",
+            "text": "← 上一篇 · 回到首页 →",
+            "textToken": "primary.500",
+            "size": "fs:small"
+          },
+          {
+            "type": "raw-text",
+            "text": " ",
+            "textToken": "primary.500",
+            "size": "fs:small"
+          },
+          {
+            "type": "raw-text",
+            "text": "回到首页 →",
+            "textToken": "primary.600",
+            "size": "fs:small"
+          }
+        ]
+      }
+    ]
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": "wp-content/themes/hia-tdon-child/style.css",
+        "template": "/*\nTheme Name: {{meta:name}} — HIA Child\nTemplate: twentytwentyfour\nDescription: HIA Theme Builder TDON generated child theme ({{meta:name}}).\nAuthor: HIA Theme Builder\nVersion: 1.0.0\nLicense: GNU General Public License v2 or later\nText Domain: hia-tdon-child\n*/\n\n/* HIA Theme Builder tokens — 由 TDON 声明生成 / Generated from the TDON declaration */\n:root {\n  --hia-primary-50: {{token:primary.50}};\n  --hia-primary-100: {{token:primary.100}};\n  --hia-primary-200: {{token:primary.200}};\n  --hia-primary-300: {{token:primary.300}};\n  --hia-primary-400: {{token:primary.400}};\n  --hia-primary-500: {{token:primary.500}};\n  --hia-primary-600: {{token:primary.600}};\n  --hia-primary-700: {{token:primary.700}};\n  --hia-primary-800: {{token:primary.800}};\n  --hia-primary-900: {{token:primary.900}};\n  --hia-on-primary: {{token:on:primary}};\n  --hia-secondary-50: {{token:secondary.50}};\n  --hia-secondary-100: {{token:secondary.100}};\n  --hia-secondary-200: {{token:secondary.200}};\n  --hia-secondary-300: {{token:secondary.300}};\n  --hia-secondary-400: {{token:secondary.400}};\n  --hia-secondary-500: {{token:secondary.500}};\n  --hia-secondary-600: {{token:secondary.600}};\n  --hia-secondary-700: {{token:secondary.700}};\n  --hia-secondary-800: {{token:secondary.800}};\n  --hia-secondary-900: {{token:secondary.900}};\n  --hia-on-secondary: {{token:on:secondary}};\n  --hia-font-body: {{token:font:body}};\n  --hia-font-heading: {{token:font:heading}};\n  --hia-font-mono: {{token:font:mono}};\n  --hia-line-height-body: 1.65;\n}\n\n/* 基础排版兜底：覆盖未经块主题处理的区域 / Base typography for non-block areas */\nbody{font-family:var(--hia-font-body,inherit);line-height:var(--hia-line-height-body,1.65);}\nh1,h2,h3,h4,h5,h6{font-family:var(--hia-font-heading,inherit);}\n"
+      },
+      {
+        "path": "wp-content/themes/hia-tdon-child/theme.json",
+        "template": "{\n  \"$schema\": \"https://schemas.wp.org/trunk/theme.json\",\n  \"version\": 2,\n  \"settings\": {\n    \"color\": {\n      \"defaultPalette\": false,\n      \"defaultGradients\": false,\n      \"palette\": [\n        {\n          \"name\": \"主色（基色）\",\n          \"slug\": \"hia-primary\",\n          \"color\": \"{{token:primary.500}}\"\n        },\n        {\n          \"name\": \"副色（基色）\",\n          \"slug\": \"hia-secondary\",\n          \"color\": \"{{token:secondary.500}}\"\n        },\n        {\n          \"name\": \"主色 50\",\n          \"slug\": \"hia-primary-50\",\n          \"color\": \"{{token:primary.50}}\"\n        },\n        {\n          \"name\": \"副色 50\",\n          \"slug\": \"hia-secondary-50\",\n          \"color\": \"{{token:secondary.50}}\"\n        },\n        {\n          \"name\": \"主色 100\",\n          \"slug\": \"hia-primary-100\",\n          \"color\": \"{{token:primary.100}}\"\n        },\n        {\n          \"name\": \"副色 100\",\n          \"slug\": \"hia-secondary-100\",\n          \"color\": \"{{token:secondary.100}}\"\n        },\n        {\n          \"name\": \"主色 200\",\n          \"slug\": \"hia-primary-200\",\n          \"color\": \"{{token:primary.200}}\"\n        },\n        {\n          \"name\": \"副色 200\",\n          \"slug\": \"hia-secondary-200\",\n          \"color\": \"{{token:secondary.200}}\"\n        },\n        {\n          \"name\": \"主色 300\",\n          \"slug\": \"hia-primary-300\",\n          \"color\": \"{{token:primary.300}}\"\n        },\n        {\n          \"name\": \"副色 300\",\n          \"slug\": \"hia-secondary-300\",\n          \"color\": \"{{token:secondary.300}}\"\n        },\n        {\n          \"name\": \"主色 400\",\n          \"slug\": \"hia-primary-400\",\n          \"color\": \"{{token:primary.400}}\"\n        },\n        {\n          \"name\": \"副色 400\",\n          \"slug\": \"hia-secondary-400\",\n          \"color\": \"{{token:secondary.400}}\"\n        },\n        {\n          \"name\": \"主色 500\",\n          \"slug\": \"hia-primary-500\",\n          \"color\": \"{{token:primary.500}}\"\n        },\n        {\n          \"name\": \"副色 500\",\n          \"slug\": \"hia-secondary-500\",\n          \"color\": \"{{token:secondary.500}}\"\n        },\n        {\n          \"name\": \"主色 600\",\n          \"slug\": \"hia-primary-600\",\n          \"color\": \"{{token:primary.600}}\"\n        },\n        {\n          \"name\": \"副色 600\",\n          \"slug\": \"hia-secondary-600\",\n          \"color\": \"{{token:secondary.600}}\"\n        },\n        {\n          \"name\": \"主色 700\",\n          \"slug\": \"hia-primary-700\",\n          \"color\": \"{{token:primary.700}}\"\n        },\n        {\n          \"name\": \"副色 700\",\n          \"slug\": \"hia-secondary-700\",\n          \"color\": \"{{token:secondary.700}}\"\n        },\n        {\n          \"name\": \"主色 800\",\n          \"slug\": \"hia-primary-800\",\n          \"color\": \"{{token:primary.800}}\"\n        },\n        {\n          \"name\": \"副色 800\",\n          \"slug\": \"hia-secondary-800\",\n          \"color\": \"{{token:secondary.800}}\"\n        },\n        {\n          \"name\": \"主色 900\",\n          \"slug\": \"hia-primary-900\",\n          \"color\": \"{{token:primary.900}}\"\n        },\n        {\n          \"name\": \"副色 900\",\n          \"slug\": \"hia-secondary-900\",\n          \"color\": \"{{token:secondary.900}}\"\n        }\n      ]\n    },\n    \"custom\": {\n      \"hia\": {\n        \"onPrimary\": \"{{token:on:primary}}\",\n        \"onSecondary\": \"{{token:on:secondary}}\",\n        \"font\": {\n          \"body\": \"{{token:font:body}}\",\n          \"heading\": \"{{token:font:heading}}\",\n          \"mono\": \"{{token:font:mono}}\"\n        },\n        \"lineHeightBody\": \"1.65\",\n        \"fs\": {\n          \"display\": \"{{token:fs:display}}\",\n          \"heading1\": \"{{token:fs:h1}}\",\n          \"heading2\": \"{{token:fs:h2}}\",\n          \"heading3\": \"{{token:fs:h3}}\",\n          \"body\": \"{{token:fs:body}}\",\n          \"small\": \"{{token:fs:small}}\"\n        }\n      }\n    }\n  }\n}"
+      },
+      {
+        "path": "wp-content/themes/hia-tdon-child/functions.php",
+        "template": "<?php\n/**\n * HIA Theme Builder generated child theme bootstrap.\n *\n * @lang zh-CN 保证父主题样式先于子主题样式加载，并声明基础主题支持。\n * @lang en Ensures parent styles load before child styles and declares basic theme supports.\n *\n * @package hia-tdon-child\n */\n\nadd_action( 'wp_enqueue_scripts', 'hia_child_enqueue_styles' );\n/**\n * Enqueue parent and child stylesheets in order.\n *\n * @lang zh-CN 入队父主题与子主题样式表（保持先后依赖）。\n * @lang en Enqueues parent and child stylesheets with an explicit dependency.\n */\nfunction hia_child_enqueue_styles() {\n\twp_enqueue_style( 'hia-child-parent-style', get_template_directory_uri() . '/style.css', array(), '1.0.0' );\n\twp_enqueue_style( 'hia-child-style', get_stylesheet_uri(), array( 'hia-child-parent-style' ), '1.0.0' );\n}\n\nadd_theme_support( 'title-tag' );\nadd_theme_support( 'post-thumbnails' );\n"
+      },
+      {
+        "path": "wp-content/themes/hia-tdon-child/readme.txt",
+        "template": "=== {{meta:name}} — HIA Child Theme ===\n\n== 中文说明 ==\n由 HIA Theme Builder 通过 TDON 声明生成的 WordPress 块主题子主题（父主题：twentytwentyfour）。\n\n安装：\n1. WordPress 后台 → 外观 → 主题 → 安装主题 → 上传主题（或直接复制本目录到 wp-content/themes/）；\n2. 启用\"{{meta:name}} — HIA Child\"；\n3. 站点编辑器（外观 → 编辑）中即可使用 HIA 颜色面板（主/副色各 10 档）。\n\n文件清单：\n- style.css     主题头（Template 指向父主题）+ HIA CSS 变量（主/副各 10 档 + 前景 + 字体三族）；\n- theme.json    颜色面板 22 条目 + 排版字号档（--wp--custom--hia--*）；\n- functions.php 样式加载顺序与基础主题支持；\n- readme.txt    本说明。\n\n能力边界（TDON 声明版 vs 完整导出器）：\n- 渐变预设、自定义色阶（ADR-004 任意档位）、动态间距级数不在本 TDON 声明内——\n  如需完整产物，请使用 Theme Builder 经典导出的「WordPress 子主题」；\n- 父主题（twentytwentyfour）需已安装（WP 内置或应用商店可装）。\n\n== English ==\nWordPress block-theme child generated by HIA Theme Builder from a TDON declaration (parent: twentytwentyfour).\n\nInstall:\n1. WP Admin → Appearance → Themes → Add New → Upload Theme (or copy this folder into wp-content/themes/);\n2. Activate \"{{meta:name}} — HIA Child\";\n3. Open the Site Editor to use the HIA palette (10 shades per role).\n\nCapability boundary (TDON variant vs the full exporter): gradient presets, ADR-004 custom shades and\ndynamic spacing scales are not part of this declaration — use the classic \"WordPress child theme\" export\nfor the complete artifact. The parent theme must be installed.\n"
+      }
+    ]
+  },
+  "constraints": {
+    "requiredTokens": [
+      "primary.500",
+      "primary.900",
+      "secondary.500"
+    ],
+    "requireContrast": [
+      {
+        "fg": "primary.900",
+        "bg": "primary.50",
+        "min": 4.5
+      },
+      {
+        "fg": "primary.700",
+        "bg": "primary.50",
+        "min": 4.5
+      }
+    ],
+    "strict": false
+  },
+  "effects": {
+    "fade": {
+      "type": "fade-in",
+      "duration": 400
+    }
+  }
+}

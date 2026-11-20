@@ -36,7 +36,9 @@ const AUX = generateAuxiliaryCandidates(BASE, 'dual').slice(0, 2).map(c => ({
 const THEME = { ...BASE, auxiliary: AUX, semantic: deriveSemanticTokens(BASE.primary.value) };
 
 test('三个合法示例全部通过校验并产出非空文件树', () => {
-  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json']) {
+  // wordpress-child（T-tb-TDON-P1 第二目标端）同样纳入"开箱即用"口径。
+  // <lang en>wordpress-child (T-tb-TDON-P1 second target) joins the out-of-the-box contract.</lang>
+  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json', 'wordpress-child.tdon.json']) {
     const raw = load(name);
     assert.equal(raw.specVersion, TDON_SPEC_VERSION, `${name} 版本串应为当前规范版本`);
     const res = parseTdonDocument(raw, { theme: THEME });
@@ -127,7 +129,7 @@ test('示例中的 alias 与预览令牌都能在当前主题解析', () => {
 });
 
 test('示例在无主题时也能通过结构校验（TDON-8.3 降级）', () => {
-  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json']) {
+  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json', 'wordpress-child.tdon.json']) {
     const res = parseTdonDocument(load(name));
     assert.equal(res.result.ok, true, `${name} 无主题时应只做结构校验: ${JSON.stringify(res.result.errors)}`);
   }
@@ -142,7 +144,7 @@ test('示例在"默认主题"（无辅助色/无第三色）下必须可直接�
   const plain = buildTheme({ name: '最简主题', primary: '#0047AB', secondary: '#00A8D3', gradients: GRADIENT_DEFAULTS });
   assert.equal(plain.auxiliary.length, 0, '默认主题不应自带辅助槽');
   assert.equal(plain.thirdColor, undefined, '默认主题不应自带第三色');
-  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json']) {
+  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json', 'wordpress-child.tdon.json']) {
     const res = parseTdonDocument(load(name), { theme: plain });
     assert.equal(res.result.ok, true, `${name} 在默认主题下应通过: ${JSON.stringify(res.result.errors)}`);
     // 预览必须真的渲染出内容，而不是"校验通过但一片空白"。
