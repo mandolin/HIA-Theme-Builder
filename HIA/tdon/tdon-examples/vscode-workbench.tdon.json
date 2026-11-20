@@ -1,0 +1,162 @@
+{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "vscode-workbench",
+    "name": "VS Code workbench 完整版",
+    "nameEn": "VS Code Workbench Theme",
+    "author": "HIA 官方适配",
+    "homepage": "https://code.visualstudio.com/",
+    "targetVersion": ">=1.70"
+  },
+  "tokens": {
+    "include": {
+      "color": [
+        "primary",
+        "secondary"
+      ],
+      "colorShades": "all",
+      "gradient": [
+        "carousel"
+      ],
+      "typography": [
+        "fontFamily"
+      ]
+    }
+  },
+  "preview": {
+    "title": "VS Code workbench 预览（亮色全貌）",
+    "layout": "sidebar-left",
+    "nodes": [
+      {
+        "type": "tree",
+        "bgToken": "primary.50",
+        "accentToken": "primary.700",
+        "sections": [
+          {
+            "label": "资源管理器",
+            "items": [
+              {
+                "label": "src",
+                "active": false
+              },
+              {
+                "label": "index.ts",
+                "active": true
+              },
+              {
+                "label": "theme.ts"
+              }
+            ]
+          },
+          {
+            "label": "大纲",
+            "items": [
+              {
+                "label": "buildTheme"
+              },
+              {
+                "label": "applyTheme"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "nav",
+        "items": [
+          {
+            "label": "HIA Code",
+            "active": true
+          },
+          "文件",
+          "编辑",
+          "查看",
+          "终端",
+          "帮助"
+        ],
+        "bgToken": "primary.100",
+        "activeToken": "primary.800"
+      },
+      {
+        "type": "code-editor",
+        "title": "theme.ts",
+        "accentToken": "primary.600",
+        "code": "import { buildTheme } from \"@hia/theme-core\";\n\n// workbench colors come from HIA tokens\nconst theme = buildTheme({\n  primary: \"#0047AB\",\n  secondary: \"#00A8D3\",\n});\n\nexport function activate() {\n  return theme.primary.scale;\n}"
+      },
+      {
+        "type": "callout",
+        "kind": "info",
+        "title": "通知横幅",
+        "text": "HIA Light / HIA Dark 双主题已就绪：workbench 全局配色 + 语法精简枚举，重载窗口即可切换。"
+      },
+      {
+        "type": "nav",
+        "items": [
+          "main ⌥",
+          "Ln 7, Col 24",
+          "UTF-8",
+          "TypeScript"
+        ],
+        "bgToken": "primary.600",
+        "activeToken": "on:primary"
+      },
+      {
+        "type": "divider",
+        "token": "primary.100",
+        "thickness": 1
+      },
+      {
+        "type": "raw-text",
+        "text": "状态栏以 nav 节点模拟（primary.600 底 + 可读前景）；侧栏树/编辑器/通知为真实节点形态。",
+        "textToken": "primary.500",
+        "size": "fs:small"
+      }
+    ]
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": "hia-vscode-extension/package.json",
+        "template": "{\n  \"name\": \"hia-theme\",\n  \"displayName\": \"{{meta:name}} for VS Code\",\n  \"description\": \"HIA Theme Builder generated VS Code theme: full workbench colors + syntax token colors (light & dark).\",\n  \"publisher\": \"hia-theme-builder\",\n  \"version\": \"1.0.0\",\n  \"license\": \"MIT\",\n  \"engines\": {\n    \"vscode\": \"^1.70.0\"\n  },\n  \"categories\": [\n    \"Themes\"\n  ],\n  \"contributes\": {\n    \"themes\": [\n      {\n        \"label\": \"HIA Light\",\n        \"path\": \"./themes/hia-light-color-theme.json\",\n        \"uiTheme\": \"vs\"\n      },\n      {\n        \"label\": \"HIA Dark\",\n        \"path\": \"./themes/hia-dark-color-theme.json\",\n        \"uiTheme\": \"vs-dark\"\n      }\n    ]\n  }\n}"
+      },
+      {
+        "path": "hia-vscode-extension/themes/hia-light-color-theme.json",
+        "template": "{\n  \"name\": \"{{meta:name}} Light\",\n  \"type\": \"vs\",\n  \"colors\": {\n    \"editor.background\": \"{{token:primary.50}}\",\n    \"editor.foreground\": \"{{token:primary.900}}\",\n    \"editorLineNumber.foreground\": \"{{token:primary.400}}\",\n    \"editorLineNumber.activeForeground\": \"{{token:primary.700}}\",\n    \"editorCursor.foreground\": \"{{token:primary.700}}\",\n    \"editor.lineHighlightBackground\": \"{{token:primary.100}}\",\n    \"editor.selectionBackground\": \"{{token:primary.200}}\",\n    \"editor.selectionHighlightBackground\": \"{{token:primary.100}}\",\n    \"editorIndentGuide.background\": \"{{token:primary.200}}\",\n    \"activityBar.background\": \"{{token:primary.100}}\",\n    \"activityBar.foreground\": \"{{token:primary.800}}\",\n    \"activityBar.inactiveForeground\": \"{{token:primary.500}}\",\n    \"activityBar.activeBorder\": \"{{token:primary.700}}\",\n    \"activityBarBadge.background\": \"{{token:primary.600}}\",\n    \"activityBarBadge.foreground\": \"{{token:on:primary}}\",\n    \"sideBar.background\": \"{{token:primary.50}}\",\n    \"sideBar.foreground\": \"{{token:primary.900}}\",\n    \"sideBarSectionHeader.background\": \"{{token:primary.100}}\",\n    \"sideBarSectionHeader.foreground\": \"{{token:primary.800}}\",\n    \"titleBar.activeBackground\": \"{{token:primary.600}}\",\n    \"titleBar.activeForeground\": \"{{token:on:primary}}\",\n    \"titleBar.border\": \"{{token:primary.200}}\",\n    \"statusBar.background\": \"{{token:primary.600}}\",\n    \"statusBar.foreground\": \"{{token:on:primary}}\",\n    \"statusBar.border\": \"{{token:primary.200}}\",\n    \"tab.activeBackground\": \"{{token:primary.50}}\",\n    \"tab.activeForeground\": \"{{token:primary.900}}\",\n    \"tab.inactiveBackground\": \"{{token:primary.100}}\",\n    \"tab.inactiveForeground\": \"{{token:primary.600}}\",\n    \"tab.activeBorderTop\": \"{{token:primary.700}}\",\n    \"tab.border\": \"{{token:primary.200}}\",\n    \"tab.hoverBackground\": \"{{token:primary.100}}\",\n    \"editorGroup.border\": \"{{token:primary.200}}\",\n    \"editorGroupHeader.tabsBackground\": \"{{token:primary.100}}\",\n    \"panel.background\": \"{{token:primary.50}}\",\n    \"panel.border\": \"{{token:primary.200}}\",\n    \"panelTitle.activeForeground\": \"{{token:primary.800}}\",\n    \"panelTitle.activeBorder\": \"{{token:primary.600}}\",\n    \"badge.background\": \"{{token:primary.600}}\",\n    \"badge.foreground\": \"{{token:on:primary}}\",\n    \"button.background\": \"{{token:primary.600}}\",\n    \"button.foreground\": \"{{token:on:primary}}\",\n    \"button.hoverBackground\": \"{{token:primary.700}}\",\n    \"input.background\": \"{{token:primary.50}}\",\n    \"input.foreground\": \"{{token:primary.900}}\",\n    \"input.border\": \"{{token:primary.200}}\",\n    \"list.activeSelectionBackground\": \"{{token:primary.100}}\",\n    \"list.activeSelectionForeground\": \"{{token:primary.900}}\",\n    \"list.inactiveSelectionBackground\": \"{{token:primary.50}}\",\n    \"list.hoverBackground\": \"{{token:primary.100}}\",\n    \"list.highlightForeground\": \"{{token:secondary.600}}\",\n    \"notifications.background\": \"{{token:primary.50}}\",\n    \"notifications.foreground\": \"{{token:primary.900}}\",\n    \"notifications.border\": \"{{token:primary.200}}\",\n    \"scrollbarSlider.background\": \"{{token:primary.300}}\",\n    \"menu.background\": \"{{token:primary.50}}\",\n    \"menu.foreground\": \"{{token:primary.900}}\",\n    \"menu.selectionBackground\": \"{{token:primary.100}}\",\n    \"quickInput.background\": \"{{token:primary.50}}\",\n    \"quickInput.foreground\": \"{{token:primary.900}}\",\n    \"terminal.background\": \"{{token:primary.950}}\",\n    \"terminal.foreground\": \"{{token:primary.100}}\",\n    \"terminal.ansiBlack\": \"{{token:primary.900}}\",\n    \"terminal.ansiRed\": \"{{token:danger.500}}\",\n    \"terminal.ansiGreen\": \"{{token:success.500}}\",\n    \"terminal.ansiYellow\": \"{{token:warning.500}}\",\n    \"terminal.ansiBlue\": \"{{token:primary.500}}\",\n    \"terminal.ansiMagenta\": \"{{token:secondary.500}}\",\n    \"terminal.ansiCyan\": \"{{token:secondary.400}}\",\n    \"terminal.ansiWhite\": \"{{token:primary.100}}\",\n    \"terminal.ansiBrightBlack\": \"{{token:primary.600}}\",\n    \"terminal.ansiBrightRed\": \"{{token:danger.300}}\",\n    \"terminal.ansiBrightGreen\": \"{{token:success.300}}\",\n    \"terminal.ansiBrightYellow\": \"{{token:warning.300}}\",\n    \"terminal.ansiBrightBlue\": \"{{token:primary.300}}\",\n    \"terminal.ansiBrightMagenta\": \"{{token:secondary.300}}\",\n    \"terminal.ansiBrightCyan\": \"{{token:secondary.200}}\",\n    \"terminal.ansiBrightWhite\": \"{{token:primary.50}}\"\n  },\n  \"tokenColors\": [\n    {\n      \"scope\": [\n        \"comment\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.500}}\",\n        \"fontStyle\": \"italic\"\n      }\n    },\n    {\n      \"scope\": [\n        \"string\",\n        \"string.quoted\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:success.600}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"constant.numeric\",\n        \"constant.language\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:warning.700}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"keyword\",\n        \"keyword.control\",\n        \"storage.type\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.600}}\",\n        \"fontStyle\": \"bold\"\n      }\n    },\n    {\n      \"scope\": [\n        \"storage.modifier\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.600}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"variable\",\n        \"variable.other\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.900}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"variable.parameter\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.700}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"entity.name.function\",\n        \"support.function\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.600}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"entity.name.class\",\n        \"entity.name.type\",\n        \"support.class\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.700}}\",\n        \"fontStyle\": \"bold\"\n      }\n    },\n    {\n      \"scope\": [\n        \"entity.name.tag\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.700}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"entity.other.attribute-name\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.600}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"punctuation\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.500}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"keyword.operator\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.600}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"heading\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.800}}\",\n        \"fontStyle\": \"bold\"\n      }\n    },\n    {\n      \"scope\": [\n        \"string.link\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.700}}\",\n        \"fontStyle\": \"underline\"\n      }\n    }\n  ]\n}"
+      },
+      {
+        "path": "hia-vscode-extension/themes/hia-dark-color-theme.json",
+        "template": "{\n  \"name\": \"{{meta:name}} Dark\",\n  \"type\": \"vs-dark\",\n  \"colors\": {\n    \"editor.background\": \"{{token:primary.950}}\",\n    \"editor.foreground\": \"{{token:primary.100}}\",\n    \"editorLineNumber.foreground\": \"{{token:primary.600}}\",\n    \"editorLineNumber.activeForeground\": \"{{token:primary.300}}\",\n    \"editorCursor.foreground\": \"{{token:primary.300}}\",\n    \"editor.lineHighlightBackground\": \"{{token:primary.900}}\",\n    \"editor.selectionBackground\": \"{{token:primary.800}}\",\n    \"editor.selectionHighlightBackground\": \"{{token:primary.900}}\",\n    \"editorIndentGuide.background\": \"{{token:primary.800}}\",\n    \"activityBar.background\": \"{{token:primary.1000}}\",\n    \"activityBar.foreground\": \"{{token:primary.200}}\",\n    \"activityBar.inactiveForeground\": \"{{token:primary.500}}\",\n    \"activityBar.activeBorder\": \"{{token:primary.300}}\",\n    \"activityBarBadge.background\": \"{{token:primary.500}}\",\n    \"activityBarBadge.foreground\": \"{{token:on:primary}}\",\n    \"sideBar.background\": \"{{token:primary.950}}\",\n    \"sideBar.foreground\": \"{{token:primary.100}}\",\n    \"sideBarSectionHeader.background\": \"{{token:primary.900}}\",\n    \"sideBarSectionHeader.foreground\": \"{{token:primary.200}}\",\n    \"titleBar.activeBackground\": \"{{token:primary.1000}}\",\n    \"titleBar.activeForeground\": \"{{token:primary.100}}\",\n    \"titleBar.border\": \"{{token:primary.900}}\",\n    \"statusBar.background\": \"{{token:primary.600}}\",\n    \"statusBar.foreground\": \"{{token:on:primary}}\",\n    \"statusBar.border\": \"{{token:primary.900}}\",\n    \"tab.activeBackground\": \"{{token:primary.900}}\",\n    \"tab.activeForeground\": \"{{token:primary.100}}\",\n    \"tab.inactiveBackground\": \"{{token:primary.1000}}\",\n    \"tab.inactiveForeground\": \"{{token:primary.400}}\",\n    \"tab.activeBorderTop\": \"{{token:primary.300}}\",\n    \"tab.border\": \"{{token:primary.900}}\",\n    \"tab.hoverBackground\": \"{{token:primary.900}}\",\n    \"editorGroup.border\": \"{{token:primary.900}}\",\n    \"editorGroupHeader.tabsBackground\": \"{{token:primary.1000}}\",\n    \"panel.background\": \"{{token:primary.950}}\",\n    \"panel.border\": \"{{token:primary.800}}\",\n    \"panelTitle.activeForeground\": \"{{token:primary.200}}\",\n    \"panelTitle.activeBorder\": \"{{token:primary.400}}\",\n    \"badge.background\": \"{{token:primary.500}}\",\n    \"badge.foreground\": \"{{token:on:primary}}\",\n    \"button.background\": \"{{token:primary.600}}\",\n    \"button.foreground\": \"{{token:on:primary}}\",\n    \"button.hoverBackground\": \"{{token:primary.700}}\",\n    \"input.background\": \"{{token:primary.950}}\",\n    \"input.foreground\": \"{{token:primary.100}}\",\n    \"input.border\": \"{{token:primary.700}}\",\n    \"list.activeSelectionBackground\": \"{{token:primary.800}}\",\n    \"list.activeSelectionForeground\": \"{{token:primary.50}}\",\n    \"list.inactiveSelectionBackground\": \"{{token:primary.900}}\",\n    \"list.hoverBackground\": \"{{token:primary.900}}\",\n    \"list.highlightForeground\": \"{{token:secondary.300}}\",\n    \"notifications.background\": \"{{token:primary.900}}\",\n    \"notifications.foreground\": \"{{token:primary.100}}\",\n    \"notifications.border\": \"{{token:primary.800}}\",\n    \"scrollbarSlider.background\": \"{{token:primary.700}}\",\n    \"menu.background\": \"{{token:primary.1000}}\",\n    \"menu.foreground\": \"{{token:primary.100}}\",\n    \"menu.selectionBackground\": \"{{token:primary.800}}\",\n    \"quickInput.background\": \"{{token:primary.1000}}\",\n    \"quickInput.foreground\": \"{{token:primary.100}}\",\n    \"terminal.background\": \"{{token:primary.1000}}\",\n    \"terminal.foreground\": \"{{token:primary.100}}\",\n    \"terminal.ansiBlack\": \"{{token:primary.1000}}\",\n    \"terminal.ansiRed\": \"{{token:danger.400}}\",\n    \"terminal.ansiGreen\": \"{{token:success.400}}\",\n    \"terminal.ansiYellow\": \"{{token:warning.400}}\",\n    \"terminal.ansiBlue\": \"{{token:primary.400}}\",\n    \"terminal.ansiMagenta\": \"{{token:secondary.400}}\",\n    \"terminal.ansiCyan\": \"{{token:secondary.300}}\",\n    \"terminal.ansiWhite\": \"{{token:primary.200}}\",\n    \"terminal.ansiBrightBlack\": \"{{token:primary.800}}\",\n    \"terminal.ansiBrightRed\": \"{{token:danger.300}}\",\n    \"terminal.ansiBrightGreen\": \"{{token:success.300}}\",\n    \"terminal.ansiBrightYellow\": \"{{token:warning.300}}\",\n    \"terminal.ansiBrightBlue\": \"{{token:primary.300}}\",\n    \"terminal.ansiBrightMagenta\": \"{{token:secondary.300}}\",\n    \"terminal.ansiBrightCyan\": \"{{token:secondary.200}}\",\n    \"terminal.ansiBrightWhite\": \"{{token:primary.50}}\"\n  },\n  \"tokenColors\": [\n    {\n      \"scope\": [\n        \"comment\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.400}}\",\n        \"fontStyle\": \"italic\"\n      }\n    },\n    {\n      \"scope\": [\n        \"string\",\n        \"string.quoted\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:success.300}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"constant.numeric\",\n        \"constant.language\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:warning.300}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"keyword\",\n        \"keyword.control\",\n        \"storage.type\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.300}}\",\n        \"fontStyle\": \"bold\"\n      }\n    },\n    {\n      \"scope\": [\n        \"storage.modifier\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.300}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"variable\",\n        \"variable.other\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.100}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"variable.parameter\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.200}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"entity.name.function\",\n        \"support.function\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.200}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"entity.name.class\",\n        \"entity.name.type\",\n        \"support.class\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.200}}\",\n        \"fontStyle\": \"bold\"\n      }\n    },\n    {\n      \"scope\": [\n        \"entity.name.tag\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.300}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"entity.other.attribute-name\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.300}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"punctuation\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.400}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"keyword.operator\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.300}}\"\n      }\n    },\n    {\n      \"scope\": [\n        \"heading\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:primary.100}}\",\n        \"fontStyle\": \"bold\"\n      }\n    },\n    {\n      \"scope\": [\n        \"string.link\"\n      ],\n      \"settings\": {\n        \"foreground\": \"{{token:secondary.300}}\",\n        \"fontStyle\": \"underline\"\n      }\n    }\n  ]\n}"
+      },
+      {
+        "path": "hia-vscode-extension/README.md",
+        "template": "# {{meta:name}} — VS Code Theme\n\n由 HIA Theme Builder 通过 TDON 声明生成的 VS Code 主题扩展（workbench 全局配色 + 语法精简枚举，亮/暗双主题）。\n\n## 安装（离线扩展目录方式）\n\n1. 把整个 `hia-vscode-extension` 目录复制到扩展根目录：\n   - 本地 VS Code：`~/.vscode/extensions/`（Windows：`%USERPROFILE%\\.vscode\\extensions\\`）；\n   - code-server：`~/.local/share/code-server/extensions/`；\n2. 重载窗口（命令面板 → Developer: Reload Window）或重启；\n3. 命令面板 → Preferences: Color Theme → 选择 **HIA Light** / **HIA Dark**。\n\n## 主题内容\n\n- workbench colors：编辑器 / 活动栏 / 侧栏 / 标题栏 / 状态栏 / 标签页 / 面板 / 终端 ANSI 16 色 /\n  通知 / 菜单 / 快速选择 / 列表树 / 徽章按钮输入——全部由 HIA 令牌驱动；\n- tokenColors：常见 TextMate scope 15 组（声明式精简枚举）。\n\n## 前提：主题需含语义状态组\n\n- ANSI 16 色与 tokenColors 使用语义状态色（success / warning / danger 等，ADR-012）；\n- 应用内主题默认派生语义组；若导出报「主题不含颜色角色」，请在操作台启用语义状态色后重新导出\n  （VS Code theme JSON 为纯色值，不支持 var() 回退）。\n\n## 能力边界（TDON 版 vs 经典导出器）\n\n- tokenColors 为**精简枚举**；完整精确语法映射请使用 Theme Builder 编辑器主题导出的\n  VS Code 格式（ADR-015），两者互补；\n- 图标主题不在范围（VS Code 图标主题是独立扩展类型）。\n"
+      }
+    ]
+  },
+  "constraints": {
+    "requiredTokens": [
+      "primary.500",
+      "primary.900",
+      "secondary.500"
+    ],
+    "requireContrast": [
+      {
+        "fg": "primary.900",
+        "bg": "primary.50",
+        "min": 4.5
+      },
+      {
+        "fg": "primary.100",
+        "bg": "primary.950",
+        "min": 4.5
+      }
+    ],
+    "strict": false
+  },
+  "effects": {
+    "fade": {
+      "type": "fade-in",
+      "duration": 400
+    }
+  }
+}
