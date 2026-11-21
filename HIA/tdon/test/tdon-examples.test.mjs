@@ -38,7 +38,7 @@ const THEME = { ...BASE, auxiliary: AUX, semantic: deriveSemanticTokens(BASE.pri
 test('三个合法示例全部通过校验并产出非空文件树', () => {
   // wordpress-child（T-tb-TDON-P1 第二目标端）同样纳入"开箱即用"口径。
   // <lang en>wordpress-child (T-tb-TDON-P1 second target) joins the out-of-the-box contract.</lang>
-  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json', 'vscode-workbench.tdon.json', 'wordpress-child.tdon.json', 'jetbrains-idea.tdon.json', 'sublime-color-scheme.tdon.json', 'obsidian-theme.tdon.json', 'next-app.tdon.json', 'astro-site.tdon.json', 'nuxt-app.tdon.json', 'ghost-theme.tdon.json', 'strapi-admin-theme.tdon.json', 'sanity-studio-theme.tdon.json']) {
+  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json', 'vscode-workbench.tdon.json', 'wordpress-child.tdon.json', 'jetbrains-idea.tdon.json', 'sublime-color-scheme.tdon.json', 'obsidian-theme.tdon.json', 'next-app.tdon.json', 'astro-site.tdon.json', 'nuxt-app.tdon.json', 'ghost-theme.tdon.json', 'strapi-admin-theme.tdon.json', 'sanity-studio-theme.tdon.json', 'shadcn-ui.tdon.json', 'ant-design.tdon.json', 'mui.tdon.json']) {
     const raw = load(name);
     assert.equal(raw.specVersion, TDON_SPEC_VERSION, `${name} 版本串应为当前规范版本`);
     const res = parseTdonDocument(raw, { theme: THEME });
@@ -149,7 +149,7 @@ test('示例中的 alias 与预览令牌都能在当前主题解析', () => {
 });
 
 test('示例在无主题时也能通过结构校验（TDON-8.3 降级）', () => {
-  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json', 'vscode-workbench.tdon.json', 'wordpress-child.tdon.json', 'jetbrains-idea.tdon.json', 'sublime-color-scheme.tdon.json', 'obsidian-theme.tdon.json', 'next-app.tdon.json', 'astro-site.tdon.json', 'nuxt-app.tdon.json', 'ghost-theme.tdon.json', 'strapi-admin-theme.tdon.json', 'sanity-studio-theme.tdon.json']) {
+  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json', 'vscode-workbench.tdon.json', 'wordpress-child.tdon.json', 'jetbrains-idea.tdon.json', 'sublime-color-scheme.tdon.json', 'obsidian-theme.tdon.json', 'next-app.tdon.json', 'astro-site.tdon.json', 'nuxt-app.tdon.json', 'ghost-theme.tdon.json', 'strapi-admin-theme.tdon.json', 'sanity-studio-theme.tdon.json', 'shadcn-ui.tdon.json', 'ant-design.tdon.json', 'mui.tdon.json']) {
     const res = parseTdonDocument(load(name));
     assert.equal(res.result.ok, true, `${name} 无主题时应只做结构校验: ${JSON.stringify(res.result.errors)}`);
   }
@@ -168,7 +168,7 @@ test('示例在"默认主题"（无辅助色/无第三色）下必须可直接�
   //   而 VS Code theme JSON 的 colors 为纯色值不吃 var()，无回退手段——前提见示例 README。
   // <lang en>vscode-workbench excluded here: its semantic refs need the derived semantic group (ADR-012,
   //   default in-app), and VS Code theme JSON takes literal colours only (no var() fallback). See README.</lang>
-  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json', 'wordpress-child.tdon.json', 'obsidian-theme.tdon.json', 'next-app.tdon.json', 'astro-site.tdon.json', 'nuxt-app.tdon.json', 'ghost-theme.tdon.json', 'strapi-admin-theme.tdon.json', 'sanity-studio-theme.tdon.json']) {
+  for (const name of ['minimal.tdon.json', 'vitepress-docs.tdon.json', 'admin-dashboard.tdon.json', 'wordpress-child.tdon.json', 'obsidian-theme.tdon.json', 'next-app.tdon.json', 'astro-site.tdon.json', 'nuxt-app.tdon.json', 'ghost-theme.tdon.json', 'strapi-admin-theme.tdon.json', 'sanity-studio-theme.tdon.json', 'shadcn-ui.tdon.json', 'ant-design.tdon.json', 'mui.tdon.json']) {
     const res = parseTdonDocument(load(name), { theme: plain });
     assert.equal(res.result.ok, true, `${name} 在默认主题下应通过: ${JSON.stringify(res.result.errors)}`);
     // 预览必须真的渲染出内容，而不是"校验通过但一片空白"。
