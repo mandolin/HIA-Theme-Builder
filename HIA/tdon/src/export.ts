@@ -87,12 +87,14 @@ function tdonFiles(doc:TdonDocument,theme:Theme):VirtualFile[]{
     // <lang en>The message carries the path so the specific entry is identifiable.</lang>
     const pc=checkTdonPath(file.path);
     if(!pc.ok)throw new Error(`TDON 导出：路径非法 ${file.path}（${pc.reasonZh}）`);
-    // templateRef 走白名单生成器；template 走单次插值。
-    // <lang zh-CN>两者互斥由校验器保证，此处不重复判定。</lang>
-    // <lang en>Mutual exclusivity is guaranteed by the validator; not re-checked here.</lang>
+    // templateRef 走白名单生成器；template 走单次插值；interpolation 'none' 按原文输出（TDON-6.9，ADR-022）。
+    // <lang zh-CN>'none' 面向目标语法与 {{…}} 冲突的文件（如 Handlebars 模板）——
+    //   整文件豁免插值，未声明的文件维持 token:/meta: 替换不变。</lang>
+    // <lang en>'none' targets files whose syntax collides with {{…}} (e.g. Handlebars templates):
+    //   the whole file is exempt from interpolation; undeclared files keep token:/meta: replacement.</lang>
     const content=file.templateRef!==undefined
       ?(BUILTIN_TEMPLATES[file.templateRef]?.(theme,file)??'')
-      :interpolate(file.template??'',theme,doc);
+      :(file.interpolation==='none'?(file.template??''):interpolate(file.template??'',theme,doc));
     return{path:file.path,content};
   });
 }

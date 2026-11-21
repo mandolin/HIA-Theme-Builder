@@ -566,7 +566,7 @@ function validateExportFile(ctx:Ctx,raw:unknown,path:string):TdonExportFile|unde
     return undefined;
   }
   if(rejectDangerousKeys(ctx,raw,path))return undefined;
-  checkKnownKeys(ctx,raw,path,['path','template','templateRef']);
+  checkKnownKeys(ctx,raw,path,['path','template','templateRef','interpolation']);
   const p=wantString(ctx,raw.path,`${path}.path`,TDON_MAX_PATH_LENGTH);
   // 路径安全（TDON-6.2/11.1）：失败即丢弃条目，避免非法路径进入打包环节。
   // <lang zh-CN>校验在渲染与打包两侧都会再跑一遍（不信任单点校验）。</lang>
@@ -618,17 +618,25 @@ function validateExportFile(ctx:Ctx,raw:unknown,path:string):TdonExportFile|unde
     }
     templateRef=ref;
   }
+  // 插值模式（TDON-6.9，ADR-022）：'tdon'（缺省）或 'none'（整文件豁免插值）。
+  // <lang zh-CN>'none' 面向目标语法与 {{…}} 冲突的文件（如 Handlebars 模板）——
+  //   校验器跳过 E_INTERP 预检，导出器按原文输出。</lang>
+  // <lang en>'none' targets files whose syntax collides with {{…}} (e.g. Handlebars templates):
+  //   the validator skips the E_INTERP precheck and the exporter emits the template verbatim.</lang>
+  const interp=wantEnum(ctx,raw.interpolation,`${path}.interpolation`,['tdon','none'] as const);
   // 插值语法预检（TDON-6.4）：只允许 token:/meta: 两个命名空间。
-  // <lang zh-CN>此处只查命名空间与前缀形状，令牌是否可解析由主题侧在导出时再判。</lang>
-  // <lang en>Only the namespace and prefix shape are checked here; resolvability is judged at export time.</lang>
-  if(tpl!==undefined){
+  // <lang zh-CN>此处只查命名空间与前缀形状，令牌是否可解析由主题侧在导出时再判；
+  //   interpolation 'none' 的文件整份豁免（TDON-6.9）。</lang>
+  // <lang en>Only the namespace and prefix shape are checked here; resolvability is judged at export time.
+  //   Files with interpolation 'none' are fully exempt (TDON-6.9).</lang>
+  if(tpl!==undefined&&interp!=='none'){
     const bad=findBadInterpolation(tpl);
     if(bad!==null){
-      pushError(ctx,'E_INTERP',`${path}.template`,`插值语法非法：「${bad}」；仅支持 {{token:<ref>}} 与 {{meta:name|id}}。`,`Illegal interpolation "${bad}"; only {{token:<ref>}} and {{meta:name|id}} are supported.`);
+      pushError(ctx,'E_INTERP',`${path}.template`,`插值语法非法：「${bad}」；仅支持 {{token:<ref>}} 与 {{meta:name|id}}（或对该文件声明 interpolation:"none"）。`,`Illegal interpolation "${bad}"; only {{token:<ref>}} and {{meta:name|id}} are supported (or declare interpolation:"none" on this file).`);
       return undefined;
     }
   }
-  return{path:p,...(tpl!==undefined?{template:tpl}:{}),...(templateRef?{templateRef}:{})};
+  return{path:p,...(tpl!==undefined?{template:tpl}:{}),...(templateRef?{templateRef}:{}),...(interp?{interpolation:interp}:{})};
 }
 
 // 在文本中查找第一个非法插值片段；全部合法返回 null。

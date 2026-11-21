@@ -135,7 +135,17 @@ export interface TdonPreview{title?:string;layout:TdonPreviewLayout;nodes?:TdonN
 // 导出文件条目（§6.1）：template 与 templateRef 二选一。
 // <lang zh-CN>互斥由校验器强制（同时给 = E_CONFLICT，都不给 = E_REQUIRED）。</lang>
 // <lang en>Mutual exclusivity is enforced by the validator (both → E_CONFLICT, neither → E_REQUIRED).</lang>
-export interface TdonExportFile{path:string;template?:string;templateRef?:string;}
+export interface TdonExportFile{
+  path:string;
+  template?:string;
+  templateRef?:string;
+  // 插值模式（TDON-6.9，ADR-022）：缺省 'tdon' 做 token:/meta: 插值；'none' 时整文件豁免——
+  //   目标语法与 {{…}} 冲突（如 Handlebars 模板）的文件按原文输出。
+  // <lang en>Interpolation mode (TDON-6.9, ADR-022): default 'tdon' performs token:/meta:
+  //   interpolation; 'none' exempts the whole file — targets whose syntax collides with {{…}}
+  //   (e.g. Handlebars templates) are emitted verbatim.</lang>
+  interpolation?:'tdon'|'none';
+}
 // 导出清单（§6）：files 1–64；package.rootDir 可选。
 // <lang zh-CN>rootDir 只影响打包时的根目录提示，不改变文件自身路径。</lang>
 // <lang en>rootDir only hints the archive root; it never rewrites file paths.</lang>
