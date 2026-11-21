@@ -2,6 +2,27 @@
 
 本项目遵循阶段化发布。以下记录公开可验证的发布与里程碑节点。
 
+## 1.2.0（2026-11-22）· 桌面端同步 TDON 0.6 与更新通道首推
+
+> **版本说明**：本版核心是**同步**——把桌面端（Electron/Tauri）与在线版拉平到 TDON 0.6.0 的
+> 生态能力（1.1.0 桌面包构建于 tag 时点，落后在线版两个 tdon minor）；`@hia/theme-core` API 面
+> 142 导出不变；`@hia/tdon` 0.6.0 已独立发布于 npm（随专项会话）。
+
+### TDON 0.6.0 收编（T-tb-TDON P2–P5，独立会话交付）
+- **官方适配包扩容至 15+**：VS Code workbench 完整版（三档阶梯/双态 chrome/文字令牌化，
+  ADR-021 workbench 布局）、JetBrains、Sublime、Obsidian、Next.js、Astro、Nuxt、Ghost、
+  Strapi、Sanity、shadcn/ui、Ant Design、MUI（每端四要素+真机验证留据）。
+- **多页预览**（ADR-020）与 `tree`/`code-block`/`callout` 节点（ADR-019）随 0.4/0.5/0.6 三连发落地；
+  ADR-022 导出插值豁免；TDON 官方适配包随 Pages 直发（docs-site 适配示例页）。
+
+### 更新通道首次真实推送
+- 1.2.0 是 **1.1.0 内置更新通道的第一个真实推送目标**：已安装 1.1.0 的桌面应用将自动发现
+  1.2.0 并在用户确认后完成升级（`HIA-Theme-Builder-Electron-1.1.0-setup.exe` → 1.2.0）。
+
+### 质量基线
+- core **186** / tdon **129** / electron **15** / tauri **3** 单测全绿；web 验收电池全绿
+  （含色阶模式 6/0、企业视图 9/0）；axe 0 违规；全使用者旅程 **36/0**；三端渲染器哈希一致。
+
 ## 1.1.0（2026-11-21）· 首个 minor——内容纵深、色阶生成与生态通道
 
 > **版本说明**：semver 时代的第一个 minor——全部为向后兼容的新能力（`@hia/theme-core@1.1.0`
