@@ -497,7 +497,7 @@ function validatePreview(ctx:Ctx,raw:unknown,path:string){
   if(rejectDangerousKeys(ctx,raw,path))return undefined;
   checkKnownKeys(ctx,raw,path,['title','layout','nodes','pages']);
   const title=wantString(ctx,raw.title,`${path}.title`,80);
-  const layout=wantEnum<TdonPreviewLayout>(ctx,raw.layout,`${path}.layout`,['stack','sidebar-left','sidebar-right','hero'] as const)??'stack';
+  const layout=wantEnum<TdonPreviewLayout>(ctx,raw.layout,`${path}.layout`,['stack','sidebar-left','sidebar-right','hero','workbench'] as const)??'stack';
   const hasNodes=raw.nodes!==undefined;
   const hasPages=raw.pages!==undefined;
   // 互斥（TDON-5.20）：单页用 nodes，多页用 pages。
@@ -520,7 +520,7 @@ function validatePreview(ctx:Ctx,raw:unknown,path:string){
         pushError(ctx,'E_PATTERN',ip+'.id',`页 id「${id}」不合法（小写字母开头，可含数字与连字符，≤32）。`,`Illegal page id "${id}" (lowercase first, digits/hyphens, ≤32).`);
         return undefined;
       }
-      return{id,title:wantString(ctx,rp.title,ip+'.title',80),layout:wantEnum<TdonPreviewLayout>(ctx,rp.layout,ip+'.layout',['stack','sidebar-left','sidebar-right','hero'] as const),rawNodes:rp.nodes,ip};
+      return{id,title:wantString(ctx,rp.title,ip+'.title',80),layout:wantEnum<TdonPreviewLayout>(ctx,rp.layout,ip+'.layout',['stack','sidebar-left','sidebar-right','hero','workbench'] as const),rawNodes:rp.nodes,ip};
     });
     if(shells===undefined)return undefined;
     const ids=new Set<string>();
@@ -1124,12 +1124,17 @@ const NODE_SPECS:Record<TdonNodeType,NodeSpec>={
   // <lang en>code-editor node (`W-tb-P42`/ADR-015): line numbers + lightweight syntax colouring. code falls
   //   back to a built-in sample; colouring is an approximation — exports are exact (ADR-015 risk note).</lang>
   'code-editor':{
-    keys:['title','code','accentToken'],
+    keys:['title','code','accentToken','appearance'],
     validate:(ctx,v,p,key)=>{
       switch(key){
         case 'title':return optString(60)(ctx,v,p);
         case 'code':return optString(2000)(ctx,v,p);
         case 'accentToken':return optToken()(ctx,v,p);
+        // appearance（ADR-021 增强）：明暗并排（both，缺省）或单份（light/dark）——workbench
+        //   布局的编辑器区用单份，避免双份破坏结构（ADR-015 明暗并排定案保留为缺省行为）。
+        // <lang en>appearance (ADR-021): side-by-side (both, default) or single render; workbench
+        //   layouts use a single copy without breaking the ADR-015 default.</lang>
+        case 'appearance':return wantEnum(ctx,v,p,['both','light','dark'] as const);
         default:return undefined;
       }
     }

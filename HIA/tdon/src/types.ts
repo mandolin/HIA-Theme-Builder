@@ -54,7 +54,9 @@ export const TDON_MAX_IMAGE_URL=2048;
 // 预览布局模式（TDON-5.1）：四值枚举，缺省 stack。
 // <lang zh-CN>布局只决定容器排列语义，不引入任意 CSS。</lang>
 // <lang en>Layout only selects container arrangement semantics; no arbitrary CSS.</lang>
-export type TdonPreviewLayout='stack'|'sidebar-left'|'sidebar-right'|'hero';
+// workbench 为 ADR-021 加性（槽位语义见 TDON-5.24）：VS Code 类工作台结构化布局。
+// <lang en>workbench added via ADR-021 (slot semantics, TDON-5.24): structured layout for IDE-like targets.</lang>
+export type TdonPreviewLayout='stack'|'sidebar-left'|'sidebar-right'|'hero'|'workbench';
 
 // 预览节点类型（TDON-5.3）：固定 13 类，未知值一律拒绝。
 // <lang zh-CN>顺序即文档与 UI 的展示顺序。ADR-015 加性新增 code-editor；ADR-019 加性新增

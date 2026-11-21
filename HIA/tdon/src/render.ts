@@ -83,14 +83,18 @@ function effectAttrs(effect:TdonEffect|undefined):{cls:string;styleAttr:string}{
 //   **Precondition**: node must be a validated node (with `attrs`). Passing raw JSON used to throw at
 //   `node.attrs.children` — hit during the `W-tb-P31` smoke test. Defensive: missing attrs becomes an empty
 //   object and children are skipped, degrading to "renders empty" instead of a stack crash.</lang>
-function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):string{
+// editorApp（ADR-021 增强 / 宿主交互契约）：宿主传入的编辑器配色覆盖（light/dark）——
+//   优先于节点 appearance 声明；undefined = 按节点声明。
+// <lang en>editorApp (ADR-021 / host interaction contract): host-supplied editor appearance override
+//   (light/dark) taking precedence over the node declaration; undefined = per declaration.</lang>
+function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number,editorApp?:'light'|'dark'):string{
   const eff=node.effect?doc.effects?.[node.effect]:undefined;
   const fx=effectAttrs(eff);
   const idAttr=node.id?` data-tdon-id="${escapeTdonHtml(node.id)}"`:'';
   // 递归渲染 children：深度上限由校验器保证（TDON_MAX_NESTING），此处按同一常量判定。
   // <lang zh-CN>子节点包在统一容器内，便于布局类控制间距。</lang>
   // <lang en>Children are wrapped in a uniform container so layout classes control spacing.</lang>
-  const kids=depth<TDON_MAX_NESTING-1?renderChildren(theme,(node.attrs??{}).children as TdonNode[]|undefined,doc,depth+1):'';
+  const kids=depth<TDON_MAX_NESTING-1?renderChildren(theme,(node.attrs??{}).children as TdonNode[]|undefined,doc,depth+1,editorApp):'';
   const a=node.attrs??{};
   switch(node.type){
     // hero：主视觉。bgToken 常为渐变；标题字号取 fs 档变量。
@@ -235,7 +239,16 @@ function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):str
         const label=appearance==='dark'?'dark':'light';
         return`<div class="tdon-code-editor is-${label}"><div class="tdon-code-title"${ac&&appearance==='dark'?` style="background:${ac}"`:''}><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-dot"></span><span class="tdon-code-title-text">${escapeTdonHtml(title)}</span></div><div class="tdon-code-body">${rows}</div><div class="tdon-code-status"><span>${escapeTdonHtml(title)} · ${escapeTdonHtml(lang)} · ${label}</span><span>${codeLines.length} lines · UTF-8</span></div></div>`;
       };
-      return`<div class="tdon-node tdon-code-pair${fx.cls}"${idAttr}${fx.styleAttr}>${renderOne('light')}${renderOne('dark')}</div>`;
+      // appearance（ADR-021 增强）：both（缺省）维持明暗并排定案；light/dark 单份渲染
+      //   ——workbench 布局的编辑器区需要单份（TDON-5.14 增强）。
+      // <lang en>appearance (ADR-021): both (default) keeps the side-by-side decision; light/dark
+      //   render a single copy — required by workbench editor areas (TDON-5.14 enhancement).</lang>
+      const declared=(a.appearance==='light'||a.appearance==='dark')?a.appearance:'both';
+      const app=editorApp??declared;
+      if(app==='both')return`<div class="tdon-node tdon-code-pair${fx.cls}"${idAttr}${fx.styleAttr}>${renderOne('light')}${renderOne('dark')}</div>`;
+      // 单份：renderOne 已输出完整编辑器结构（再包一层会出现嵌套双编辑器）。
+      // <lang en>Single: renderOne already emits the complete editor (wrapping again nests two editors).</lang>
+      return renderOne(app);
     }
 
     // tree：分组导航树/文档树（`T-tb-TDON-P1`/ADR-019）——VitePress 侧栏、WP 后台菜单等签名元素。
@@ -314,9 +327,9 @@ function renderNode(theme:Theme,node:TdonNode,doc:TdonDocument,depth:number):str
 // 渲染 children 列表。
 // <lang zh-CN>无 children 时返回空串，调用方无需判空。</lang>
 // <lang en>Returns an empty string when absent, so callers need no null checks.</lang>
-function renderChildren(theme:Theme,kids:TdonNode[]|undefined,doc:TdonDocument,depth:number):string{
+function renderChildren(theme:Theme,kids:TdonNode[]|undefined,doc:TdonDocument,depth:number,editorApp?:'light'|'dark'):string{
   if(!Array.isArray(kids)||kids.length===0)return'';
-  return`<div class="tdon-children">${kids.map(k=>renderNode(theme,k,doc,depth)).join('')}</div>`;
+  return`<div class="tdon-children">${kids.map(k=>renderNode(theme,k,doc,depth,editorApp)).join('')}</div>`;
 }
 
 // 换行转 <br>：先整体转义，再把已转义文本中的 \n 替换为 <br>。
@@ -403,7 +416,7 @@ function nl2br(text:string):string{
 // <lang en>Layout only selects a container class; concrete arrangement comes from the packaged CSS (no generated CSS).
 //   `doc` should come from `parseTdonDocument` (nodes normalized). Raw JSON yields empty node content rather
 //   than throwing — the contract lives in the API docs and types, not in a runtime crash.</lang>
-export function renderTdonPreview(doc:TdonDocument,theme:Theme,opts?:{page?:string}):string{
+export function renderTdonPreview(doc:TdonDocument,theme:Theme,opts?:{page?:string;editorAppearance?:'light'|'dark'}):string{
   const preview=doc?.preview;
   if(!preview)return'';
   const title=preview.title?`<div class="tdon-preview-title">${escapeTdonHtml(preview.title)}</div>`:'';
@@ -435,13 +448,69 @@ export function renderTdonPreview(doc:TdonDocument,theme:Theme,opts?:{page?:stri
   const isSidebar=(layout==='sidebar-left'||layout==='sidebar-right')&&nodes.length>=2&&nodes[edgeIndex]?.type==='tree';
   if(isSidebar){
     const asideIndex=edgeIndex;
-    const aside=renderNode(theme,nodes[asideIndex]!,doc,0);
-    const rest=nodes.filter((_,i)=>i!==asideIndex).map(n=>renderNode(theme,n,doc,0)).join('\n');
+    const aside=renderNode(theme,nodes[asideIndex]!,doc,0,opts?.editorAppearance);
+    const rest=nodes.filter((_,i)=>i!==asideIndex).map(n=>renderNode(theme,n,doc,0,opts?.editorAppearance)).join('\n');
     const asideHtml=`<div class="tdon-aside">${aside}</div>`;
     const mainHtml=`<div class="tdon-main">${rest}</div>`;
     return`<div class="tdon-preview tdon-layout-${layout} tdon-two-col">${title}${preview.layout==='sidebar-left'?asideHtml+mainHtml:mainHtml+asideHtml}</div>`;
   }
-  const rendered=nodes.map(n=>renderNode(theme,n,doc,0)).join('\n');
+  // workbench 布局（`T-tb-TDON-P2`/ADR-021/TDON-5.24）：槽位语义映射——首个 nav→标题栏、
+  //   首个 tree→侧栏、首个 code-editor→编辑器区、最后（倒数第一个）个 nav→状态栏、其余→主区堆叠。
+  // <lang zh-CN>槽位缺失容错少渲染该区域；同类节点多出者进主区。CSS 为紧凑直角工作台观感
+  //   （无圆角、26px 横条、1px 分区边框），与通用卡片形态区隔（TDON-5.24）。</lang>
+  // <lang en>workbench layout (`T-tb-TDON-P2`/ADR-021/TDON-5.24): slot semantics — first nav→title bar,
+  //   first tree→sidebar, first code-editor→editor area, last nav→status bar, remaining nodes stack
+  //   in the main area. Missing slots simply render fewer regions; extra same-type nodes go to main.
+  //   CSS: compact squared workbench look (no radius, 26px bars, 1px borders), distinct from card style.</lang>
+  if(layout==='workbench'){
+    const firstNav=nodes.findIndex(n=>n.type==='nav');
+    // 双态 chrome（维护者 2026-11-21 反馈）：workbench 布局的标题栏/状态栏/侧栏/活动栏/主区
+    //   配色整体随编辑器模式变浅/变深（VS Code 主题机制），而非只切编辑器区。
+    // <lang en>Dual-state chrome (maintainer feedback 2026-11-21): in workbench layout the title/status
+    //   bars, sidebars, activity rail and main area all follow the editor mode (VS Code theme mechanics).
+    const wbDark=(opts?.editorAppearance??'dark')!=='light';
+    const wbState=wbDark?' tdon-wb-dark':' tdon-wb-light';
+    // chrome 配色变量（维护者 2026-11-21 反馈：状态栏固定钴蓝不随主题/标题栏 active 亮字
+    //   在浅底不可读）——渲染器按 editorApp 从主题令牌解析，容器注入供槽位 CSS 引用：
+    //   主题驱动（令牌随主题变色）+ 模式驱动（档位随亮/暗切换）双结合。
+    // <lang en>Chrome colour variables (maintainer feedback 2026-11-21: the fixed cobalt status bar
+    //   ignored the theme, and bright active title text was unreadable on pale surfaces) — resolved
+    //   from theme tokens per editorApp and injected on the container for slot CSS.</lang>
+    const wbv=(ref:string)=>{const r=resolveTdonToken(theme,ref);return r.ok?r.value:'';};
+    const wbVars=wbDark
+      // 文字色同样令牌化（维护者 2026-11-21 反馈：活动栏文字不能固定色，须按选定主题色系）：
+      //   dark 档=亮字系（100/300/500），light 档=深字系（800/900）——换主题整套跟随。
+      // <lang en>Text colours are tokenised too (maintainer feedback 2026-11-21: activity-rail text must
+      //   follow the selected palette): dark steps = bright series, light steps = dark series.
+      ?`--wb-bar-bg:${wbv('primary.1000')};--wb-side-bg:${wbv('primary.800')};--wb-act-bg:${wbv('primary.1000')};--wb-status-bg:${wbv('primary.600')};--wb-title-text:${wbv('primary.100')};--wb-title-active:${wbv('primary.100')};--wb-side-text:${wbv('primary.100')};--wb-side-heading:${wbv('primary.500')};--wb-side-active:${wbv('primary.100')};--wb-act-text:${wbv('primary.300')};--wb-act-active:${wbv('primary.200')};--wb-status-text:${wbv('on:primary')}`
+      :`--wb-bar-bg:${wbv('primary.100')};--wb-side-bg:${wbv('primary.50')};--wb-act-bg:${wbv('primary.200')};--wb-status-bg:${wbv('primary.600')};--wb-title-text:${wbv('primary.900')};--wb-title-active:${wbv('primary.800')};--wb-side-text:${wbv('primary.900')};--wb-side-heading:${wbv('primary.600')};--wb-side-active:${wbv('primary.800')};--wb-act-text:${wbv('primary.800')};--wb-act-active:${wbv('primary.800')};--wb-status-text:${wbv('on:primary')}`;
+    const firstTree=nodes.findIndex(n=>n.type==='tree');
+    // 活动栏槽位（ADR-021 精修轮）：第二个 tree → 左缘 48px 图标化窄列（VS Code 左缘结构）。
+    // <lang en>Activity bar slot (ADR-021 refinement round): the second tree → 48px icon rail.</lang>
+    const secondTree=nodes.findIndex((n,i)=>i>firstTree&&n.type==='tree');
+    const firstEditor=nodes.findIndex(n=>n.type==='code-editor');
+    const lastNav=nodes.length-1-[...nodes].reverse().findIndex(n=>n.type==='nav');
+    const slotIdx=new Set<number>();
+    const pick=(idx:number,label:string)=>{if(idx>=0&&!slotIdx.has(idx)){slotIdx.add(idx);return idx;}return -1;};
+    const titleIdx=pick(firstNav,'title');
+    const sideIdx=pick(firstTree,'sidebar');
+    const activityIdx=pick(secondTree,'activity');
+    const editorIdx=pick(firstEditor,'editor');
+    const statusIdx=(lastNav>=0&&!slotIdx.has(lastNav))?lastNav:-1;
+    if(statusIdx>=0)slotIdx.add(statusIdx);
+    const renderAt=(idx:number)=>renderNode(theme,nodes[idx]!,doc,0,opts?.editorAppearance);
+    const titleHtml=titleIdx>=0?`<div class="tdon-wb-title">${renderAt(titleIdx)}</div>`:'';
+    const activityHtml=activityIdx>=0?`<div class="tdon-wb-activity">${renderAt(activityIdx)}</div>`:'';
+    const sideHtml=sideIdx>=0?`<div class="tdon-wb-sidebar">${renderAt(sideIdx)}</div>`:'';
+    const statusHtml=statusIdx>=0?`<div class="tdon-wb-status">${renderAt(statusIdx)}</div>`:'';
+    const mainNodes=nodes.filter((_,i)=>!slotIdx.has(i));
+    const editorChunk=editorIdx>=0?`<div class="tdon-wb-editor">${renderAt(editorIdx)}</div>`:'';
+    const restHtml=mainNodes.map(n=>renderNode(theme,n,doc,0,opts?.editorAppearance)).join('\n');
+    const editorAreaHtml=`<div class="tdon-wb-editor-area">${editorChunk}${restHtml?`<div class="tdon-wb-main">${restHtml}</div>`:''}</div>`;
+    const bodyHtml=(activityHtml||sideHtml||editorAreaHtml)?`<div class="tdon-wb-body">${activityHtml}${sideHtml}${editorAreaHtml}</div>`:'';
+    return`<div class="tdon-preview tdon-layout-workbench${wbState}" style="${wbVars}">${title}${titleHtml}${bodyHtml}${statusHtml}</div>`;
+  }
+  const rendered=nodes.map(n=>renderNode(theme,n,doc,0,opts?.editorAppearance)).join('\n');
   return`<div class="tdon-preview tdon-layout-${layout}">${title}${rendered}</div>`;
 }
 
@@ -466,6 +535,109 @@ export const TDON_PREVIEW_CSS=`
 .tdon-aside{min-width:0}
 .tdon-main{min-width:0;display:flex;flex-direction:column;gap:12px}
 @media (max-width:720px){.tdon-layout-sidebar-left.tdon-two-col,.tdon-layout-sidebar-right.tdon-two-col{grid-template-columns:1fr}}
+/* workbench 布局（ADR-021 / TDON-5.24；精修轮双态）：VS Code 观感——紧凑直角工作台，
+   且整套 chrome（标题栏/状态栏/侧栏/活动栏/主区）随编辑器亮/暗模式双态切换（VS Code 主题机制：
+   选 Light = 整个工作台变浅，选 Dark = 整体变深）。
+   结构：标题栏横条（首个 nav）→ body（活动栏 48px + 侧栏 220px + 编辑器区）→ 状态栏横条（末个 nav）。
+   <lang en>workbench layout (ADR-021 / TDON-5.24; refinement dual-state): VS Code look — compact squared
+   workbench whose chrome (title/status bars, sidebars, activity rail, main area) follows the editor
+   light/dark mode. Structure: title bar (first nav) → body (48px activity rail + 220px sidebar +
+   editor area) → status bar (last nav). */
+
+/* —— 基础结构（配色无关）—— */
+.tdon-layout-workbench{display:flex;flex-direction:column;gap:0;border:1px solid rgba(0,0,0,.3);border-radius:6px;overflow:hidden;font-size:13px}
+.tdon-layout-workbench .tdon-node{border-radius:0}
+.tdon-layout-workbench .tdon-nav{border-radius:0;font-size:12px}
+.tdon-layout-workbench .tdon-preview-title{border-radius:0;margin:0;padding:6px 10px;font-size:12px}
+.tdon-wb-title .tdon-nav{padding:5px 10px;gap:12px}
+.tdon-wb-title .tdon-nav-item{font-size:12px}
+.tdon-wb-body{display:flex;align-items:stretch;min-height:300px}
+.tdon-wb-activity{width:48px;flex:none;overflow:hidden}
+.tdon-wb-activity .tdon-tree{border-radius:0;padding:4px 2px;height:100%}
+.tdon-wb-activity .tdon-tree-heading{display:none}
+.tdon-wb-activity .tdon-tree-item{padding:7px 4px;text-align:center;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 内层 tree 元素的 bgToken inline 底也需双态覆盖——活动栏容器浅底会被 tree 自身的
+   inline 暗底铺满（侧栏已修同款两层覆盖，活动栏漏了内层——维护者三次反馈的根因）。
+   <lang en>The inner tree element's inline bgToken background also needs dual-state overrides —
+   the pale container was painted over by the tree's own inline dark background (the sidebar had
+   this two-layer fix; the activity rail missed it). */
+.tdon-wb-light .tdon-wb-activity .tdon-tree{background:var(--wb-act-bg)!important}
+.tdon-wb-dark .tdon-wb-activity .tdon-tree{background:var(--wb-act-bg)!important}
+.tdon-wb-activity .tdon-tree-item.is-active{border-left:2px solid currentColor;padding-left:2px}
+.tdon-wb-sidebar{width:220px;flex:none;display:flex;flex-direction:column}
+.tdon-wb-sidebar .tdon-tree{flex:1;border-radius:0;padding:4px 0}
+.tdon-layout-workbench .tdon-tree-heading{font-size:11px;padding:4px 8px 2px;letter-spacing:.02em}
+.tdon-layout-workbench .tdon-tree-item{padding:3px 8px 3px 10px;font-size:12px;line-height:1.45;border-radius:0}
+.tdon-wb-editor-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;position:relative}
+.tdon-wb-editor .tdon-code-editor{border-radius:0;border:none;box-shadow:none;height:100%}
+.tdon-wb-editor .tdon-code-dot{display:none}
+.tdon-wb-editor .tdon-code-title{justify-content:flex-end}
+.tdon-wb-editor::after{content:'';position:absolute;top:0;right:0;width:7px;height:100%;opacity:.5;pointer-events:none}
+.tdon-layout-workbench .tdon-code-body{background-image:repeating-linear-gradient(to right,transparent 0 24px,var(--wb-indent) 24px 25px)}
+.tdon-layout-workbench .tdon-code-row{position:relative}
+.tdon-layout-workbench .tdon-code-row:nth-child(2){box-shadow:inset 0 0 0 1px var(--wb-line)}
+.tdon-layout-workbench .tdon-code-title{padding:6px 10px}
+.tdon-layout-workbench .tdon-code-status{padding:4px 10px}
+.tdon-wb-main{padding:10px 12px;display:flex;flex-direction:column;gap:10px;font-size:12px}
+.tdon-wb-main .tdon-card{padding:10px 12px}
+.tdon-wb-main .tdon-callout{padding:8px 12px}
+.tdon-wb-status .tdon-nav{padding:4px 10px;gap:14px;font-size:11px}
+.tdon-wb-status .tdon-nav-item{font-size:11px;opacity:.92}
+
+/* —— 暗色变体（缺省声明形态；chrome 层固定色覆盖槽位 inline bgToken）—— */
+.tdon-layout-workbench.tdon-wb-dark{background:#10151E;color:rgba(226,232,240,.9);border-color:rgba(0,0,0,.5)}
+.tdon-wb-dark .tdon-wb-body{background:#10151E}
+.tdon-wb-dark .tdon-preview-title{background:rgba(16,22,34,.92);color:rgba(226,232,240,.9)}
+.tdon-wb-dark .tdon-wb-title .tdon-nav{background:var(--wb-bar-bg)!important;color:var(--wb-title-text)}
+.tdon-wb-dark .tdon-wb-title .tdon-nav-item{color:var(--wb-title-text)}
+.tdon-wb-dark .tdon-wb-title .tdon-nav-item.is-active{color:var(--wb-title-active)!important}
+.tdon-wb-dark .tdon-wb-title .tdon-nav-item.is-active{color:rgba(240,246,252,.98)}
+.tdon-wb-dark .tdon-wb-activity{background:var(--wb-act-bg)!important;border-right-color:rgba(255,255,255,.08)}
+.tdon-wb-dark .tdon-wb-activity .tdon-tree-item{color:var(--wb-act-text)}
+.tdon-wb-dark .tdon-wb-activity .tdon-tree-item.is-active{color:var(--wb-act-active)!important}
+.tdon-wb-dark .tdon-wb-sidebar{background:var(--wb-side-bg)!important;border-right-color:rgba(255,255,255,.08)}
+.tdon-wb-dark .tdon-wb-sidebar .tdon-tree-heading{color:var(--wb-side-heading)}
+.tdon-wb-dark .tdon-wb-sidebar .tdon-tree-item{color:var(--wb-side-text)}
+.tdon-wb-dark .tdon-wb-sidebar .tdon-tree-item.is-active{color:var(--wb-side-active)!important}
+.tdon-wb-dark .tdon-wb-sidebar .tdon-tree{background:var(--wb-side-bg)!important}
+.tdon-wb-dark .tdon-wb-editor .tdon-code-editor{border-left:1px solid rgba(255,255,255,.08)}
+.tdon-wb-dark .tdon-wb-editor .tdon-code-title{border-bottom:1px solid rgba(255,255,255,.06);color:rgba(226,232,240,.9)}
+.tdon-wb-dark .tdon-wb-editor .tdon-code-status{color:rgba(226,232,240,.75)}
+.tdon-wb-dark .tdon-code-body{--wb-indent:rgba(255,255,255,.05)}
+.tdon-wb-dark .tdon-code-row:nth-child(2){--wb-line:rgba(255,255,255,.08);background:rgba(255,255,255,.045)}
+.tdon-wb-dark .tdon-wb-editor::after{background:repeating-linear-gradient(to bottom,rgba(255,255,255,.10) 0 2px,transparent 2px 4px)}
+.tdon-wb-dark .tdon-wb-main .tdon-callout{background:rgba(26,33,46,.96)!important;color:rgba(235,241,248,.92);border-radius:0}
+.tdon-wb-dark .tdon-wb-main .tdon-callout .tdon-callout-title{color:rgba(240,246,252,.98)!important}
+.tdon-wb-dark .tdon-wb-main .tdon-callout .tdon-callout-text{color:rgba(235,241,248,.88)}
+.tdon-wb-dark .tdon-wb-main .tdon-card{background:#151B26;border:1px solid rgba(255,255,255,.08);color:rgba(226,232,240,.85)}
+.tdon-wb-dark .tdon-wb-main .tdon-card .tdon-card-title{color:rgba(240,246,252,.95)}
+.tdon-wb-dark .tdon-wb-main .tdon-card .tdon-card-text{color:rgba(226,232,240,.75)}
+.tdon-wb-dark .tdon-wb-status .tdon-nav{background:var(--wb-status-bg)!important;color:var(--wb-status-text)}
+
+/* —— 亮色变体（VS Code Light 机制：整个工作台变浅）—— */
+.tdon-layout-workbench.tdon-wb-light{background:#F3F5F9;color:#172633;border-color:rgba(0,0,0,.18)}
+.tdon-wb-light .tdon-wb-body{background:#F3F5F9}
+.tdon-wb-light .tdon-preview-title{background:#E8EDF4;color:#172633}
+.tdon-wb-light .tdon-wb-title .tdon-nav{background:var(--wb-bar-bg)!important;color:var(--wb-title-text)}
+.tdon-wb-light .tdon-wb-title .tdon-nav-item{color:var(--wb-title-text)}
+.tdon-wb-light .tdon-wb-title .tdon-nav-item.is-active{color:var(--wb-title-active)!important;font-weight:700}
+.tdon-wb-light .tdon-wb-activity{background:var(--wb-act-bg)!important;border-right-color:rgba(0,0,0,.12)}
+.tdon-wb-light .tdon-wb-activity .tdon-tree-item{color:var(--wb-act-text)}
+.tdon-wb-light .tdon-wb-activity .tdon-tree-item.is-active{color:var(--wb-act-active)!important;font-weight:700}
+.tdon-wb-light .tdon-wb-sidebar{background:var(--wb-side-bg)!important;border-right-color:rgba(0,0,0,.12)}
+.tdon-wb-light .tdon-wb-sidebar .tdon-tree-heading{color:var(--wb-side-heading)}
+.tdon-wb-light .tdon-wb-sidebar .tdon-tree-item{color:var(--wb-side-text)}
+.tdon-wb-light .tdon-wb-sidebar .tdon-tree-item.is-active{color:var(--wb-side-active)!important;font-weight:700}
+.tdon-wb-light .tdon-wb-sidebar .tdon-tree{background:var(--wb-side-bg)!important}
+.tdon-wb-light .tdon-wb-editor .tdon-code-editor{border-left:1px solid rgba(0,0,0,.12)}
+.tdon-wb-light .tdon-wb-editor .tdon-code-title{border-bottom:1px solid rgba(0,0,0,.1);color:#33414E}
+.tdon-wb-light .tdon-wb-editor .tdon-code-status{color:#5D6C78}
+.tdon-wb-light .tdon-code-body{--wb-indent:rgba(0,0,0,.06)}
+.tdon-wb-light .tdon-code-row:nth-child(2){--wb-line:rgba(0,0,0,.1);background:rgba(11,59,140,.05)}
+.tdon-wb-light .tdon-wb-editor::after{background:repeating-linear-gradient(to bottom,rgba(0,0,0,.14) 0 2px,transparent 2px 4px)}
+.tdon-wb-light .tdon-wb-main .tdon-callout{padding:8px 12px}
+.tdon-wb-light .tdon-wb-status .tdon-nav{background:var(--wb-status-bg)!important;color:var(--wb-status-text)}
+.tdon-wb-light .tdon-wb-main .tdon-card{background:#fff;border:1px solid rgba(0,0,0,.1);color:#172633}
 .tdon-node{border-radius:10px}
 .tdon-hero{padding:24px;border-radius:12px;color:#fff}
 .tdon-hero-title{margin:0 0 6px;font-size:var(--hia-fs-h2,22px)}

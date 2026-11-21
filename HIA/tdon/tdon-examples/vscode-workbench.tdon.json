@@ -24,27 +24,44 @@
     }
   },
   "preview": {
-    "title": "VS Code workbench 预览（亮色全貌）",
-    "layout": "sidebar-left",
+    "title": "VS Code workbench 预览（workbench 布局，ADR-021 精修轮）",
+    "layout": "workbench",
     "nodes": [
       {
+        "type": "nav",
+        "items": [
+          {
+            "label": "HIA Code",
+            "active": true
+          },
+          "文件",
+          "编辑",
+          "选择",
+          "查看",
+          "转到",
+          "终端",
+          "帮助"
+        ],
+        "bgToken": "primary.1000",
+        "activeToken": "primary.100"
+      },
+      {
         "type": "tree",
-        "bgToken": "primary.50",
-        "accentToken": "primary.700",
+        "bgToken": "primary.950",
+        "accentToken": "primary.300",
         "sections": [
           {
             "label": "资源管理器",
             "items": [
               {
-                "label": "src",
-                "active": false
+                "label": "demo"
               },
               {
-                "label": "index.ts",
+                "label": "theme.ts",
                 "active": true
               },
               {
-                "label": "theme.ts"
+                "label": "package.json"
               }
             ]
           },
@@ -55,61 +72,74 @@
                 "label": "buildTheme"
               },
               {
-                "label": "applyTheme"
+                "label": "activate"
               }
             ]
           }
         ]
       },
       {
-        "type": "nav",
-        "items": [
+        "type": "tree",
+        "bgToken": "primary.1000",
+        "sections": [
           {
-            "label": "HIA Code",
-            "active": true
-          },
-          "文件",
-          "编辑",
-          "查看",
-          "终端",
-          "帮助"
-        ],
-        "bgToken": "primary.100",
-        "activeToken": "primary.800"
+            "label": "ACTIVITY",
+            "items": [
+              {
+                "label": "EXPLORER",
+                "active": true
+              },
+              {
+                "label": "SEARCH"
+              },
+              {
+                "label": "GIT"
+              },
+              {
+                "label": "EXT"
+              },
+              {
+                "label": "RUN"
+              }
+            ]
+          }
+        ]
       },
       {
         "type": "code-editor",
         "title": "theme.ts",
-        "accentToken": "primary.600",
+        "accentToken": "primary.700",
+        "appearance": "dark",
         "code": "import { buildTheme } from \"@hia/theme-core\";\n\n// workbench colors come from HIA tokens\nconst theme = buildTheme({\n  primary: \"#0047AB\",\n  secondary: \"#00A8D3\",\n});\n\nexport function activate() {\n  return theme.primary.scale;\n}"
       },
       {
         "type": "callout",
         "kind": "info",
-        "title": "通知横幅",
-        "text": "HIA Light / HIA Dark 双主题已就绪：workbench 全局配色 + 语法精简枚举，重载窗口即可切换。"
+        "title": "通知",
+        "text": "HIA Dark / HIA Light 双主题已就绪：workbench 全局配色 + 语法精简枚举，重载窗口即可切换。"
+      },
+      {
+        "type": "raw-text",
+        "text": "HIA Dark 主题由 TDON 声明驱动：workbench colors 64 键 + tokenColors 15 组",
+        "textToken": "primary.400",
+        "size": "fs:small"
       },
       {
         "type": "nav",
         "items": [
-          "main ⌥",
-          "Ln 7, Col 24",
+          "⎇ main",
+          "⚠ 0",
+          "⊗ 0",
+          {
+            "label": "Ln 9, Col 10",
+            "active": true
+          },
+          "Spaces: 2",
           "UTF-8",
           "TypeScript"
         ],
         "bgToken": "primary.600",
         "activeToken": "on:primary"
-      },
-      {
-        "type": "divider",
-        "token": "primary.100",
-        "thickness": 1
-      },
-      {
-        "type": "raw-text",
-        "text": "状态栏以 nav 节点模拟（primary.600 底 + 可读前景）；侧栏树/编辑器/通知为真实节点形态。",
-        "textToken": "primary.500",
-        "size": "fs:small"
       }
     ]
   },

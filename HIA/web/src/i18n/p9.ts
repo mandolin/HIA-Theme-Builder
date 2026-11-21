@@ -49,6 +49,12 @@ registerStrings({
   'aria.p9.tdonSource': { zh: 'TDON 文件来源', en: 'TDON file source' },
   'aria.p9.tdonUrl': { zh: 'TDON 文件 URL', en: 'TDON file URL' },
   'aria.p9.tdonBuiltin': { zh: '内置示例选择', en: 'Built-in example' },
+  // workbench 编辑器配色切换（ADR-021 / 宿主交互契约）。
+  // <lang en>workbench editor appearance toggle (ADR-021 / host interaction contract).</lang>
+  'p9.tdon.appearance.label': { zh: '编辑器配色', en: 'Editor colours' },
+  'p9.tdon.appearance.dark': { zh: '暗色', en: 'Dark' },
+  'p9.tdon.appearance.light': { zh: '亮色', en: 'Light' },
+  'p9.tdon.appearance.aria': { zh: '编辑器配色切换', en: 'Editor appearance' },
   // URL 输入框占位说明（此前缺键，界面直接显示键名——维护者截图反馈的缺陷）。
   // <lang en>URL placeholder (previously a missing key, so the raw key name leaked into the UI — the defect
   //   seen in the maintainer's screenshot).</lang>

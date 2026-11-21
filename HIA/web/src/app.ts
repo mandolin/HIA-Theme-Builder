@@ -225,6 +225,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>Current preview page id (ADR-020 / TDON-5.23): shared by the page tabs and in-preview clicks;
   //   undefined renders the landing page. Always ignored for single-page docs.</lang>
   let tdonPage:string|undefined;
+  // workbench 预览的编辑器配色切换态（ADR-021 / 宿主交互契约）：dark 缺省；随新文档重置。
+  // <lang en>Editor appearance toggle for workbench previews (ADR-021 / host contract): dark default, reset per doc.</lang>
+  let tdonEditorApp:'dark'|'light'='dark';
   let tdonResult:TdonValidationResult|null=null;
   let tdonSourceLabel='';
   let tdonConnecting=false;
@@ -1393,9 +1396,23 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const tabs=pages.length>1
       ?`<div class="tdon-page-tabs" role="tablist" aria-label="Preview pages">${pages.map(pg=>`<button type="button" class="tdon-page-tab ${pg.id===tdonPage||(tdonPage===undefined&&pg===pages[0])?'is-active':''}" data-tdon-goto="${escapeHtml(pg.id)}" aria-pressed="${pg.id===tdonPage||(tdonPage===undefined&&pg===pages[0])?'true':'false'}">${escapeHtml(pg.title??pg.id)}</button>`).join('')}</div>`
       :'';
+    // workbench 布局且含 code-editor：渲染编辑器配色切换分段钮（宿主交互，ADR-021 契约）——
+    //   切换经 renderTdonPreview 的 editorAppearance 覆盖重渲染。
+    // <lang en>For workbench layouts with a code editor, render an appearance segmented control
+    //   (host interaction per ADR-021); toggling re-renders via the editorAppearance override.</lang>
+    // 局部收窄：回调里 TS 不保留 tdonDoc 的非空收窄，先取 preview 引用。
+    // <lang en>Local narrowing: callbacks lose the non-null narrowing of tdonDoc — grab preview first.</lang>
+    const preview=tdonDoc.preview;
+    const hasEditor=pages.length>0
+      ?pages.some(pg=>pg.nodes.some(n=>n.type==='code-editor'))
+      :(preview?.nodes??[]).some(n=>n.type==='code-editor');
+    const isWorkbench=(pages.length>0?pages.some(pg=>(pg.layout??preview?.layout)==='workbench'):preview?.layout==='workbench');
+    const appSwitch=hasEditor&&isWorkbench
+      ?`<div class="tdon-app-switch" role="group" aria-label="${escapeHtml(t('p9.tdon.appearance.aria'))}"><span class="small">${escapeHtml(t('p9.tdon.appearance.label'))}</span><button type="button" class="tdon-page-tab ${tdonEditorApp==='dark'?'is-active':''}" data-tdon-app="dark" aria-pressed="${tdonEditorApp==='dark'?'true':'false'}">${escapeHtml(t('p9.tdon.appearance.dark'))}</button><button type="button" class="tdon-page-tab ${tdonEditorApp==='light'?'is-active':''}" data-tdon-app="light" aria-pressed="${tdonEditorApp==='light'?'true':'false'}">${escapeHtml(t('p9.tdon.appearance.light'))}</button></div>`
+      :'';
     const html=tdonDoc.preview?`<div class="tdon-frame">${renderTdonPreviewView(tdonDoc,tdonPage)}</div>`:`<div class="tdon-placeholder"><p>${t('p9.tdon.noPreview')}</p></div>`;
     const meta=`<div class="tdon-meta"><b>${escapeHtml(tdonDoc.target.name)}</b><span class="small">${tdonDoc.target.nameEn!==tdonDoc.target.name?escapeHtml(tdonDoc.target.nameEn):''}</span>${tdonDoc.target.author?`<span class="small">· ${escapeHtml(tdonDoc.target.author)}</span>`:''}<span class="small">· ${t('p9.tdon.exportCount',{n:String(tdonDoc.exportManifest.files.length)})}</span></div>`;
-    body.innerHTML=meta+tabs+html;
+    body.innerHTML=meta+appSwitch+tabs+html;
     issuesWrap.innerHTML=tdonResult?renderTdonIssues(tdonResult):'';
     setText('tdonStatusLabel',t('p9.tdon.status.ok',{source:tdonSourceLabel}));
   }
@@ -1407,7 +1424,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   //   selection passes through to renderTdonPreview (ADR-020 / TDON-5.22), undefined = landing page.</lang>
   function renderTdonPreviewView(doc:TdonDocument,page?:string):string{
     ensureTdonStyle();
-    return renderTdonPreview(doc,theme(),page!==undefined?{page}:undefined);
+    // editorAppearance 覆盖仅对 workbench 布局透传（宿主切换态，ADR-021）。
+    // <lang en>The editorAppearance override passes through for workbench layouts only (host toggle, ADR-021).</lang>
+    const isWorkbench=doc.preview?.layout==='workbench'||(doc.preview?.pages??[]).some(pg=>pg.layout==='workbench');
+    return renderTdonPreview(doc,theme(),{...(page!==undefined?{page}:{}),...(isWorkbench?{editorAppearance:tdonEditorApp}:{})});
   }
 
   // 注入 TDON 预览样式表（幂等，仅首次插入）。
@@ -1552,6 +1572,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 新文档注册时重置页选择——旧文档的页 id 对新文档无意义（ADR-020）。
     // <lang en>Reset the page selection on every new registration: the old doc's page ids mean nothing to the new one (ADR-020).</lang>
     tdonPage=undefined;
+    tdonEditorApp='dark';
     selectedTdonFile=null;
     renderTdonPanel();renderTdonExport();
   }
@@ -3623,6 +3644,15 @@ ${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
       const id=el.getAttribute('data-tdon-goto')??el.getAttribute('data-tdon-page');
       if(!id)return;
       tdonPage=id;
+      renderTdonPanel();
+    });
+    // 编辑器配色切换（ADR-021 / 宿主交互契约）：分段钮经 tdonEditorApp 覆盖重渲染。
+    // <lang en>Appearance toggle (ADR-021 / host contract): segmented buttons re-render via tdonEditorApp override.</lang>
+    byId<HTMLElement>('tdonPreviewBody').addEventListener('click',e=>{
+      const el=(e.target as HTMLElement).closest('[data-tdon-app]');
+      if(!el)return;
+      const v=el.getAttribute('data-tdon-app');
+      if(v==='dark'||v==='light')tdonEditorApp=v;
       renderTdonPanel();
     });
     // 连接按钮：取回 → 解析校验 → 注册（`W-tb-P26`）。
