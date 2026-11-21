@@ -1572,7 +1572,16 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 新文档注册时重置页选择——旧文档的页 id 对新文档无意义（ADR-020）。
     // <lang en>Reset the page selection on every new registration: the old doc's page ids mean nothing to the new one (ADR-020).</lang>
     tdonPage=undefined;
-    tdonEditorApp='dark';
+    // 缺省编辑器配色按文档声明（首个 code-editor 的 appearance，含 pages——ADR-021 声明驱动）：
+    //   JetBrains mock 声明 light → 连接即亮形态；VS Code mock 声明 dark → 暗形态。切换钮可覆盖。
+    // <lang en>Default editor appearance follows the document declaration (first code-editor's
+    //   appearance, pages included — ADR-021 declaration-driven); the toggle can override.</lang>
+    const declaredEditor=(()=>{
+      const all=[...((tdonDoc?.preview?.nodes)??[]),...((tdonDoc?.preview?.pages)??[]).flatMap(pg=>pg.nodes)];
+      const ed=all.find(n=>n.type==='code-editor');
+      return ed?.attrs?.appearance==='light'?'light':'dark';
+    })();
+    tdonEditorApp=declaredEditor;
     selectedTdonFile=null;
     renderTdonPanel();renderTdonExport();
   }

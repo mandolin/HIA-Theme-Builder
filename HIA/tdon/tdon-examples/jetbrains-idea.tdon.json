@@ -1,0 +1,168 @@
+{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "jetbrains-idea",
+    "name": "JetBrains IDE 主题",
+    "nameEn": "JetBrains IDE Theme",
+    "author": "HIA 官方适配",
+    "homepage": "https://www.jetbrains.com/",
+    "targetVersion": ">=2020.1"
+  },
+  "tokens": {
+    "include": {
+      "color": [
+        "primary",
+        "secondary"
+      ],
+      "colorShades": "all",
+      "typography": [
+        "fontFamily"
+      ]
+    }
+  },
+  "preview": {
+    "title": "JetBrains IDE 预览（workbench 布局，ADR-021）",
+    "layout": "workbench",
+    "nodes": [
+      {
+        "type": "nav",
+        "items": [
+          {
+            "label": "HIA IDE",
+            "active": true
+          },
+          "文件",
+          "编辑",
+          "查看",
+          "导航",
+          "运行",
+          "帮助"
+        ],
+        "bgToken": "primary.100",
+        "activeToken": "primary.800"
+      },
+      {
+        "type": "tree",
+        "bgToken": "primary.50",
+        "accentToken": "primary.800",
+        "sections": [
+          {
+            "label": "demo",
+            "items": [
+              {
+                "label": ".idea"
+              },
+              {
+                "label": "src",
+                "active": false
+              },
+              {
+                "label": "build.gradle.kts"
+              }
+            ]
+          },
+          {
+            "label": "Gradle",
+            "items": [
+              {
+                "label": "dependencies"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "code-editor",
+        "title": "Main.kt",
+        "accentToken": "primary.700",
+        "appearance": "light",
+        "code": "import com.hia.theme.buildTheme\n\n// JetBrains UI keys come from HIA tokens\nfun main() {\n    val theme = buildTheme(\n        primary = \"#0047AB\",\n        secondary = \"#00A8D3\"\n    )\n    println(\"brand: Kotlin x HIA\")\n}"
+      },
+      {
+        "type": "callout",
+        "kind": "tip",
+        "title": "通知",
+        "text": "HIA Dark / HIA Light 双主题插件包已就绪：UI 26 键 + 编辑器属性 14 项，Install from disk 即可启用。"
+      },
+      {
+        "type": "raw-text",
+        "text": "HIA Dark 主题由 TDON 声明驱动：ui 26 键 + editorScheme 属性 14 项",
+        "textToken": "primary.400",
+        "size": "fs:small"
+      },
+      {
+        "type": "nav",
+        "items": [
+          "⎇ main",
+          "⚠ 0",
+          {
+            "label": "Kotlin 1.9",
+            "active": true
+          },
+          "UTF-8",
+          "4 spaces"
+        ],
+        "bgToken": "primary.700",
+        "activeToken": "primary.100"
+      }
+    ]
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": "hia-jetbrains-plugin/hia-dark.theme.json",
+        "template": "{\n  \"name\": \"HIA TDON Dark\",\n  \"author\": \"HIA Theme Builder\",\n  \"dark\": true,\n  \"editorScheme\": \"/hia-dark-editor-scheme.xml\",\n  \"ui\": {\n    \"Panel.background\": \"{{token:primary.950}}\",\n    \"Panel.foreground\": \"{{token:primary.100}}\",\n    \"Editor.background\": \"{{token:primary.950}}\",\n    \"Editor.foreground\": \"{{token:primary.100}}\",\n    \"EditorTabs.background\": \"{{token:primary.1000}}\",\n    \"EditorTabs.selectedBackground\": \"{{token:primary.900}}\",\n    \"EditorTabs.selectedForeground\": \"{{token:primary.100}}\",\n    \"EditorTabs.inactiveMaskColor\": \"{{token:primary.1000}}\",\n    \"ToolWindow.background\": \"{{token:primary.950}}\",\n    \"ToolWindow.HeaderTab.selectedBackground\": \"{{token:primary.900}}\",\n    \"ToolWindow.Header.background\": \"{{token:primary.1000}}\",\n    \"StatusBar.background\": \"{{token:primary.700}}\",\n    \"StatusBar.foreground\": \"{{token:primary.100}}\",\n    \"MainToolbar.background\": \"{{token:primary.1000}}\",\n    \"CompletionPopup.background\": \"{{token:primary.950}}\",\n    \"CompletionPopup.foreground\": \"{{token:primary.100}}\",\n    \"Button.background\": \"{{token:primary.600}}\",\n    \"Button.foreground\": \"{{token:on:primary}}\",\n    \"Button.default.background\": \"{{token:primary.600}}\",\n    \"Tree.background\": \"{{token:primary.950}}\",\n    \"Tree.foreground\": \"{{token:primary.100}}\",\n    \"Tree.selectionBackground\": \"{{token:primary.800}}\",\n    \"Component.borderColor\": \"{{token:primary.800}}\",\n    \"SearchEverywhere.List.background\": \"{{token:primary.950}}\",\n    \"Notification.background\": \"{{token:primary.900}}\",\n    \"Notification.foreground\": \"{{token:primary.100}}\"\n  }\n}"
+      },
+      {
+        "path": "hia-jetbrains-plugin/hia-dark-editor-scheme.xml",
+        "template": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<scheme name=\"{{meta:name}} Dark\" version=\"142\" parent_scheme=\"Darcula\">\n  <colors>\n    <option name=\"LINE_NUMBERS_COLOR\" value=\"{{token:primary.500}}\"/>\n    <option name=\"CARET_COLOR\" value=\"{{token:primary.300}}\"/>\n    <option name=\"SELECTION_BACKGROUND\" value=\"{{token:primary.800}}\"/>\n  </colors>\n  <attributes>\n    <option name=\"DEFAULT_TEXT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.100\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_KEYWORD\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.300\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_STRING\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"success.300\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_NUMBER\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"warning.300\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_CONSTANT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"warning.300\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_COMMENT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.400\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_BLOCK_COMMENT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.400\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_LINE_COMMENT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.400\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_FUNCTION_DECLARATION\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.200\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_CLASS_NAME\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.200\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_IDENTIFIER\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.100\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_OPERATION_SIGN\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.300\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_BRACES\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.400\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_COMMA\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.400\"/>\n      </value>\n    </option>\n  </attributes>\n</scheme>\n"
+      },
+      {
+        "path": "hia-jetbrains-plugin/hia-light.theme.json",
+        "template": "{\n  \"name\": \"HIA TDON Light\",\n  \"author\": \"HIA Theme Builder\",\n  \"dark\": false,\n  \"editorScheme\": \"/hia-light-editor-scheme.xml\",\n  \"ui\": {\n    \"Panel.background\": \"{{token:primary.50}}\",\n    \"Panel.foreground\": \"{{token:primary.900}}\",\n    \"Editor.background\": \"{{token:primary.50}}\",\n    \"Editor.foreground\": \"{{token:primary.900}}\",\n    \"EditorTabs.background\": \"{{token:primary.100}}\",\n    \"EditorTabs.selectedBackground\": \"{{token:primary.50}}\",\n    \"EditorTabs.selectedForeground\": \"{{token:primary.900}}\",\n    \"EditorTabs.inactiveMaskColor\": \"{{token:primary.100}}\",\n    \"ToolWindow.background\": \"{{token:primary.50}}\",\n    \"ToolWindow.HeaderTab.selectedBackground\": \"{{token:primary.50}}\",\n    \"ToolWindow.Header.background\": \"{{token:primary.100}}\",\n    \"StatusBar.background\": \"{{token:primary.600}}\",\n    \"StatusBar.foreground\": \"{{token:primary.900}}\",\n    \"MainToolbar.background\": \"{{token:primary.100}}\",\n    \"CompletionPopup.background\": \"{{token:primary.50}}\",\n    \"CompletionPopup.foreground\": \"{{token:primary.900}}\",\n    \"Button.background\": \"{{token:primary.600}}\",\n    \"Button.foreground\": \"{{token:on:primary}}\",\n    \"Button.default.background\": \"{{token:primary.600}}\",\n    \"Tree.background\": \"{{token:primary.50}}\",\n    \"Tree.foreground\": \"{{token:primary.900}}\",\n    \"Tree.selectionBackground\": \"{{token:primary.100}}\",\n    \"Component.borderColor\": \"{{token:primary.200}}\",\n    \"SearchEverywhere.List.background\": \"{{token:primary.50}}\",\n    \"Notification.background\": \"{{token:primary.50}}\",\n    \"Notification.foreground\": \"{{token:primary.900}}\"\n  }\n}"
+      },
+      {
+        "path": "hia-jetbrains-plugin/hia-light-editor-scheme.xml",
+        "template": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<scheme name=\"{{meta:name}} Light\" version=\"142\" parent_scheme=\"Light\">\n  <colors>\n    <option name=\"LINE_NUMBERS_COLOR\" value=\"{{token:primary.400}}\"/>\n    <option name=\"CARET_COLOR\" value=\"{{token:primary.700}}\"/>\n    <option name=\"SELECTION_BACKGROUND\" value=\"{{token:primary.200}}\"/>\n  </colors>\n  <attributes>\n    <option name=\"DEFAULT_TEXT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.900\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_KEYWORD\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.700\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_STRING\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"success.700\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_NUMBER\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"warning.700\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_CONSTANT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"warning.700\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_COMMENT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.600\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_BLOCK_COMMENT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.600\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_LINE_COMMENT\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.600\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_FUNCTION_DECLARATION\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.800\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_CLASS_NAME\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.800\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_IDENTIFIER\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.900\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_OPERATION_SIGN\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"secondary.700\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_BRACES\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.500\"/>\n      </value>\n    </option>\n    <option name=\"DEFAULT_COMMA\">\n      <value>\n        <option name=\"FOREGROUND\" value=\"primary.500\"/>\n      </value>\n    </option>\n  </attributes>\n</scheme>\n"
+      },
+      {
+        "path": "hia-jetbrains-plugin/META-INF/plugin.xml",
+        "template": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<idea-plugin>\n  <id>com.hia.themedon</id>\n  <name>{{meta:name}} JetBrains Theme</name>\n  <vendor>HIA Theme Builder</vendor>\n  <description>Generated by HIA Theme Builder TDON (jetbrains-idea.tdon.json).</description>\n  <depends>com.intellij.modules.platform</depends>\n  <extensions defaultExtensionNs=\"com.intellij\">\n    <themeProvider id=\"hia-tdon-theme-dark\" path=\"/hia-dark.theme.json\"/>\n    <themeProvider id=\"hia-tdon-theme-light\" path=\"/hia-light.theme.json\"/>\n  </extensions>\n</idea-plugin>\n"
+      },
+      {
+        "path": "hia-jetbrains-plugin/META-INF/MANIFEST.MF",
+        "template": "Manifest-Version: 1.0\nImplementation-Title: {{meta:name}} JetBrains Theme\nImplementation-Version: 1.0.0\n"
+      },
+      {
+        "path": "hia-jetbrains-plugin/README.md",
+        "template": "# {{meta:name}} — JetBrains IDEA Theme\n\n由 HIA Theme Builder 通过 TDON 声明生成的 JetBrains 平台主题插件（IntelliJ IDEA / PyCharm / WebStorm 等全系适用）。\n\n## 安装（Install from disk）\n\n1. 解压本包得到插件 JAR（或直接使用打包好的 hia-tdon-theme.jar）；\n2. IDE → Settings → Plugins → ⚙ → Install Plugin from Disk → 选择 JAR → 确认重启；\n3. Settings → Appearance & Behavior → Appearance → Theme → 选择 **{{meta:name}} Dark / Light**。\n\n## 内容\n\n- `hia-dark.theme.json` / `hia-light.theme.json`：UI 全局配色（面板/编辑器/工具窗口/标签/状态栏/按钮/列表树/弹窗/通知，26 键）；\n- `hia-dark-editor-scheme.xml` / `hia-light-editor-scheme.xml`：编辑器语法色（IntelliJ 属性名 14 项 + 行号/光标/选区）；\n- `META-INF/plugin.xml`：themeProvider 声明（官方主题插件机制）。\n\n## 能力边界（TDON 版 vs 完整主题插件）\n\n- UI 键覆盖主表面 26 键（JetBrains 全键集数百项）；\n- 编辑器语法色为 IntelliJ 属性名精简枚举（14 项）；\n- 图标主题与背景图不在范围。\n"
+      }
+    ]
+  },
+  "constraints": {
+    "requiredTokens": [
+      "primary.500",
+      "primary.900",
+      "secondary.500"
+    ],
+    "requireContrast": [
+      {
+        "fg": "primary.900",
+        "bg": "primary.50",
+        "min": 4.5
+      },
+      {
+        "fg": "primary.100",
+        "bg": "primary.950",
+        "min": 4.5
+      }
+    ],
+    "strict": false
+  },
+  "effects": {
+    "fade": {
+      "type": "fade-in",
+      "duration": 400
+    }
+  }
+}

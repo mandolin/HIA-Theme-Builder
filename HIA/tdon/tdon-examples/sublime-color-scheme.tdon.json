@@ -1,0 +1,103 @@
+{
+  "specVersion": "tdon-0.2",
+  "target": {
+    "id": "sublime-color-scheme",
+    "name": "Sublime Text 配色方案",
+    "nameEn": "Sublime Text Color Scheme",
+    "author": "HIA 官方适配",
+    "homepage": "https://www.sublimetext.com/",
+    "targetVersion": ">=4000"
+  },
+  "tokens": {
+    "include": {
+      "color": [
+        "primary",
+        "secondary"
+      ],
+      "colorShades": "all",
+      "typography": [
+        "fontFamily"
+      ]
+    }
+  },
+  "preview": {
+    "title": "Sublime Text 预览（编辑器形态，sidebar-left）",
+    "layout": "sidebar-left",
+    "nodes": [
+      {
+        "type": "tree",
+        "bgToken": "primary.900",
+        "accentToken": "primary.200",
+        "sections": [
+          {
+            "label": "demo",
+            "items": [
+              {
+                "label": "src"
+              },
+              {
+                "label": "main.py",
+                "active": true
+              },
+              {
+                "label": "theme.py"
+              }
+            ]
+          },
+          {
+            "label": "Packages",
+            "items": [
+              {
+                "label": "User"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "code-editor",
+        "title": "main.py",
+        "accentToken": "primary.600",
+        "appearance": "dark",
+        "code": "from hia.theme import buildTheme\n\n# Sublime rules come from HIA tokens\nscheme = buildTheme(\n    primary=\"#0047AB\",\n    secondary=\"#00A8D3\",\n)\n\ndef activate():\n    return scheme.rules"
+      },
+      {
+        "type": "divider",
+        "token": "primary.800",
+        "thickness": 1
+      },
+      {
+        "type": "raw-text",
+        "text": ".sublime-color-scheme：variables 命名色 + globals + rules 语法枚举",
+        "textToken": "primary.400",
+        "size": "fs:small"
+      }
+    ]
+  },
+  "exportManifest": {
+    "files": [
+      {
+        "path": "Packages/User/HIA.sublime-color-scheme",
+        "template": "{\n  \"name\": \"{{meta:name}}\",\n  \"author\": \"HIA Theme Builder\",\n  \"variables\": {\n    \"hia-primary\": \"{{token:primary.500}}\",\n    \"hia-primary-bg\": \"{{token:primary.950}}\",\n    \"hia-primary-text\": \"{{token:primary.100}}\",\n    \"hia-secondary\": \"{{token:secondary.500}}\"\n  },\n  \"globals\": {\n    \"background\": \"var(hia-primary-bg)\",\n    \"foreground\": \"var(hia-primary-text)\",\n    \"caret\": \"color(var(hia-primary-text) alpha(0.9))\",\n    \"selection\": \"color(var(hia-primary) alpha(0.35))\",\n    \"line_highlight\": \"color(var(hia-primary-text) alpha(0.06))\"\n  },\n  \"rules\": [\n    {\n      \"name\": \"Comment\",\n      \"scope\": \"comment\",\n      \"foreground\": \"var(hia-secondary-500)\",\n      \"font_style\": \"italic\"\n    },\n    {\n      \"name\": \"String\",\n      \"scope\": \"string\",\n      \"foreground\": \"var(hia-success-500)\"\n    },\n    {\n      \"name\": \"Number\",\n      \"scope\": \"constant.numeric\",\n      \"foreground\": \"var(hia-warning-500)\"\n    },\n    {\n      \"name\": \"Constant\",\n      \"scope\": \"constant.language\",\n      \"foreground\": \"var(hia-warning-600)\"\n    },\n    {\n      \"name\": \"Keyword\",\n      \"scope\": \"keyword\",\n      \"foreground\": \"var(hia-primary-600)\"\n    },\n    {\n      \"name\": \"Storage\",\n      \"scope\": \"storage.type\",\n      \"foreground\": \"var(hia-primary-700)\"\n    },\n    {\n      \"name\": \"Variable\",\n      \"scope\": \"variable.other\",\n      \"foreground\": \"var(hia-primary-900)\"\n    },\n    {\n      \"name\": \"Function name\",\n      \"scope\": \"entity.name.function\",\n      \"foreground\": \"var(hia-primary-700)\"\n    },\n    {\n      \"name\": \"Class name\",\n      \"scope\": \"entity.name.class\",\n      \"foreground\": \"var(hia-secondary-700)\"\n    },\n    {\n      \"name\": \"Tag\",\n      \"scope\": \"entity.name.tag\",\n      \"foreground\": \"var(hia-primary-700)\"\n    },\n    {\n      \"name\": \"Attribute\",\n      \"scope\": \"entity.other.attribute-name\",\n      \"foreground\": \"var(hia-secondary-600)\"\n    },\n    {\n      \"name\": \"Punctuation\",\n      \"scope\": \"punctuation.definition\",\n      \"foreground\": \"var(hia-primary-500)\"\n    },\n    {\n      \"name\": \"Operator\",\n      \"scope\": \"keyword.operator\",\n      \"foreground\": \"var(hia-secondary-600)\"\n    },\n    {\n      \"name\": \"Invalid\",\n      \"scope\": \"invalid\",\n      \"foreground\": \"var(hia-danger-600)\"\n    }\n  ]\n}\n"
+      },
+      {
+        "path": "Packages/User/HIA-README.md",
+        "template": "# HIA Sublime 配色方案\n\n由 HIA Theme Builder TDON 声明生成。\n\n安装：复制 HIA.sublime-color-scheme 到 Packages/User/ → Preferences → Color Scheme → 选择 HIA。\n\nInstalled: copy the file into Packages/User/, then Preferences → Color Scheme → HIA.\n"
+      }
+    ]
+  },
+  "constraints": {
+    "requiredTokens": [
+      "primary.500",
+      "primary.900"
+    ],
+    "requireContrast": [
+      {
+        "fg": "primary.100",
+        "bg": "primary.950",
+        "min": 4.5
+      }
+    ],
+    "strict": false
+  }
+}
