@@ -82,6 +82,9 @@ jobs:
           npm run dist
 
       - name: Build tauri
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         working-directory: HIA/tauri
         run: |
           npm install
@@ -215,6 +218,9 @@ jobs:
 
       # Tauri macOS：app + dmg（未签名）。
       - name: Build tauri (mac)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         working-directory: HIA/tauri
         run: |
           npm install
@@ -298,6 +304,9 @@ jobs:
           npx electron-builder --linux AppImage deb --publish never
 
       - name: Build tauri (linux)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         working-directory: HIA/tauri
         run: |
           npm install
