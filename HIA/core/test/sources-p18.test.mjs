@@ -75,3 +75,44 @@ test('企业：P46 扩充批 24 条——id 连续、元数据完整、抽样（
   assert.equal(by('Hermès')?.country,'fr');
   assert.deepEqual(by('Figma')?.colors,['#F24E1E','#FF7262','#A259FF','#1ABCFE','#0ACF83']);
 });
+
+// `W-tb-P50` 后修：country 映射**语义正确性**防回归（此前只断言"枚举合法+覆盖数"，
+//   无法发现"Alphabet 被标成中国"这类语义错标——三次跨条目正则事故的根因）。
+//   本测试锁定每个国家分组的**成员白名单**：任何新增/错标都会失败，迫使人复核。
+// <lang en>`W-tb-P50` follow-up: semantic correctness guard for country mapping. Earlier assertions only
+//   checked enum legality and coverage counts, so semantic mislabels (Alphabet→China) slipped through — the
+//   root of three cross-entry regex incidents. This locks the membership whitelist per country group: any
+//   addition or mislabel fails, forcing a human review.</lang>
+test('企业：country 分组成员白名单（语义正确性防回归）', () => {
+  const group = (c) => BRAND_COLORS.filter(b => b.country === c).map(b => b.nameEn).sort();
+  // 中国组：只允许这些（Alphabet/Node.js/Bandcamp 等历史错标一旦复现即失败）。
+  // <lang en>China group: exactly these — a regression of the Alphabet/Node.js/Bandcamp mislabels fails.</lang>
+  assert.deepEqual(group('cn'), ['AliExpress','Alibaba','Baidu','Huawei','JD.com','Lenovo','Meituan','OnePlus','WeChat','Xiaomi'],
+    '中国组须为这 10 条：' + group('cn').join(','));
+  // 日本组：11 条（Node.js/Onshape/Plex 等不得出现）。
+  assert.deepEqual(group('jp'), ['7-Eleven','Canon','LINE','Muji','Nintendo','Olympus','Panasonic','PlayStation','Rakuten','Sony','Toyota'],
+    '日本组须为这 11 条：' + group('jp').join(','));
+  // 抽验若干易错条目：必须无 country（它们此前被错标）。
+  for (const n of ['Alphabet','Node.js','Bandcamp','Plex','Onshape','WhatsBroadcast','SlideShare','Hangouts','kik','Vue.js']) {
+    const e = BRAND_COLORS.find(b => b.nameEn === n);
+    assert.ok(e, '条目应存在：' + n);
+    assert.equal(e.country, undefined, n + ' 不应有 country（历史错标项）');
+  }
+  // 抽验正确归属。
+  assert.equal(BRAND_COLORS.find(b=>b.nameEn==='Adobe')?.country,'us');
+  assert.equal(BRAND_COLORS.find(b=>b.nameEn==='Adyen')?.country,'nl');
+  assert.equal(BRAND_COLORS.find(b=>b.nameEn==='Aer Lingus')?.country,'ie');
+  assert.equal(BRAND_COLORS.find(b=>b.nameEn==='Aparat')?.country,'ir');
+});
+
+test('企业：每题条目 country 不得与行业映射矛盾（other 行业标注率上限）', () => {
+  // 非 other 行业必须全部标注；other 行业允许标注（历史批量补录），但不得 100%（那意味着误伤）。
+  // <lang en>Non-other industries must all be labelled; other may be labelled historically but never 100%
+  //   (that would signal collateral mislabelling).</lang>
+  const nonOther = BRAND_COLORS.filter(b => b.industry !== 'other');
+  assert.equal(nonOther.filter(b => b.country).length, nonOther.length, '非 other 行业须全部标注 country');
+  const other = BRAND_COLORS.filter(b => b.industry === 'other');
+  const otherLabelled = other.filter(b => b.country).length;
+  assert.ok(otherLabelled < other.length, 'other 行业不应 100% 标注（疑似跨条目误伤）');
+  assert.ok(otherLabelled <= 460, 'other 行业标注数应在历史合理区间内：' + otherLabelled);
+});
