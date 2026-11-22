@@ -4,7 +4,7 @@
 
 HIA 主题构建器。将原始的 `HIA_theme_manager.html` 单一 HTML 工具，以 TypeScript + 组件化的方式重构为一套可复用、可发布的主题管理体系，并抽离公共核心（`core`），在其基础上派生出网页版、Electron 版与 Tauri 版。
 
-**当前版本 [v1.3.0](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v1.3.0)**（2026-11-22）：1.3——ISCC-NBS 标准色名 260 条、企业国家维度补至 598、首屏 400KB（原 956KB）、TDON 适配包矩阵 · [在线版（GitHub Pages）](https://mandolin.github.io/HIA-Theme-Builder/) · [文档子站](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [桌面下载](https://github.com/mandolin/HIA-Theme-Builder/releases)
+**当前版本 [v1.3.1](https://github.com/mandolin/HIA-Theme-Builder/releases/tag/v1.3.1)**（2026-11-22）：1.3.1——修正企业国家归属错标（376 条准确标注）并加语义回归护栏；1.3 带来 ISCC-NBS 色名、首屏 400KB 与 TDON 适配包矩阵 · [在线版（GitHub Pages）](https://mandolin.github.io/HIA-Theme-Builder/) · [文档子站](https://mandolin.github.io/HIA-Theme-Builder/docs/) · [桌面下载](https://github.com/mandolin/HIA-Theme-Builder/releases)
 
 ## 演示
 
