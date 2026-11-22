@@ -287,7 +287,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>Multi-source picker state (W-tb-P17): current color source for the modal.</lang>
   let colorSource:'baodian'|'traditional'|'flag'|'brand'|'nature'|'social'='baodian';
   // 传统色源内文化分组（日/中）。
-  let baodianTcCulture:'en'|'cn'|'ja'|'kr'='en';
+  let baodianTcCulture:'en'|'nbs'|'cn'|'ja'|'kr'='en';
   // 国旗源洲别 / 企业源行业（W-tb-P18）。
   let baodianFlagGroup='asia';
   let baodianBrandGroup='tech';
@@ -2644,19 +2644,27 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>Traditional source: culture menu on the left; hue-bucket swatch grid on the right.</lang>
   function renderTraditionalMenu(){
     const menu=byId<HTMLElement>('baodianMenu');
-    const cultures:[('en'|'cn'|'ja'|'kr'),string][]=[['en','p17.culture.en'],['cn','p17.culture.cn'],['ja','p17.culture.ja'],['kr','p17.culture.kr']];
+    // 展示序 en→nbs→cn→ja→kr（`W-tb-P50`：ISCC-NBS 标准色名置于英文命名色之后）。
+    // <lang en>Display order en→nbs→cn→ja→kr (`W-tb-P50`: ISCC-NBS right after English named colours).</lang>
+    const cultures:[('en'|'nbs'|'cn'|'ja'|'kr'),string][]=[['en','p17.culture.en'],['nbs','p17.culture.nbs'],['cn','p17.culture.cn'],['ja','p17.culture.ja'],['kr','p17.culture.kr']];
     menu.innerHTML=cultures.map(([c,key])=>`<button type="button" class="baodian-emo${(baodianTcCulture===c)?' active':''}" data-tc-culture="${c}">${escapeHtml(t(key))}</button>`).join('');
     all<HTMLButtonElement>('[data-tc-culture]',menu).forEach(btn=>btn.addEventListener('click',()=>{
-      baodianTcCulture=(btn.dataset.tcCulture as ('en'|'cn'|'ja'|'kr'));renderTraditionalMenu();
+      baodianTcCulture=(btn.dataset.tcCulture as ('en'|'nbs'|'cn'|'ja'|'kr'));renderTraditionalMenu();
     }));
     renderTraditionalRight();
   }
   function renderTraditionalRight(){
     const right=byId<HTMLElement>('baodianRight');
     const entries=TRADITIONAL_COLORS.filter(e=>e.culture===baodianTcCulture);
-    // 色系桶分组（bucket 为解析期粗分）。
+    // 色系桶分组（bucket 为解析期粗分）。旧 `||` 短路写法在**首次插入新桶**时会二次 get 返回
+    //   undefined 并抛错（页面静默空白）——改为显式创建，兼容任意新来源（`W-tb-P50` 首现该路径）。
+    // <lang en>Bucket grouping; the old `||` shorthand double-gets on a first insert (undefined → throws,
+    //   leaving a blank panel) — create the bucket explicitly so any new source works.</lang>
     const buckets=new Map<string,typeof entries>();
-    for(const e of entries){(buckets.get(e.bucket)||buckets.set(e.bucket,[]).get(e.bucket)!).push(e);}
+    for(const e of entries){
+      const list=buckets.get(e.bucket);
+      if(list)list.push(e);else buckets.set(e.bucket,[e]);
+    }
     let html='';
     for(const[bucket,items]of buckets){
       html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(t('p17.bucket.'+bucket))} · ${items.length}</div><div class="tc-grid">`;

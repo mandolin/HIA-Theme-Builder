@@ -153,6 +153,7 @@ registerStrings({
   'p17.bucket.紫': { zh: '紫系', en: 'Purples' },
   'p17.bucket.品红/桃': { zh: '品红·桃', en: 'Magenta / Peach' },
   'p17.culture.en': { zh: '英文命名色', en: 'English Named' },
+  'p17.culture.nbs': { zh: 'ISCC-NBS 标准色名', en: 'ISCC-NBS Standard' },
   // 国旗/企业两源（W-tb-P18）：源名、分组标题、套用回执。
   // <lang en>Flag/brand sources (W-tb-P18): source labels, group titles, apply receipts.</lang>
   'p18.source.flag': { zh: '国旗选色', en: 'National Flags' },
