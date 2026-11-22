@@ -11,6 +11,12 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+# Stage A（W-tb-P49）：仅引入 crates（编译无害）；插件注册与 plugins.updater 配置在
+#   密钥就绪后于 Stage B 一并启用（Tauri updater 强制签名，无密钥时注册会失败）。
+# <lang en>Stage A (W-tb-P49): crates only (harmless to compile); plugin registration and the
+#   plugins.updater config land in Stage B once signing keys exist (Tauri updater mandates signatures).</lang>
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 url = "2"

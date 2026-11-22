@@ -196,6 +196,7 @@ registerStrings({
   'p48.update.none': { zh: '已是最新版本。', en: 'You are up to date.' },
   'p48.update.error': { zh: '更新检查失败：', en: 'Update check failed:' },
   'p48.update.disabled': { zh: '当前环境未启用更新（开发/未打包）。', en: 'Updates unavailable in this environment (dev/unpackaged).' },
+  'p48.update.confirm': { zh: '发现新版本 {v}，立即下载并安装？（安装后自动重启）', en: 'Version {v} found. Download and install now? (The app restarts after install.)' },
   'p18.brand.view.group': { zh: '企业选色分组方式', en: 'Brand grouping mode' },
   'p18.brand.view.industry': { zh: '按行业', en: 'By industry' },
   'p18.brand.view.country': { zh: '按国家/地区', en: 'By country/region' },

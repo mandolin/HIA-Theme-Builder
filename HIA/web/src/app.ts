@@ -545,15 +545,27 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // 统一应用当前草稿到界面：读取输入→注入变量→同步表单→令牌/元信息→重渲染候选。
   // <lang zh-CN>绝大多数交互的汇聚点；readInputs 失败则整体中止。</lang>
   // <lang en>Convergence point for most interactions; aborts entirely if readInputs fails.</lang>
-  // 桌面端更新入口（W-tb-P48）：仅当 Electron preload 桥存在时注入「检查更新」按钮——
-  //   Pages/Tauri 无此桥则完全不渲染（web 版零影响）。点击→IPC 检查→终态以 alert 呈现；
-  //   下载中状态实时刷新按钮文案；downloaded 后由主进程弹确认框（绝不静默安装）。
-  // <lang en>Desktop update entry (W-tb-P48): inject an update-check button only when the Electron preload
-  //   bridge exists (Pages/Tauri unaffected). Click→IPC check→terminal state via alert; downloading states
-  //   refresh the button label; the main process pops the confirm dialog on downloaded — never silent.</lang>
-  if(typeof window!=='undefined'&&(window as unknown as Record<string,unknown>).hiaUpdater){
+  // 桌面端更新入口（W-tb-P48 / W-tb-P49）：右上角三按钮下方注入「检查更新」——
+  //   Electron 走 preload 桥（hiaUpdater），Tauri 走全局 __TAURI__.updater（插件就绪后启用）；
+  //   两端均特性检测，Pages 零影响。下载完成后：Electron 主进程弹确认框；Tauri 走 confirm+relaunch。
+  // <lang en>Desktop update entry: injected under the top-right buttons — Electron via the preload bridge
+  //   (hiaUpdater), Tauri via the global __TAURI__.updater (enabled once the plugin lands); both
+  //   feature-detected so Pages is unaffected. After download: Electron main pops the confirm dialog;
+  //   Tauri uses confirm+relaunch.</lang>
+  if(typeof window!=='undefined'){
     const slot=document.getElementById('updaterSlot');
-    if(slot){
+    // Electron 桥（主进程广播状态；手动检查走 IPC）。
+    // <lang en>Electron bridge (main broadcasts status; manual check via IPC).</lang>
+    const hiaUp=(window as unknown as {hiaUpdater?:{check:()=>Promise<{state:string;version?:string;message?:string}>;onStatus:(cb:(s:{state:string;version?:string;percent?:number})=>void)=>void}}).hiaUpdater;
+    // Tauri 桥（__TAURI__.updater 插件 + process.relaunch；Stage B 注册插件后自动出现）。
+    // <lang en>Tauri bridge (__TAURI__.updater plugin + process.relaunch; appears automatically once the
+    //   plugin registers in Stage B).</lang>
+    // Tauri 更新事件形参独立成接口，避免深层内联类型嵌套出错。
+    // <lang en>The Tauri update-event parameter gets its own interface to keep inline nesting flat.</lang>
+    type TauriUpdateEvent={event:string;data?:{chunkLength?:number;contentLength?:number}};
+    type TauriUpdate={available:boolean;version?:string;downloadAndInstall?:(onEvent:(e:TauriUpdateEvent)=>Promise<void>|void)=>Promise<void>};
+    const tauriG=(window as unknown as {__TAURI__?:{updater?:{check:(o?:unknown)=>Promise<TauriUpdate>};process?:{relaunch:()=>void}}}).__TAURI__;
+    if(slot&&(hiaUp||tauriG?.updater)){
       const btn=document.createElement('button');
       btn.type='button';
       btn.className='btn ghost';
@@ -561,27 +573,63 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       btn.textContent=t('p48.update.check');
       let busy=false;
       const label=(txt:string)=>{btn.textContent=txt;};
-      const hiaUp=(window as unknown as {hiaUpdater:{check:()=>Promise<{state:string;version?:string;message?:string}>;onStatus:(cb:(s:{state:string;version?:string;percent?:number})=>void)=>void}});
-      hiaUp.hiaUpdater.onStatus((st)=>{
-        if(st.state==='downloading')label(t('p48.update.downloading',{p:String(st.percent??0)}));
-        else if(st.state==='downloaded')label(t('p48.update.ready'));
-        else if(!busy&&st.state==='available')label(t('p48.update.check'));
-      });
-      btn.addEventListener('click',async()=>{
-        if(busy)return;
-        busy=true;label(t('p48.update.checking'));
-        try{
-          const r=await hiaUp.hiaUpdater.check();
-          const map:Record<string,string>={available:'p48.update.available',none:'p48.update.none',downloaded:'p48.update.ready',error:'p48.update.error',disabled:'p48.update.disabled'};
-          const key=map[r.state]??'p48.update.none';
-          const msg=t(key,{v:r.version??''})+(r.message?'\n'+r.message:'');
-          platform.alert(msg);
-        }catch(e){
-          platform.alert(t('p48.update.error')+(e instanceof Error?'\n'+e.message:''));
-        }finally{
-          busy=false;label(t('p48.update.check'));
-        }
-      });
+      if(hiaUp){
+        // Electron：订阅广播（下载中百分比实时刷新）+ IPC 手动检查 + 主进程确认框。
+        // <lang en>Electron: subscribe to broadcasts (live download percent) + IPC manual check + main-process dialog.</lang>
+        hiaUp.onStatus((st)=>{
+          if(st.state==='downloading')label(t('p48.update.downloading',{p:String(st.percent??0)}));
+          else if(st.state==='downloaded')label(t('p48.update.ready'));
+          else if(!busy&&st.state==='available')label(t('p48.update.check'));
+        });
+        btn.addEventListener('click',async()=>{
+          if(busy)return;
+          busy=true;label(t('p48.update.checking'));
+          try{
+            const r=await hiaUp.check();
+            const map:Record<string,string>={available:'p48.update.available',none:'p48.update.none',downloaded:'p48.update.ready',error:'p48.update.error',disabled:'p48.update.disabled'};
+            const msg=t(map[r.state]??'p48.update.none',{v:r.version??''})+(r.message?'\n'+r.message:'');
+            platform.alert(msg);
+          }catch(e){
+            platform.alert(t('p48.update.error')+(e instanceof Error?'\n'+e.message:''));
+          }finally{
+            busy=false;label(t('p48.update.check'));
+          }
+        });
+      }else if(tauriG?.updater){
+        // Tauri：check() → 可更新则 confirm → downloadAndInstall(进度) → relaunch。
+        //   插件未注册/未配置公钥时 check 抛错 → error 态呈现（Stage B 后恢复正常）。
+        // <lang en>Tauri: check() → confirm → downloadAndInstall(progress) → relaunch. When the plugin or the
+        //   pubkey is not yet configured, check() throws and surfaces as an error state (recovers in Stage B).</lang>
+        const relaunch=()=>{try{(tauriG.process as {relaunch:()=>void}|undefined)?.relaunch();}catch{/* 忽略 */}};
+        btn.addEventListener('click',async()=>{
+          if(busy)return;
+          busy=true;label(t('p48.update.checking'));
+          try{
+            const u=await tauriG.updater!.check();
+            if(!u.available){platform.alert(t('p48.update.none'));return;}
+            label(t('p48.update.available',{v:String(u.version??'')}));
+            if(!window.confirm(t('p48.update.confirm',{v:String(u.version??'')}))){return;}
+            // 进度：Started 带总长，Progress 只带 chunk 增量——闭包累加得到百分比（插件无累计 API）。
+            // <lang en>Progress: Started carries the total; Progress events carry only chunk deltas — accumulate
+            //   in a closure for percent (the plugin exposes no running counter).</lang>
+            let received=0;let totalLen=0;
+            await u.downloadAndInstall!((e)=>{
+              if(e.event==='Started'){received=0;totalLen=e.data?.contentLength??0;label(t('p48.update.downloading',{p:'0'}));}
+              else if(e.event==='Progress'){
+                received+=e.data?.chunkLength??0;
+                const pct=totalLen>0?String(Math.min(99,Math.round(received/totalLen*100))):String(received);
+                label(t('p48.update.downloading',{p:pct}));
+              }
+              else if(e.event==='Finished')label(t('p48.update.ready'));
+            });
+            relaunch();
+          }catch(e){
+            platform.alert(t('p48.update.error')+(e instanceof Error?'\n'+e.message:''));
+          }finally{
+            busy=false;label(t('p48.update.check'));
+          }
+        });
+      }
       slot.appendChild(btn);
     }
   }

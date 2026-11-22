@@ -128,6 +128,36 @@ jobs:
           $hashes | Out-File -FilePath SHA256SUMS-windows.txt -Encoding utf8
           Get-Content SHA256SUMS-windows.txt
 
+      # Tauri updater 清单装配（W-tb-P49 Stage B 前置）：仅当 createUpdaterArtifacts 产出 .sig 时生效
+      #   （签名密钥未配置前无 .sig → 本步静默跳过，CI 不受影响）。latest.json 的 signature 字段
+      #   必须是 .sig 文件内容本身（非路径/URL）——Tauri 整文件验签后比版本。
+      # <lang en>Tauri updater manifest assembly: only runs when createUpdaterArtifacts emitted a .sig
+      #   (before signing keys are configured there is no .sig — the step no-ops and CI is unaffected).
+      #   latest.json's signature field must be the .sig CONTENT itself — Tauri verifies the whole manifest
+      #   before comparing versions.</lang>
+      - name: Assemble Tauri updater latest.json (gated)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $sig = Get-ChildItem -Path "HIA\tauri\src-tauri\target\release\bundle\msi\*.msi.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $sig) { Write-Host "no .sig found — updater artifacts disabled, skipping latest.json"; exit 0 }
+          $tauriVer = (Get-Content "HIA\tauri\src-tauri\tauri.conf.json" | ConvertFrom-Json).version
+          $msiName = "HIA Theme Builder_${tauriVer}_x64_en-US.msi"
+          if (-not (Test-Path "artifacts\$msiName")) { Write-Error "MSI asset missing for updater manifest: $msiName"; exit 1 }
+          $sigContent = (Get-Content $sig.FullName -Raw).Trim()
+          $manifest = @{
+            version  = $tauriVer
+            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fffK")
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $sigContent
+                url = "https://github.com/mandolin/HIA-Theme-Builder/releases/download/v${tauriVer}/$msiName"
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+          $manifest | Out-File -FilePath artifacts\latest.json -Encoding utf8
+          Write-Host "latest.json assembled for version $tauriVer"
+
       - uses: actions/upload-artifact@v4
         with:
           name: artifacts-windows
