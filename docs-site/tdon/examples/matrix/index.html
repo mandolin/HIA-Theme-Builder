@@ -1,0 +1,219 @@
+<!doctype html>
+<!-- @lang zh-CN TDON 官方适配包矩阵（`W-tb-P51` 发现页，双语）：按目标类别导航全部官方适配包，
+     数据由 tdon-examples/ 生成（与 npm 包同源）。新增适配包须同步登记分类表。
+     @lang en TDON official adapter matrix (`W-tb-P51` discovery page, bilingual): navigates every official
+     adapter by target category; generated from tdon-examples/ (one source with the npm package). New
+     adapters must be registered in the category table. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TDON 适配包矩阵 · Adapter Matrix · HIA-Theme-Builder</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/lang.js" defer></script>
+<style>
+  .adapter-nav{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 22px}
+  .adapter-nav a{padding:6px 12px;border-radius:999px;border:1px solid var(--line,#dfe6ec);text-decoration:none;font-size:13px}
+  .adapter-group{margin:26px 0 34px}
+  .adapter-count{display:inline-block;min-width:22px;padding:1px 7px;border-radius:999px;background:#eef4fb;font-size:12px;vertical-align:middle}
+  .adapter-desc{color:#5a6b7a;font-size:13px;margin:4px 0 12px}
+  .adapter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+  .adapter-card{border:1px solid var(--line,#dfe6ec);border-radius:10px;padding:12px 14px;background:#fbfcfd}
+  .adapter-card h3{margin:0 0 6px;font-size:15px}
+  .adapter-meta,.adapter-paths{margin:4px 0;font-size:12px;color:#5a6b7a;overflow-wrap:anywhere}
+  .adapter-url a{font-size:12px}
+</style>
+</head>
+<body>
+<header class="site-head">
+  <a class="logo" href="../"><img src="../../assets/favicon-32.png" alt="">TDON Docs</a>
+  <nav>
+    <a href="../"><span class="zh">TDON 首页</span><span class="en">TDON Home</span></a>
+    <a href="../spec/"><span class="zh">规范全文</span><span class="en">Spec</span></a>
+    <a href="../nodes/"><span class="zh">节点参考</span><span class="en">Nodes</span></a>
+    <a href="../errors/"><span class="zh">错误码</span><span class="en">Errors</span></a>
+    <a class="active" href="./"><span class="zh">示例</span><span class="en">Examples</span></a>
+  </nav>
+  <button id="docLangBtn" class="lang-switch" type="button" aria-label="Switch language / 切换语言">EN</button>
+</header>
+<main class="wrap">
+  <section class="hero-doc">
+    <h1><span class="zh">TDON 适配包矩阵</span><span class="en">TDON Adapter Matrix</span></h1>
+    <p><span class="zh">共 <b>19</b> 个官方适配包，按目标类别分组。每个包都随 <code>@hia/tdon</code> 的 <code>tdon-examples/</code> 分发，
+      并有集成测试覆盖——在应用「自定义支持」里选 URL 源直接粘贴卡片中的官方地址即可预览与导出。</span>
+      <span class="en"><b>19</b> official adapters grouped by target category. Each ships in <code>@hia/tdon</code>'s
+      <code>tdon-examples/</code> with integration-test coverage — paste the card's official URL into the app's
+      "Custom Support → URL source" to preview and export.</span></p>
+  </section>
+
+  <nav class="adapter-nav" aria-label="按类别跳转 / Jump by category">
+      <a href="#group-doc"><span class="zh">文档站</span><span class="en">Docs sites</span></a>
+      <a href="#group-cms"><span class="zh">CMS 与发布平台</span><span class="en">CMS & publishing</span></a>
+      <a href="#group-editor"><span class="zh">编辑器与终端</span><span class="en">Editors & terminals</span></a>
+      <a href="#group-ui"><span class="zh">UI 组件库</span><span class="en">UI libraries</span></a>
+      <a href="#group-notes"><span class="zh">笔记应用</span><span class="en">Note-taking</span></a>
+      <a href="#group-demo"><span class="zh">示例与骨架</span><span class="en">Examples & scaffolds</span></a>
+  </nav>
+    <section class="adapter-group" id="group-doc">
+      <h2><span class="zh">文档站</span><span class="en">Docs sites</span> <span class="adapter-count">4</span></h2>
+      <p class="adapter-desc"><span class="zh">静态文档站与博客生成器 —— 导出主题变量与站点配置。</span><span class="en">Static docs sites and blog generators — theme variables plus site config.</span></p>
+      <div class="adapter-grid">
+      <article class="adapter-card" data-file="vitepress-docs.tdon.json">
+        <h3><span class="zh">VitePress 文档主题</span><span class="en">VitePress Docs Theme</span></h3>
+        <p class="adapter-meta"><code>vitepress-docs.tdon.json</code> · <span class="zh">5 个导出文件</span><span class="en">5 export file(s)</span></p>
+        <p class="adapter-paths"><code>docs/.vitepress/theme/index.ts · docs/.vitepress/theme/custom.css · docs/hia-tokens.css · docs/hia-tokens.json · docs/HIA-THEME-INSTALL.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/vitepress-docs.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="astro-site.tdon.json">
+        <h3><span class="zh">Astro 站点</span><span class="en">Astro Site</span></h3>
+        <p class="adapter-meta"><code>astro-site.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>src/styles/hia-theme.css · src/styles/hia-theme-README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/astro-site.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="nuxt-app.tdon.json">
+        <h3><span class="zh">Nuxt 应用</span><span class="en">Nuxt App</span></h3>
+        <p class="adapter-meta"><code>nuxt-app.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>assets/css/hia-theme.css · assets/css/hia-theme-README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/nuxt-app.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="next-app.tdon.json">
+        <h3><span class="zh">Next.js 应用</span><span class="en">Next.js App</span></h3>
+        <p class="adapter-meta"><code>next-app.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>app/globals.css · app/HIA-README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/next-app.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      </div>
+    </section>
+    <section class="adapter-group" id="group-cms">
+      <h2><span class="zh">CMS 与发布平台</span><span class="en">CMS & publishing</span> <span class="adapter-count">4</span></h2>
+      <p class="adapter-desc"><span class="zh">内容管理系统的管理后台或前台主题。</span><span class="en">Admin or front-end themes for content management systems.</span></p>
+      <div class="adapter-grid">
+      <article class="adapter-card" data-file="wordpress-child.tdon.json">
+        <h3><span class="zh">WordPress 子主题</span><span class="en">WordPress Child Theme</span></h3>
+        <p class="adapter-meta"><code>wordpress-child.tdon.json</code> · <span class="zh">4 个导出文件</span><span class="en">4 export file(s)</span></p>
+        <p class="adapter-paths"><code>wp-content/themes/hia-tdon-child/style.css · wp-content/themes/hia-tdon-child/theme.json · wp-content/themes/hia-tdon-child/functions.php · wp-content/themes/hia-tdon-child/readme.txt</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/wordpress-child.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="ghost-theme.tdon.json">
+        <h3><span class="zh">Ghost 发布平台主题</span><span class="en">Ghost Publication Theme</span></h3>
+        <p class="adapter-meta"><code>ghost-theme.tdon.json</code> · <span class="zh">6 个导出文件</span><span class="en">6 export file(s)</span></p>
+        <p class="adapter-paths"><code>content/themes/hia-theme/package.json · content/themes/hia-theme/default.hbs · content/themes/hia-theme/index.hbs · content/themes/hia-theme/post.hbs · content/themes/hia-theme/assets/css/screen.css · content/themes/hia-theme/README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/ghost-theme.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="strapi-admin-theme.tdon.json">
+        <h3><span class="zh">Strapi 管理后台主题</span><span class="en">Strapi Admin Panel Theme</span></h3>
+        <p class="adapter-meta"><code>strapi-admin-theme.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>src/admin/app.js · src/admin/README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/strapi-admin-theme.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="sanity-studio-theme.tdon.json">
+        <h3><span class="zh">Sanity Studio 主题</span><span class="en">Sanity Studio Theme</span></h3>
+        <p class="adapter-meta"><code>sanity-studio-theme.tdon.json</code> · <span class="zh">3 个导出文件</span><span class="en">3 export file(s)</span></p>
+        <p class="adapter-paths"><code>sanity/sanity-theme.ts · sanity/sanity.config.snippet.ts · sanity/README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/sanity-studio-theme.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      </div>
+    </section>
+    <section class="adapter-group" id="group-editor">
+      <h2><span class="zh">编辑器与终端</span><span class="en">Editors & terminals</span> <span class="adapter-count">4</span></h2>
+      <p class="adapter-desc"><span class="zh">代码编辑器配色主题与 IDE 界面主题。</span><span class="en">Syntax-colour themes and IDE workbench themes.</span></p>
+      <div class="adapter-grid">
+      <article class="adapter-card" data-file="vscode-workbench.tdon.json">
+        <h3><span class="zh">VS Code workbench 完整版</span><span class="en">VS Code Workbench Theme</span></h3>
+        <p class="adapter-meta"><code>vscode-workbench.tdon.json</code> · <span class="zh">4 个导出文件</span><span class="en">4 export file(s)</span></p>
+        <p class="adapter-paths"><code>hia-vscode-extension/package.json · hia-vscode-extension/themes/hia-light-color-theme.json · hia-vscode-extension/themes/hia-dark-color-theme.json · hia-vscode-extension/README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/vscode-workbench.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="jetbrains-idea.tdon.json">
+        <h3><span class="zh">JetBrains IDE 主题</span><span class="en">JetBrains IDE Theme</span></h3>
+        <p class="adapter-meta"><code>jetbrains-idea.tdon.json</code> · <span class="zh">7 个导出文件</span><span class="en">7 export file(s)</span></p>
+        <p class="adapter-paths"><code>hia-jetbrains-plugin/hia-dark.theme.json · hia-jetbrains-plugin/hia-dark-editor-scheme.xml · hia-jetbrains-plugin/hia-light.theme.json · hia-jetbrains-plugin/hia-light-editor-scheme.xml · hia-jetbrains-plugin/META-INF/plugin.xml · hia-jetbrains-plugin/META-INF/MANIFEST.MF</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/jetbrains-idea.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="sublime-color-scheme.tdon.json">
+        <h3><span class="zh">Sublime Text 配色方案</span><span class="en">Sublime Text Color Scheme</span></h3>
+        <p class="adapter-meta"><code>sublime-color-scheme.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>Packages/User/HIA.sublime-color-scheme · Packages/User/HIA-README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/sublime-color-scheme.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="editor-themes.tdon.json">
+        <h3><span class="zh">编辑器主题包</span><span class="en">Editor Theme Pack</span></h3>
+        <p class="adapter-meta"><code>editor-themes.tdon.json</code> · <span class="zh">6 个导出文件</span><span class="en">6 export file(s)</span></p>
+        <p class="adapter-paths"><code>themes/HIA-light.tmTheme · themes/HIA-dark.tmTheme · vscode/hia-light.color-theme.json · vscode/hia-dark.color-theme.json · vim/colors/hia-light.vim · emacs/hia-theme.el</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/editor-themes.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      </div>
+    </section>
+    <section class="adapter-group" id="group-ui">
+      <h2><span class="zh">UI 组件库</span><span class="en">UI libraries</span> <span class="adapter-count">3</span></h2>
+      <p class="adapter-desc"><span class="zh">设计系统与组件库的主题变量（CSS 变量 / seed 令牌）。</span><span class="en">Theme variables for design systems and component libraries (CSS vars / seed tokens).</span></p>
+      <div class="adapter-grid">
+      <article class="adapter-card" data-file="shadcn-ui.tdon.json">
+        <h3><span class="zh">shadcn/ui 主题</span><span class="en">shadcn/ui Theme</span></h3>
+        <p class="adapter-meta"><code>shadcn-ui.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>src/app/hia-theme.css · src/app/HIA-README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/shadcn-ui.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="ant-design.tdon.json">
+        <h3><span class="zh">Ant Design 主题</span><span class="en">Ant Design Theme</span></h3>
+        <p class="adapter-meta"><code>ant-design.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>src/theme/hia-antd-theme.js · src/theme/HIA-README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/ant-design.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="mui.tdon.json">
+        <h3><span class="zh">MUI 主题</span><span class="en">MUI Theme</span></h3>
+        <p class="adapter-meta"><code>mui.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>src/theme/hia-mui-theme.js · src/theme/HIA-README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/mui.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      </div>
+    </section>
+    <section class="adapter-group" id="group-notes">
+      <h2><span class="zh">笔记应用</span><span class="en">Note-taking</span> <span class="adapter-count">1</span></h2>
+      <p class="adapter-desc"><span class="zh">笔记/知识库应用的主题（CSS 注入形态）。</span><span class="en">Themes for note-taking and knowledge-base apps (CSS injection shape).</span></p>
+      <div class="adapter-grid">
+      <article class="adapter-card" data-file="obsidian-theme.tdon.json">
+        <h3><span class="zh">Obsidian 主题</span><span class="en">Obsidian Theme</span></h3>
+        <p class="adapter-meta"><code>obsidian-theme.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>obsidian/HIA-theme.css · obsidian/HIA-README.md</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/obsidian-theme.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      </div>
+    </section>
+    <section class="adapter-group" id="group-demo">
+      <h2><span class="zh">示例与骨架</span><span class="en">Examples & scaffolds</span> <span class="adapter-count">3</span></h2>
+      <p class="adapter-desc"><span class="zh">最小合法文档、能力演示与通用后台模板。</span><span class="en">Minimal valid documents, capability demos and generic admin templates.</span></p>
+      <div class="adapter-grid">
+      <article class="adapter-card" data-file="admin-dashboard.tdon.json">
+        <h3><span class="zh">后台管理主题</span><span class="en">Admin Dashboard Theme</span></h3>
+        <p class="adapter-meta"><code>admin-dashboard.tdon.json</code> · <span class="zh">2 个导出文件</span><span class="en">2 export file(s)</span></p>
+        <p class="adapter-paths"><code>src/styles/hia-admin.css · src/styles/hia-tokens.css</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/admin-dashboard.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="minimal.tdon.json">
+        <h3><span class="zh">最小示例</span><span class="en">Minimal Example</span></h3>
+        <p class="adapter-meta"><code>minimal.tdon.json</code> · <span class="zh">1 个导出文件</span><span class="en">1 export file(s)</span></p>
+        <p class="adapter-paths"><code>tokens.css</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/minimal.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      <article class="adapter-card" data-file="template-features.tdon.json">
+        <h3><span class="zh">TDOT 模板演示</span><span class="en">TDOT Template Demo</span></h3>
+        <p class="adapter-meta"><code>template-features.tdon.json</code> · <span class="zh">1 个导出文件</span><span class="en">1 export file(s)</span></p>
+        <p class="adapter-paths"><code>styles/generated.css</code></p>
+        <p class="adapter-url"><a href="https://mandolin.github.io/HIA-Theme-Builder/docs/tdon/examples/template-features.tdon.json" target="_blank" rel="noopener noreferrer"><span class="zh">打开官方 URL</span><span class="en">Open official URL</span></a></p>
+      </article>
+      </div>
+    </section>
+
+  <section class="doc">
+    <h2><span class="zh">新增目标端</span><span class="en">Adding a target</span></h2>
+    <p><span class="zh">新建 <code>&lt;target&gt;.tdon.json</code> 放入 <code>HIA/tdon/tdon-examples/</code>，同步在本页分类表登记类别；
+      规范要求见 <a href="../spec/">规范全文</a>，节点能力见 <a href="../nodes/">节点参考</a>。</span>
+      <span class="en">Drop a new <code>&lt;target&gt;.tdon.json</code> into <code>HIA/tdon/tdon-examples/</code> and
+      register its category in this page's table; see the <a href="../spec/">spec</a> for requirements and the
+      <a href="../nodes/">node reference</a> for capabilities.</span></p>
+  </section>
+</main>
+</body>
+</html>

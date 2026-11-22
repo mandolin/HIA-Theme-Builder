@@ -21,6 +21,34 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./data/traditional": {
+      "types": "./dist/data/traditional-colors.d.ts",
+      "import": "./dist/data/traditional-colors.js"
+    },
+    "./data/brand": {
+      "types": "./dist/data/brand-colors.d.ts",
+      "import": "./dist/data/brand-colors.js"
+    },
+    "./data/nature": {
+      "types": "./dist/data/nature-colors.d.ts",
+      "import": "./dist/data/nature-colors.js"
+    },
+    "./data/flags": {
+      "types": "./dist/data/flags.d.ts",
+      "import": "./dist/data/flags.js"
+    },
+    "./data/social": {
+      "types": "./dist/data/social-colors.d.ts",
+      "import": "./dist/data/social-colors.js"
+    },
+    "./data/mood": {
+      "types": "./dist/data/mood-primary-colors.d.ts",
+      "import": "./dist/data/mood-primary-colors.js"
+    },
+    "./data/baodian": {
+      "types": "./dist/data/palette-packs.d.ts",
+      "import": "./dist/data/palette-packs.js"
     }
   },
   "files": [

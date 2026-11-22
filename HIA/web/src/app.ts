@@ -13,9 +13,9 @@ import{
   gradientCss,isBuiltinPresetId,mergeImportedPresets,mergePresets,normalizeHex,hexToRgb,parseGradientSettings,parseThemeLibrary,parseThemePack,
   presetFromDraft,primaryCandidates,removePreset,secondarySetForDraft,serializeThemeLibrary,spacingSequence,
   swapGradientBias,tonalScaleAt,upsertPreset,validHex,tonalScale,bestOnColor,
-  BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS,SERIES_RELATION_DEFS,AUXILIARY_MAX,
-  tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,TRADITIONAL_COLORS,FLAG_COLORS,BRAND_COLORS,NATURE_COLORS,SOCIAL_COLORS,
-  deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,nameColor,MOOD_PRIMARY_COLORS,moodPrimaryColorFor,
+  SERIES_RELATION_DEFS,AUXILIARY_MAX,
+  tonePresets,buildTonePreset,shiftHueTo,anchorComboMembers,TONE_AUX_SLOTS,
+  deriveSecondaryByRelation,deriveThirdByRelation,generateAuxiliaryCandidates,nameColor,moodPrimaryColorFor,
   contrast,contrastMatrix,stepForContrast,deriveSemanticTokens,isSemanticDerived,SEMANTIC_NAMES,radiusSequence,shadowCss,parseDtcgTokens,extractImagePalette,suggestGradientDirection,
   type SeriesMode,type SeriesRelationId,type RoleColor,
   type Theme,type ThemeDraft,type Preset,type PrimaryCandidate,type SecondaryCandidate,type GradientBias,type ShadeKey,
@@ -23,6 +23,11 @@ import{
   type WebsiteThemeAnalysisV2,type MatrixEntry,type SemanticStatusKey,type ImageExtractMode
 }from'@hia/theme-core';
 import{renderCodePreview}from'./code-highlight.js';
+// 大体积选色数据懒加载（W-tb-P51）：传统色/品牌/宝典组合/旗标/自然/社会/情感合计 ~900KB，
+//   改为弹层打开时动态加载；同步访问器未就绪返回空，就绪后重绘。
+// <lang en>Lazy colour-source data (~900 KB) loaded on modal open; accessors return empty until ready,
+//   then the panel repaints.</lang>
+import{ensureSources,sourcesReady,TRADITIONAL_COLORS,BRAND_COLORS,FLAG_COLORS,NATURE_COLORS,SOCIAL_COLORS,MOOD_PRIMARY_COLORS,BAODIAN_PALETTE,BAODIAN_FORM_NAMES,FORM_PACKS}from'./colour-sources.js';
 // TDON 运行时来自独立包 @hia/tdon（TDON-15.1）：core 不再导出这些符号。
 // <lang zh-CN>独立包让第三方应用可只引用 TDON 而不引入整个 core。</lang>
 // <lang en>The standalone package lets third-party apps use TDON alone, without all of core.</lang>
@@ -800,7 +805,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang zh-CN>不再显示"票数"——独立数据集不是投票结果，硬凑一个可信度指标等于自欺。</lang>
     // <lang en>No more "votes": a standalone dataset is not the product of a vote, and inventing a confidence
     //   figure would be self-deception.</lang>
-    wrap.innerHTML=MOOD_PRIMARY_COLORS.map(m=>{
+    wrap.innerHTML=MOOD_PRIMARY_COLORS().map(m=>{
       // 当前主色命中该情感色时高亮（与候选库色卡同一判据）。
       // <lang en>Highlights when the current primary matches this mood's colour, the same rule as library cards.</lang>
       const isActive=normalizeHex(m.hex)===draft.primary;
@@ -1156,7 +1161,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       renderMoodPrimary();
       // 徽标显示情感条数（含中性说明卡），与卡片数一致。
       // <lang en>The badge counts mood entries (including the neutral note card), matching the rendered cards.</lang>
-      setText('primaryLibBadge',t('picker.badge.mood',{n:String(MOOD_PRIMARY_COLORS.length)}));
+      setText('primaryLibBadge',t('picker.badge.mood',{n:String(MOOD_PRIMARY_COLORS().length)}));
     }else{
       renderPrimaryCandidates();
       // 徽标显示当前组的候选数——用户切 tab 前就能知道每组有多少。
@@ -2124,8 +2129,8 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       // <lang zh-CN>complement 缺某情感时（该页无补色组合）由其余形态补齐。</lang>
       // <lang en>Complement page order first; remaining forms union to full 24.</lang>
       const seen=new Set<string>();
-      for(const c of FORM_PACKS['complement']??[])seen.add(c.e);
-      for(const combos of Object.values(FORM_PACKS))for(const c of combos)seen.add(c.e);
+      for(const c of FORM_PACKS()['complement']??[])seen.add(c.e);
+      for(const combos of Object.values(FORM_PACKS()))for(const c of combos)seen.add(c.e);
       baodianEmotions=[...seen];
     }
     if(!baodianEmotion||!baodianEmotions.includes(baodianEmotion))baodianEmotion=baodianEmotions[0]||'';
@@ -2284,6 +2289,14 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   // <lang en>Modal render dispatch by source; menu/right pane per source.</lang>
   function openColorSourceModal(){
     byId<HTMLElement>('baodianModal').hidden=false;
+    // 数据懒加载闸门（W-tb-P51）：首次打开弹层时拉取大体积选色数据；就绪后重绘当前源，
+    //   加载中先渲染空态（不阻塞弹层打开，首屏主 chunk 因此减小 ~900KB）。
+    // <lang en>Lazy-data gate: fetch the large datasets on first modal open; repaint the current source once
+    //   ready. While loading an empty state shows — the modal never blocks, and the first-paint chunk shrinks.</lang>
+    if(!sourcesReady()){
+      void ensureSources().then(()=>{if(!byId<HTMLElement>('baodianModal').hidden)renderColorSourceModal();})
+        .catch((e)=>{console.error('[colour-sources] load failed',e);});
+    }
     byId<HTMLInputElement>('baodianAnchorToggle').checked=baodianAnchor;
     // 标题随源（宝典/传统色/国旗/企业）。
     setText('baodianTitle',colorSource==='baodian'?t('p12.baodian.title')
@@ -2392,7 +2405,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   }
   function renderFlagRight(){
     const right=byId<HTMLElement>('baodianRight');
-    const items=FLAG_COLORS.filter(f=>f.continent===baodianFlagGroup);
+    const items=FLAG_COLORS().filter(f=>f.continent===baodianFlagGroup);
     let html='<div class="bdc-grid">';
     for(const f of items){
       // note：手工考据优先，缺省合成。
@@ -2442,7 +2455,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       // <lang en>Country groups: display order ∩ countries present in data; '__unassigned' always last
       //   (country is optional and filled in batches).</lang>
       const present=new Set<string>();
-      BRAND_COLORS.forEach(b=>{if(b.country)present.add(b.country);});
+      BRAND_COLORS().forEach(b=>{if(b.country)present.add(b.country);});
       const ordered=[...BRAND_COUNTRY_ORDER.filter(c=>present.has(c)),'__unassigned'];
       html+=ordered.map(g=>`<button type="button" class="baodian-emo${baodianBrandCountry===g?' active':''}" data-brand-group="${g}">${escapeHtml(g==='__unassigned'?t('p18.country.unassigned'):t('p18.country.'+g))}</button>`).join('');
     }
@@ -2527,7 +2540,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // 按视图模式过滤：行业视图=industry 字段；国家视图=country 字段（无 country 归"未分类"）。
     // <lang en>Filter per view mode: industry view = industry field; country view = country field
     //   (entries without one land in "uncategorized").</lang>
-    const items=BRAND_COLORS.filter(b=>brandViewMode==='industry'
+    const items=BRAND_COLORS().filter(b=>brandViewMode==='industry'
       ?b.industry===baodianBrandGroup
       :(baodianBrandCountry==='__unassigned'?!b.country:b.country===baodianBrandCountry));
     let html='<div class="bdc-grid">';
@@ -2566,7 +2579,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   }
   function renderNatureRight(){
     const right=byId<HTMLElement>('baodianRight');
-    const items=NATURE_COLORS.filter(n=>n.category===baodianNatureGroup);
+    const items=NATURE_COLORS().filter(n=>n.category===baodianNatureGroup);
     renderPaletteGrid(right,items,'nature',n=>`<span class="bdc-title">${escapeHtml(n.name)}</span><span class="bdc-sub">${escapeHtml(n.nameEn)}</span>`);
   }
   // 社会场景源（W-tb-P19）：左=场景大类（应急/医疗/邮政/交通/安全/行业/文化），右=色组卡。
@@ -2582,7 +2595,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   }
   function renderSocialRight(){
     const right=byId<HTMLElement>('baodianRight');
-    const items=SOCIAL_COLORS.filter(n=>n.category===baodianSocialGroup);
+    const items=SOCIAL_COLORS().filter(n=>n.category===baodianSocialGroup);
     renderPaletteGrid(right,items,'social',n=>`<span class="bdc-title">${escapeHtml(n.name)}</span><span class="bdc-sub">${escapeHtml(n.nameEn)}</span>`);
   }
   // 通用色组网格（自然/社会共用）：色条+标题+HEX+说明；点击走多色组套用。
@@ -2655,7 +2668,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   }
   function renderTraditionalRight(){
     const right=byId<HTMLElement>('baodianRight');
-    const entries=TRADITIONAL_COLORS.filter(e=>e.culture===baodianTcCulture);
+    const entries=TRADITIONAL_COLORS().filter(e=>e.culture===baodianTcCulture);
     // 色系桶分组（bucket 为解析期粗分）。旧 `||` 短路写法在**首次插入新桶**时会二次 get 返回
     //   undefined 并抛错（页面静默空白）——改为显式创建，兼容任意新来源（`W-tb-P50` 首现该路径）。
     // <lang en>Bucket grouping; the old `||` shorthand double-gets on a first insert (undefined → throws,
@@ -2697,10 +2710,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     //   keeping the modal open and reusing the snapshot-backed apply path.</lang>
     const quickCombo=(emo:string):number[]|null=>{
       // 首选该情感在 complement 形态的第一组合。
-      const comp=(FORM_PACKS['complement']||[]).find(c=>c.e===emo);
+      const comp=(FORM_PACKS()['complement']||[]).find(c=>c.e===emo);
       if(comp)return comp.n;
       // 回退：按形态表顺序取该情感首个可用组合。
-      for(const list of Object.values(FORM_PACKS)){const c=list.find(x=>x.e===emo);if(c)return c.n;}
+      for(const list of Object.values(FORM_PACKS())){const c=list.find(x=>x.e===emo);if(c)return c.n;}
       return null;
     };
     menu.innerHTML=baodianEmotions.map(e=>{
@@ -2733,9 +2746,9 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
   function renderBaodianRight(){
     const right=byId<HTMLElement>('baodianRight');
     // 形态中文标题映射（BAODIAN_FORM_NAMES 反查）。
-    const titleOf=(id:string)=>Object.entries(BAODIAN_FORM_NAMES).find(([,v])=>v===id)?.[0]||id;
+    const titleOf=(id:string)=>Object.entries(BAODIAN_FORM_NAMES()).find(([,v])=>v===id)?.[0]||id;
     let html='';
-    for(const[formId,combos]of Object.entries(FORM_PACKS)){
+    for(const[formId,combos]of Object.entries(FORM_PACKS())){
       const mine=combos.filter(c=>c.e===baodianEmotion);
       if(!mine.length)continue;
       html+=`<div class="bd-form"><div class="bd-form-title">${escapeHtml(t(titleOf(formId)))} · ${mine.length}</div><div class="bd-combos">`;
@@ -2743,7 +2756,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
         const c=mine[ci]!;
         // W-tb-P15：卡外包 wrapper，追加"整套"小按钮——按 当前情感+形态+组合序号 构建语气预设整体应用。
         // <lang en>Card wrapper adds a "full set" badge building the tone preset for this mood/form/combo.</lang>
-        html+=`<div class="bd-card"><button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join(''))}">`+c.n.map(num=>{const hex=BAODIAN_PALETTE[num]||'#cccccc';return`<span class="bd-bar" data-hex="${hex}" data-num="${num}"><i class="bd-swatch" style="background:${hex}"></i><b class="bd-num">${num}</b></span>`;}).join('')+`</button><button type="button" class="bd-full" data-full-form="${escapeHtml(formId)}" data-full-idx="${ci}" title="${escapeHtml(t('p15.tone.applyFull'))}" aria-label="${escapeHtml(t('p15.tone.applyFull'))}">${escapeHtml(t('p15.tone.applyFull'))}</button></div>`;
+        html+=`<div class="bd-card"><button type="button" class="bd-combo" data-form="${escapeHtml(formId)}" data-nums="${c.n.join(',')}" aria-label="${escapeHtml(c.n.join(''))}">`+c.n.map(num=>{const hex=BAODIAN_PALETTE()[num]||'#cccccc';return`<span class="bd-bar" data-hex="${hex}" data-num="${num}"><i class="bd-swatch" style="background:${hex}"></i><b class="bd-num">${num}</b></span>`;}).join('')+`</button><button type="button" class="bd-full" data-full-form="${escapeHtml(formId)}" data-full-idx="${ci}" title="${escapeHtml(t('p15.tone.applyFull'))}" aria-label="${escapeHtml(t('p15.tone.applyFull'))}">${escapeHtml(t('p15.tone.applyFull'))}</button></div>`;
       }
       html+='</div></div>';
     }
@@ -2773,10 +2786,10 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     // <lang en>Anchor branch: member[0] is the user's primary verbatim; the rest re-map by combo hue relations.</lang>
     let list:{name:string;value:string}[];
     if(baodianAnchor){
-      const hexes=anchorComboMembers(nums.map(num=>BAODIAN_PALETTE[num]||'#cccccc'),draft.primary);
+      const hexes=anchorComboMembers(nums.map(num=>BAODIAN_PALETTE()[num]||'#cccccc'),draft.primary);
       list=hexes.map((hex,i)=>({name:`${t('p12.baodian.tag')} #${nums[i]}${t('p16.anchor.mark')}`,value:hex}));
     }else{
-      list=nums.map(num=>({name:`${t('p12.baodian.tag')} #${num}`,value:BAODIAN_PALETTE[num]||'#cccccc'}));
+      list=nums.map(num=>({name:`${t('p12.baodian.tag')} #${num}`,value:BAODIAN_PALETTE()[num]||'#cccccc'}));
     }
     byId<HTMLElement>('baodianModal').hidden=true;
     commitSeriesMembers(list);
@@ -3847,6 +3860,13 @@ ${t('p10.import.dtcg.warnings',{n:String(result.warnings.length)})}`:'';
     // <lang zh-CN>必须在首轮 applyRuntimeTheme 之前，保证 --hia-font-*/fs/space 变量按存储值注入。</lang>
     // <lang en>Must run before the first applyRuntimeTheme so --hia-font-*/fs/space vars inject from stored values.</lang>
     loadTypography();attachTokensToDraft();
+    // 主面板数据预载（W-tb-P51）：情感主色库在首屏主面板（非弹层）渲染，须启动即加载；
+    //   其余源数据随弹层打开按需加载（同一批 subpath 模块，此处一次拉齐后全部命中缓存）。
+    //   就绪后重绘情感面板——首次渲染在数据未到时为空，不能让它空着。
+    // <lang en>Prime the datasets at boot (`W-tb-P51`): the mood library lives on the main panel, not the
+    //   modal, so it must load on start; the rest ride the same batch and hit the cache later. Repaint the
+    //   mood panel on ready — its first render happens before the data arrives.</lang>
+    void ensureSources().then(()=>{renderMoodPrimary();}).catch((e)=>{console.error('[colour-sources] boot load failed',e);});
     // 草稿自动恢复（维护者反馈：刷新后主题丢失）：从 localStorage 读回上次的基色/名称/语义/圆角等。
     //   无存储或解析失败 → 保持默认，不报错（首次访问的正常路径）。
     // <lang en>Auto-restore the draft from localStorage (maintainer feedback: theme lost on refresh). Missing
