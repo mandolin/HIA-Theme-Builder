@@ -556,7 +556,7 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
     const slot=document.getElementById('updaterSlot');
     // Electron 桥（主进程广播状态；手动检查走 IPC）。
     // <lang en>Electron bridge (main broadcasts status; manual check via IPC).</lang>
-    const hiaUp=(window as unknown as {hiaUpdater?:{check:()=>Promise<{state:string;version?:string;message?:string}>;onStatus:(cb:(s:{state:string;version?:string;percent?:number})=>void)=>void}}).hiaUpdater;
+    const hiaUp=(window as unknown as {hiaUpdater?:{check:()=>Promise<{state:string;version?:string;message?:string}>;onStatus:(cb:(s:{state:string;version?:string;percent?:number;message?:string})=>void)=>void}}).hiaUpdater;
     // Tauri 桥（__TAURI__.updater 插件 + process.relaunch；Stage B 注册插件后自动出现）。
     // <lang en>Tauri bridge (__TAURI__.updater plugin + process.relaunch; appears automatically once the
     //   plugin registers in Stage B).</lang>
@@ -575,10 +575,20 @@ export function mountThemeManager(platform:ThemeManagerPlatform):ThemeManagerHan
       const label=(txt:string)=>{btn.textContent=txt;};
       if(hiaUp){
         // Electron：订阅广播（下载中百分比实时刷新）+ IPC 手动检查 + 主进程确认框。
-        // <lang en>Electron: subscribe to broadcasts (live download percent) + IPC manual check + main-process dialog.</lang>
+        //   error 态必须显式呈现（维护者实测：下载 100% 后卡死——真实原因被吞，此处弹出并复位按钮）。
+        //   同一错误只弹一次，避免启动静默检查的重复弹窗。
+        // <lang en>Electron: subscribe to broadcasts (live download percent) + IPC manual check + main-process
+        //   dialog. Errors MUST surface (real-world case: stuck at 100% with the reason swallowed) — alert once
+        //   per distinct message and reset the button.</lang>
+        let lastErrorAlerted='';
         hiaUp.onStatus((st)=>{
           if(st.state==='downloading')label(t('p48.update.downloading',{p:String(st.percent??0)}));
           else if(st.state==='downloaded')label(t('p48.update.ready'));
+          else if(st.state==='error'){
+            label(t('p48.update.error'));
+            const msg=st.message??'';
+            if(msg&&msg!==lastErrorAlerted){lastErrorAlerted=msg;platform.alert(t('p48.update.error')+'\n'+msg);}
+          }
           else if(!busy&&st.state==='available')label(t('p48.update.check'));
         });
         btn.addEventListener('click',async()=>{

@@ -23,8 +23,15 @@
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost data:"
     }
   },
-  "bundle": {
+"plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhEQ0ZBRDFCOTI1RUM0MkIKUldRcnhGNlNHNjNQalVwcXh1eUd6QzNESm4rVWlwaUZIRmRJZktrUllVN04wMk5FcjlGMXVwSW4K",
+      "endpoints": ["https://github.com/mandolin/HIA-Theme-Builder/releases/latest/download/latest.json"]
+    }
+  },
+    "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": [
       "msi"
     ],

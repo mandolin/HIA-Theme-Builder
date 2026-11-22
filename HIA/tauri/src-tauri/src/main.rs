@@ -62,10 +62,14 @@ async fn extract_signals(url: String) -> ExtractReply {
     }
 }
 
-/// @lang zh-CN 构建并运行 Tauri 应用，注册真实渲染取色命令。
-/// @lang en Build and run Tauri app, register the real-render extraction command.
+/// @lang zh-CN 构建并运行 Tauri 应用，注册真实渲染取色命令与更新/进程插件（W-tb-P49 Stage B）。
+///   updater 插件读 tauri.conf 的 plugins.updater（pubkey/endpoints）；process 提供 relaunch。
+/// @lang en Build and run the Tauri app; register the extraction command plus updater/process plugins
+///   (W-tb-P49 Stage B). The updater plugin reads plugins.updater from tauri.conf; process provides relaunch.
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![extract_signals])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
